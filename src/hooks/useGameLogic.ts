@@ -1,47 +1,49 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { GameState, GameCell, ColoredRegion, CellState } from '../types/game';
 import { validateQueenPlacement, isPuzzleCompleted, updateConflicts } from '../utils/gameValidation';
 import { generateGameLevel, resetGameBoard } from '../utils/levelGenerator';
 
 export function useGameLogic(initialGridSize: number = 6) {
   const [gameState, setGameState] = useState<GameState>(() => generateGameLevel(initialGridSize));
-  const [lastClickTime, setLastClickTime] = useState<number>(0);
-  const [clickTimeouts, setClickTimeouts] = useState<Map<string, NodeJS.Timeout>>(new Map());
+  const lastClickTimeRef = useRef<number>(0);
+  const clickTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   // Gérer le clic sur une cellule
   const handleCellClick = useCallback((row: number, col: number) => {
     const now = Date.now();
     const cellKey = `${row}-${col}`;
-    const lastClick = lastClickTime;
+    const lastClick = lastClickTimeRef.current;
     
     // Nettoyer le timeout existant pour cette cellule
-    const existingTimeout = clickTimeouts.get(cellKey);
+    const existingTimeout = clickTimeoutsRef.current.get(cellKey);
     if (existingTimeout) {
       clearTimeout(existingTimeout);
-      clickTimeouts.delete(cellKey);
+      clickTimeoutsRef.current.delete(cellKey);
     }
 
     // Double-click détection (dans les 300ms)
     if (now - lastClick < 300) {
       // Double-click: placer/enlever une reine
       handleDoubleClick(row, col);
-      setLastClickTime(0);
+      lastClickTimeRef.current = 0;
     } else {
       // Simple click: attendre pour voir s'il y a un double-click
       const timeout = setTimeout(() => {
         handleSingleClick(row, col);
-        clickTimeouts.delete(cellKey);
+        clickTimeoutsRef.current.delete(cellKey);
       }, 300);
       
-      clickTimeouts.set(cellKey, timeout);
-      setLastClickTime(now);
+      clickTimeoutsRef.current.set(cellKey, timeout);
+      lastClickTimeRef.current = now;
     }
-  }, [lastClickTime, clickTimeouts]);
+  }, []);
 
   // Gérer le simple clic (marqueur)
   const handleSingleClick = useCallback((row: number, col: number) => {
     setGameState(prevState => {
-      const newBoard = [...prevState.board];
+      const newBoard = prevState.board.map(boardRow => 
+        boardRow.map(cell => ({ ...cell }))
+      );
       const cell = newBoard[row][col];
       
       // Cycle: empty -> marker -> empty
@@ -63,8 +65,10 @@ export function useGameLogic(initialGridSize: number = 6) {
   // Gérer le double clic (reine)
   const handleDoubleClick = useCallback((row: number, col: number) => {
     setGameState(prevState => {
-      const newBoard = [...prevState.board];
-      const newRegions = [...prevState.regions];
+      const newBoard = prevState.board.map(boardRow => 
+        boardRow.map(cell => ({ ...cell }))
+      );
+      const newRegions = prevState.regions.map(region => ({ ...region }));
       const cell = newBoard[row][col];
       
       let queensPlaced = prevState.queensPlaced;
@@ -152,9 +156,9 @@ export function useGameLogic(initialGridSize: number = 6) {
   // Nettoyer les timeouts à la désactivation
   useEffect(() => {
     return () => {
-      clickTimeouts.forEach(timeout => clearTimeout(timeout));
+      clickTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
     };
-  }, [clickTimeouts]);
+  }, []);
 
   return {
     gameState,
