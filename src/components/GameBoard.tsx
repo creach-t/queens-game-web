@@ -9,50 +9,44 @@ interface GameBoardProps {
 }
 
 export const GameBoard: React.FC<GameBoardProps> = ({ gameState, onCellClick }) => {
-  // Calculer la taille des cellules en fonction de la grille et de l'écran
+  // Calculer la taille des cellules
   const cellSize = useMemo(() => {
     const viewportWidth = Math.min(window.innerWidth * 0.9, 600);
     const viewportHeight = Math.min(window.innerHeight * 0.7, 600);
     const availableSize = Math.min(viewportWidth, viewportHeight);
     
-    return Math.floor(availableSize / gameState.gridSize) - 4; // -4 pour les bordures
+    return Math.floor(availableSize / gameState.gridSize) - 6;
   }, [gameState.gridSize]);
 
-  // Calculer les bordures de régions
-  const getRegionBorders = useMemo(() => {
-    const borders: { [key: string]: string[] } = {};
+  // Calculer les bordures de régions avec une approche plus simple
+  const getCellBorderStyle = (row: number, col: number) => {
+    const cell = gameState.board[row][col];
+    const borderStyle: React.CSSProperties = {};
+    const borderWidth = 3;
+    const borderColor = '#2c3e50';
     
-    gameState.board.forEach((row, rowIndex) => {
-      row.forEach((cell, colIndex) => {
-        const cellKey = `${rowIndex}-${colIndex}`;
-        const cellBorders: string[] = [];
-        
-        // Vérifier bordure top
-        if (rowIndex === 0 || gameState.board[rowIndex - 1][colIndex].regionId !== cell.regionId) {
-          cellBorders.push('border-top');
-        }
-        
-        // Vérifier bordure right
-        if (colIndex === gameState.gridSize - 1 || gameState.board[rowIndex][colIndex + 1].regionId !== cell.regionId) {
-          cellBorders.push('border-right');
-        }
-        
-        // Vérifier bordure bottom
-        if (rowIndex === gameState.gridSize - 1 || gameState.board[rowIndex + 1][colIndex].regionId !== cell.regionId) {
-          cellBorders.push('border-bottom');
-        }
-        
-        // Vérifier bordure left
-        if (colIndex === 0 || gameState.board[rowIndex][colIndex - 1].regionId !== cell.regionId) {
-          cellBorders.push('border-left');
-        }
-        
-        borders[cellKey] = cellBorders;
-      });
-    });
+    // Vérifier bordure top
+    if (row === 0 || gameState.board[row - 1][col].regionId !== cell.regionId) {
+      borderStyle.borderTop = `${borderWidth}px solid ${borderColor}`;
+    }
     
-    return borders;
-  }, [gameState.board, gameState.gridSize]);
+    // Vérifier bordure right  
+    if (col === gameState.gridSize - 1 || gameState.board[row][col + 1].regionId !== cell.regionId) {
+      borderStyle.borderRight = `${borderWidth}px solid ${borderColor}`;
+    }
+    
+    // Vérifier bordure bottom
+    if (row === gameState.gridSize - 1 || gameState.board[row + 1][col].regionId !== cell.regionId) {
+      borderStyle.borderBottom = `${borderWidth}px solid ${borderColor}`;
+    }
+    
+    // Vérifier bordure left
+    if (col === 0 || gameState.board[row][col - 1].regionId !== cell.regionId) {
+      borderStyle.borderLeft = `${borderWidth}px solid ${borderColor}`;
+    }
+    
+    return borderStyle;
+  };
 
   return (
     <div className="game-board">
@@ -61,21 +55,18 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, onCellClick }) 
         style={{
           gridTemplateColumns: `repeat(${gameState.gridSize}, ${cellSize}px)`,
           gridTemplateRows: `repeat(${gameState.gridSize}, ${cellSize}px)`,
-          gap: '1px'
+          gap: '0px'
         }}
       >
         {gameState.board.map((row, rowIndex) =>
           row.map((cell, colIndex) => {
-            const cellKey = `${rowIndex}-${colIndex}`;
-            const regionBorders = getRegionBorders[cellKey] || [];
+            const borderStyle = getCellBorderStyle(rowIndex, colIndex);
             
             return (
               <div
-                key={cellKey}
-                className={`game-cell-container ${regionBorders.join(' ')}`}
-                style={{
-                  '--region-color': cell.regionColor
-                } as React.CSSProperties}
+                key={`${rowIndex}-${colIndex}`}
+                className="game-cell-wrapper"
+                style={borderStyle}
               >
                 <GameCell
                   cell={cell}
