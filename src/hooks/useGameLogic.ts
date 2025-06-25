@@ -3,38 +3,46 @@ import { GameState, GameCell, ColoredRegion, CellState } from '../types/game';
 import { validateQueenPlacement, isPuzzleCompleted, updateConflicts } from '../utils/gameValidation';
 import { generateGameLevel, resetGameBoard } from '../utils/levelGenerator';
 
+// Interface pour tracker les clics par cellule
+interface CellClickInfo {
+  lastClickTime: number;
+  timeout: NodeJS.Timeout | null;
+}
+
 export function useGameLogic(initialGridSize: number = 6) {
   const [gameState, setGameState] = useState<GameState>(() => generateGameLevel(initialGridSize));
-  const lastClickTimeRef = useRef<number>(0);
-  const clickTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  
+  // ✅ CORRECTIF: Map pour tracker les clics par cellule individuelle
+  const cellClicksRef = useRef<Map<string, CellClickInfo>>(new Map());
 
-  // Gérer le clic sur une cellule
+  // Gérer le clic sur une cellule avec logique corrigée
   const handleCellClick = useCallback((row: number, col: number) => {
     const now = Date.now();
     const cellKey = `${row}-${col}`;
-    const lastClick = lastClickTimeRef.current;
+    const cellClickInfo = cellClicksRef.current.get(cellKey);
     
-    // Nettoyer le timeout existant pour cette cellule
-    const existingTimeout = clickTimeoutsRef.current.get(cellKey);
-    if (existingTimeout) {
-      clearTimeout(existingTimeout);
-      clickTimeoutsRef.current.delete(cellKey);
+    // Nettoyer l'ancien timeout si il existe
+    if (cellClickInfo?.timeout) {
+      clearTimeout(cellClickInfo.timeout);
     }
 
-    // Double-click détection (dans les 300ms)
-    if (now - lastClick < 300) {
-      // Double-click: placer/enlever une reine
+    // ✅ CORRECTIF: Vérifier le double-clic POUR CETTE CELLULE SPÉCIFIQUE
+    if (cellClickInfo && now - cellClickInfo.lastClickTime < 300) {
+      // Double-click détecté sur la MÊME cellule
       handleDoubleClick(row, col);
-      lastClickTimeRef.current = 0;
+      cellClicksRef.current.delete(cellKey); // Nettoyer l'entrée
     } else {
-      // Simple click: attendre pour voir s'il y a un double-click
+      // Premier clic ou clic trop tardif - programmer le single click
       const timeout = setTimeout(() => {
         handleSingleClick(row, col);
-        clickTimeoutsRef.current.delete(cellKey);
-      }, 300);
-      
-      clickTimeoutsRef.current.set(cellKey, timeout);
-      lastClickTimeRef.current = now;
+        cellClicksRef.current.delete(cellKey);
+      }, 320); // Délai légèrement plus long pour la sécurité
+
+      // Enregistrer ce clic pour cette cellule
+      cellClicksRef.current.set(cellKey, {
+        lastClickTime: now,
+        timeout: timeout
+      });
     }
   }, []);
 
@@ -46,13 +54,13 @@ export function useGameLogic(initialGridSize: number = 6) {
       );
       const cell = newBoard[row][col];
       
-      // Cycle: empty -> marker -> empty
+      // Cycle: empty -> marker -> empty (ne touche pas aux reines)
       if (cell.state === 'empty') {
         cell.state = 'marker';
       } else if (cell.state === 'marker') {
         cell.state = 'empty';
       }
-      // Ne pas changer si c'est une reine (réservé au double-click)
+      // ✅ Ne pas modifier si c'est une reine (réservé au double-click)
       
       return {
         ...prevState,
@@ -62,7 +70,7 @@ export function useGameLogic(initialGridSize: number = 6) {
     });
   }, []);
 
-  // Gérer le double clic (reine)
+  // Gérer le double clic (reine) avec validation améliorée
   const handleDoubleClick = useCallback((row: number, col: number) => {
     setGameState(prevState => {
       const newBoard = prevState.board.map(boardRow => 
@@ -85,6 +93,11 @@ export function useGameLogic(initialGridSize: number = 6) {
           region.queenPosition = undefined;
         }
       } else {
+        // ✅ AMÉLIORATION: Effacer le marqueur si présent avant de placer la reine
+        if (cell.state === 'marker') {
+          cell.state = 'empty';
+        }
+        
         // Placer une reine
         cell.state = 'queen';
         queensPlaced++;
@@ -114,13 +127,29 @@ export function useGameLogic(initialGridSize: number = 6) {
     });
   }, []);
 
-  // Réinitialiser le jeu
+  // Réinitialiser le jeu avec nettoyage des timeouts
   const resetGame = useCallback(() => {
+    // ✅ CORRECTIF: Nettoyer tous les timeouts actifs
+    cellClicksRef.current.forEach(clickInfo => {
+      if (clickInfo.timeout) {
+        clearTimeout(clickInfo.timeout);
+      }
+    });
+    cellClicksRef.current.clear();
+    
     setGameState(prevState => resetGameBoard(prevState));
   }, []);
 
-  // Nouveau jeu
+  // Nouveau jeu avec nettoyage des timeouts
   const newGame = useCallback((gridSize?: number) => {
+    // ✅ CORRECTIF: Nettoyer tous les timeouts actifs
+    cellClicksRef.current.forEach(clickInfo => {
+      if (clickInfo.timeout) {
+        clearTimeout(clickInfo.timeout);
+      }
+    });
+    cellClicksRef.current.clear();
+    
     const size = gridSize || gameState.gridSize;
     setGameState(generateGameLevel(size));
   }, [gameState.gridSize]);
@@ -153,10 +182,15 @@ export function useGameLogic(initialGridSize: number = 6) {
     return conflicts;
   }, [gameState.board, gameState.gridSize]);
 
-  // Nettoyer les timeouts à la désactivation
+  // ✅ CORRECTIF: Nettoyer les timeouts à la désactivation
   useEffect(() => {
     return () => {
-      clickTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
+      cellClicksRef.current.forEach(clickInfo => {
+        if (clickInfo.timeout) {
+          clearTimeout(clickInfo.timeout);
+        }
+      });
+      cellClicksRef.current.clear();
     };
   }, []);
 
