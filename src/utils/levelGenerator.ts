@@ -1,19 +1,24 @@
-import { GameCell, ColoredRegion, GameState } from '../types/game';
+import { ColoredRegion, GameCell, GameState } from "../types/game";
 
 /**
- * Couleurs pour les régions (reprises du projet original)
+ * Couleurs pour les régions
  */
 const REGION_COLORS = [
-  '#64B5F6', // Light Blue
-  '#BA68C8', // Light Purple
-  '#81C784', // Light Green
-  '#FFB74D', // Light Orange
-  '#F06292', // Light Pink
-  '#D4E157', // Light Lime
-  '#4DD0E1', // Light Cyan
-  '#FFF176', // Light Yellow
-  '#A1887F', // Light Brown
-  '#7986CB', // Light Indigo
+  "#64B5F6",
+  "#BA68C8",
+  "#81C784",
+  "#FFB74D",
+  "#F06292",
+  "#D4E157",
+  "#4DD0E1",
+  "#FFF176",
+  "#A1887F",
+  "#7986CB",
+  "#FF8A65",
+  "#9CCC65",
+  "#42A5F5",
+  "#AB47BC",
+  "#26A69A",
 ];
 
 interface Position {
@@ -22,359 +27,333 @@ interface Position {
 }
 
 /**
- * Vérifie si deux positions sont adjacentes (y compris diagonales) - RÈGLE QUEENS GAME
+ * ÉTAPE 1: Génère une solution N-Queens valide
  */
-function areAdjacent(pos1: Position, pos2: Position): boolean {
-  const rowDiff = Math.abs(pos1.row - pos2.row);
-  const colDiff = Math.abs(pos1.col - pos2.col);
-  return rowDiff <= 1 && colDiff <= 1 && !(rowDiff === 0 && colDiff === 0);
-}
-
-/**
- * Vérifie si deux positions sont adjacentes orthogonalement (pas diagonale)
- */
-function areOrthogonallyAdjacent(pos1: Position, pos2: Position): boolean {
-  const rowDiff = Math.abs(pos1.row - pos2.row);
-  const colDiff = Math.abs(pos1.col - pos2.col);
-  return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
-}
-
-/**
- * ✅ CORRECTIF: Génère des régions garanties résolubles - stratégie améliorée
- */
-function generateGuaranteedSolvableRegions(gridSize: number): ColoredRegion[] {
-  console.log(`🎯 Generating guaranteed solvable regions for ${gridSize}×${gridSize} grid`);
-
-  const regions: ColoredRegion[] = [];
-
-  // Stratégie pour différentes tailles de grille
-  if (gridSize <= 4) {
-    // Petites grilles: une région par rangée (simple et toujours résolvable)
-    return generateSimpleRowRegions(gridSize);
-  } else if (gridSize <= 6) {
-    // Grilles moyennes: mix de lignes et formes en L/T
-    return generateMixedRegions(gridSize);
-  } else {
-    // Grandes grilles: combinaison de stratégies avec fallback
-    return generateComplexRegions(gridSize);
-  }
-}
-
-/**
- * ✅ Génère des régions simples (une région = une rangée)
- */
-function generateSimpleRowRegions(gridSize: number): ColoredRegion[] {
-  console.log(`🎯 Generating simple row regions for ${gridSize}×${gridSize} grid`);
-
-  const regions: ColoredRegion[] = [];
-
-  for (let row = 0; row < gridSize; row++) {
-    const region: ColoredRegion = {
-      id: row,
-      color: REGION_COLORS[row % REGION_COLORS.length],
-      cells: [],
-      hasQueen: false,
-    };
-
-    for (let col = 0; col < gridSize; col++) {
-      region.cells.push({ row, col });
-    }
-
-    regions.push(region);
-  }
-
-  console.log(`✅ Generated ${regions.length} simple row regions`);
-  return regions;
-}
-
-/**
- * ✅ Génère des régions mixtes pour grilles moyennes
- */
-function generateMixedRegions(gridSize: number): ColoredRegion[] {
-  console.log(`🎲 Generating mixed regions for ${gridSize}×${gridSize} grid`);
-
-  const regions: ColoredRegion[] = [];
-  const usedCells = new Set<string>();
-  let regionId = 0;
-
-  // Ajouter 2-3 lignes complètes
-  const numCompleteLines = Math.min(3, Math.floor(gridSize / 2));
-  
-  for (let i = 0; i < numCompleteLines && regionId < gridSize; i++) {
-    // Alterner entre lignes horizontales et verticales
-    const isHorizontal = (i % 2 === 0);
-    
-    if (isHorizontal) {
-      // Chercher une ligne horizontale libre
-      for (let row = 0; row < gridSize; row++) {
-        const cells: Position[] = [];
-        let available = true;
-        
-        for (let col = 0; col < gridSize; col++) {
-          const key = `${row}-${col}`;
-          if (usedCells.has(key)) {
-            available = false;
-            break;
-          }
-          cells.push({ row, col });
-        }
-        
-        if (available) {
-          const region: ColoredRegion = {
-            id: regionId++,
-            color: REGION_COLORS[regionId % REGION_COLORS.length],
-            cells,
-            hasQueen: false,
-          };
-          regions.push(region);
-          cells.forEach(cell => usedCells.add(`${cell.row}-${cell.col}`));
-          break;
-        }
-      }
-    } else {
-      // Chercher une ligne verticale libre
-      for (let col = 0; col < gridSize; col++) {
-        const cells: Position[] = [];
-        let available = true;
-        
-        for (let row = 0; row < gridSize; row++) {
-          const key = `${row}-${col}`;
-          if (usedCells.has(key)) {
-            available = false;
-            break;
-          }
-          cells.push({ row, col });
-        }
-        
-        if (available) {
-          const region: ColoredRegion = {
-            id: regionId++,
-            color: REGION_COLORS[regionId % REGION_COLORS.length],
-            cells,
-            hasQueen: false,
-          };
-          regions.push(region);
-          cells.forEach(cell => usedCells.add(`${cell.row}-${cell.col}`));
-          break;
-        }
-      }
-    }
-  }
-
-  // Remplir le reste avec des cellules individuelles ou petits groupes
-  const remainingCells: Position[] = [];
-  for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++) {
-      const key = `${row}-${col}`;
-      if (!usedCells.has(key)) {
-        remainingCells.push({ row, col });
-      }
-    }
-  }
-
-  // Créer des régions avec les cellules restantes
-  let cellIndex = 0;
-  while (cellIndex < remainingCells.length && regionId < gridSize) {
-    const regionCells: Position[] = [];
-    const targetSize = Math.min(gridSize, remainingCells.length - cellIndex);
-    
-    for (let i = 0; i < targetSize && cellIndex < remainingCells.length; i++) {
-      regionCells.push(remainingCells[cellIndex++]);
-    }
-
-    if (regionCells.length > 0) {
-      const region: ColoredRegion = {
-        id: regionId++,
-        color: REGION_COLORS[regionId % REGION_COLORS.length],
-        cells: regionCells,
-        hasQueen: false,
-      };
-      regions.push(region);
-    }
-  }
-
-  console.log(`✅ Generated ${regions.length} mixed regions`);
-  return regions;
-}
-
-/**
- * ✅ Génère des régions complexes avec fallback
- */
-function generateComplexRegions(gridSize: number): ColoredRegion[] {
-  console.log(`🎲 Generating complex regions for ${gridSize}×${gridSize} grid`);
-  
-  // Pour les grandes grilles, commencer par les régions mixtes
-  let regions = generateMixedRegions(gridSize);
-  
-  // Si pas assez de régions, compléter avec des rangées
-  if (regions.length < gridSize) {
-    console.log(`⚠️ Not enough regions (${regions.length}/${gridSize}), filling with rows`);
-    regions = generateSimpleRowRegions(gridSize);
-  }
-  
-  return regions;
-}
-
-/**
- * ✅ CORRECTIF: Résolveur amélioré avec timeout et validation
- */
-function solvePuzzle(regions: ColoredRegion[], gridSize: number): Position[] | null {
-  console.log(`🧠 Solving puzzle with Queens Game rules...`);
-
+function generateNQueensSolution(gridSize: number): Position[] | null {
   const solution: Position[] = [];
-  const usedRows = new Set<number>();
   const usedCols = new Set<number>();
-  
-  // ✅ Timeout pour éviter les boucles infinies
-  const startTime = Date.now();
-  const maxSolveTime = 5000; // 5 secondes max
 
-  function isValidPlacement(pos: Position): boolean {
-    // Timeout check
-    if (Date.now() - startTime > maxSolveTime) {
-      return false;
-    }
+  function areAdjacent(pos1: Position, pos2: Position): boolean {
+    const rowDiff = Math.abs(pos1.row - pos2.row);
+    const colDiff = Math.abs(pos1.col - pos2.col);
+    return rowDiff <= 1 && colDiff <= 1 && !(rowDiff === 0 && colDiff === 0);
+  }
 
-    // Règle 1: Une seule reine par rangée
-    if (usedRows.has(pos.row)) {
-      return false;
-    }
+  function isValidPosition(row: number, col: number): boolean {
+    if (usedCols.has(col)) return false;
 
-    // Règle 2: Une seule reine par colonne
-    if (usedCols.has(pos.col)) {
-      return false;
-    }
-
-    // Règle 3: Les reines ne peuvent pas se toucher (y compris diagonales)
-    for (const placedPos of solution) {
-      if (areAdjacent(pos, placedPos)) {
-        return false;
-      }
+    for (const queen of solution) {
+      if (areAdjacent({ row, col }, queen)) return false;
     }
 
     return true;
   }
 
-  function backtrack(regionIndex: number): boolean {
-    // Timeout check
-    if (Date.now() - startTime > maxSolveTime) {
-      console.log(`⏰ Solving timeout after ${maxSolveTime}ms`);
-      return false;
+  function backtrack(row: number): boolean {
+    if (row >= gridSize) return true;
+
+    const cols = Array.from({ length: gridSize }, (_, i) => i);
+    // Mélanger pour plus de variété
+    for (let i = cols.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [cols[i], cols[j]] = [cols[j], cols[i]];
     }
 
-    if (regionIndex >= regions.length) {
-      return true; // Solution trouvée
-    }
+    for (const col of cols) {
+      if (isValidPosition(row, col)) {
+        solution.push({ row, col });
+        usedCols.add(col);
 
-    const region = regions[regionIndex];
+        if (backtrack(row + 1)) return true;
 
-    // ✅ Essayer les cellules dans un ordre optimal
-    const sortedCells = [...region.cells].sort((a, b) => {
-      // Préférer les cellules centrales d'abord
-      const centerRow = Math.floor(gridSize / 2);
-      const centerCol = Math.floor(gridSize / 2);
-      
-      const distA = Math.abs(a.row - centerRow) + Math.abs(a.col - centerCol);
-      const distB = Math.abs(b.row - centerRow) + Math.abs(b.col - centerCol);
-      
-      return distA - distB;
-    });
-
-    // Essayer chaque cellule de cette région
-    for (const cell of sortedCells) {
-      if (isValidPlacement(cell)) {
-        // Placer la reine
-        solution.push(cell);
-        usedRows.add(cell.row);
-        usedCols.add(cell.col);
-
-        // Continuer avec la région suivante
-        if (backtrack(regionIndex + 1)) {
-          return true;
-        }
-
-        // Backtrack
         solution.pop();
-        usedRows.delete(cell.row);
-        usedCols.delete(cell.col);
+        usedCols.delete(col);
       }
     }
 
     return false;
   }
 
-  const solved = backtrack(0);
-
-  if (solved && solution.length === regions.length) {
-    console.log(`✅ Puzzle solved! Solution found with ${solution.length} queens`);
-    console.log('Solution positions:', solution.map(p => `${p.row+1}${String.fromCharCode(65+p.col)}`).join(', '));
+  if (backtrack(0)) {
+    console.log(
+      `✅ N-Queens solution: ${solution
+        .map((p) => `${p.row + 1}${String.fromCharCode(65 + p.col)}`)
+        .join(", ")}`
+    );
     return solution;
-  } else {
-    console.log(`❌ No solution found for this configuration`);
-    return null;
   }
+
+  return null;
 }
 
 /**
- * ✅ CORRECTIF: Validation complète d'une solution
+ * ÉTAPE 2: Construire des régions autour de CHAQUE reine de la solution
+ * C'EST LA PARTIE CRITIQUE QUE J'AVAIS FOIRÉE !
  */
-function validateSolution(solution: Position[], regions: ColoredRegion[], gridSize: number): boolean {
-  // Vérifier qu'on a le bon nombre de reines
-  if (solution.length !== gridSize || solution.length !== regions.length) {
-    console.log(`❌ Wrong number of queens: ${solution.length}/${gridSize}`);
-    return false;
-  }
+function buildRegionsAroundQueens(
+  queens: Position[],
+  gridSize: number
+): ColoredRegion[] {
+  console.log(
+    `🏗️ Building regions around ${queens.length} queens (CORRECTLY this time!)`
+  );
 
-  // Vérifier une reine par rangée
-  const rows = new Set(solution.map(p => p.row));
-  if (rows.size !== gridSize) {
-    console.log(`❌ Missing rows: ${rows.size}/${gridSize}`);
-    return false;
-  }
+  // Initialiser les régions avec chaque reine
+  const regions: ColoredRegion[] = queens.map((queen, index) => ({
+    id: index,
+    color: REGION_COLORS[index % REGION_COLORS.length],
+    cells: [queen], // Chaque région COMMENCE avec sa reine
+    hasQueen: true,
+    queenPosition: queen,
+  }));
 
-  // Vérifier une reine par colonne
-  const cols = new Set(solution.map(p => p.col));
-  if (cols.size !== gridSize) {
-    console.log(`❌ Missing columns: ${cols.size}/${gridSize}`);
-    return false;
-  }
+  // Grille d'appartenance (-1 = libre)
+  const ownership: number[][] = Array(gridSize)
+    .fill(null)
+    .map(() => Array(gridSize).fill(-1));
 
-  // Vérifier une reine par région
-  const regionIds = new Set();
-  for (const pos of solution) {
-    for (const region of regions) {
-      if (region.cells.some(cell => cell.row === pos.row && cell.col === pos.col)) {
-        if (regionIds.has(region.id)) {
-          console.log(`❌ Multiple queens in region ${region.id}`);
-          return false;
+  // Marquer les reines
+  queens.forEach((queen, index) => {
+    ownership[queen.row][queen.col] = index;
+  });
+
+  // TECHNIQUE SOPHISTIQUÉE: Croissance par vagues avec plusieurs stratégies
+  let strategy = 0;
+  const strategies = [
+    "weighted_distance", // Distance pondérée par variété
+    "random_growth", // Croissance aléatoire
+    "size_balancing", // Équilibrage des tailles
+  ];
+
+  for (let wave = 0; wave < gridSize * 2; wave++) {
+    const currentStrategy = strategies[strategy % strategies.length];
+    let cellsAssigned = 0;
+
+    console.log(`   Wave ${wave + 1}: using ${currentStrategy} strategy`);
+
+    // Collecter toutes les cellules libres adjacentes aux régions existantes
+    const candidates: Array<{
+      pos: Position;
+      regionId: number;
+      priority: number;
+    }> = [];
+
+    for (let regionId = 0; regionId < regions.length; regionId++) {
+      const region = regions[regionId];
+      const regionQueen = queens[regionId];
+
+      // Parcourir le périmètre de la région
+      const perimeter = getRegionPerimeter(region.cells, gridSize);
+
+      for (const cell of perimeter) {
+        if (ownership[cell.row][cell.col] === -1) {
+          let priority = 0;
+
+          switch (currentStrategy) {
+            case "weighted_distance":
+              // Priorité basée sur distance à la reine + facteur aléatoire
+              const distance = Math.sqrt(
+                Math.pow(cell.row - regionQueen.row, 2) +
+                  Math.pow(cell.col - regionQueen.col, 2)
+              );
+              priority = 100 - distance + Math.random() * 20;
+              break;
+
+            case "random_growth":
+              // Croissance plus aléatoire pour formes organiques
+              priority = Math.random() * 100;
+              break;
+
+            case "size_balancing":
+              // Favoriser les petites régions
+              const targetSize = Math.floor(
+                (gridSize * gridSize) / queens.length
+              );
+              const sizeDiff = targetSize - region.cells.length;
+              priority = Math.max(0, sizeDiff * 10) + Math.random() * 30;
+              break;
+          }
+
+          candidates.push({
+            pos: cell,
+            regionId,
+            priority,
+          });
         }
-        regionIds.add(region.id);
-        break;
+      }
+    }
+
+    if (candidates.length === 0) break;
+
+    // Trier par priorité et assigner
+    candidates.sort((a, b) => b.priority - a.priority);
+
+    // Assigner les meilleures cellules (pas toutes d'un coup pour plus de variété)
+    const cellsToAssign = Math.min(
+      candidates.length,
+      Math.max(1, Math.floor(candidates.length / 3))
+    );
+
+    for (let i = 0; i < cellsToAssign; i++) {
+      const candidate = candidates[i];
+
+      // Double-check que la cellule est encore libre
+      if (ownership[candidate.pos.row][candidate.pos.col] === -1) {
+        ownership[candidate.pos.row][candidate.pos.col] = candidate.regionId;
+        regions[candidate.regionId].cells.push(candidate.pos);
+        cellsAssigned++;
+      }
+    }
+
+    console.log(`      Assigned ${cellsAssigned} cells`);
+
+    if (cellsAssigned === 0) break;
+
+    // Changer de stratégie toutes les 3 vagues
+    if ((wave + 1) % 3 === 0) {
+      strategy++;
+    }
+  }
+
+  // Assigner les cellules restantes à la région la plus proche
+  let remainingCells = 0;
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      if (ownership[row][col] === -1) {
+        let closestRegion = 0;
+        let minDistance = Infinity;
+
+        for (let regionId = 0; regionId < queens.length; regionId++) {
+          const queen = queens[regionId];
+          const distance =
+            Math.abs(row - queen.row) + Math.abs(col - queen.col);
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestRegion = regionId;
+          }
+        }
+
+        ownership[row][col] = closestRegion;
+        regions[closestRegion].cells.push({ row, col });
+        remainingCells++;
       }
     }
   }
 
-  // Vérifier qu'aucune reine ne se touche
-  for (let i = 0; i < solution.length; i++) {
-    for (let j = i + 1; j < solution.length; j++) {
-      if (areAdjacent(solution[i], solution[j])) {
-        console.log(`❌ Queens touching: ${solution[i].row+1}${String.fromCharCode(65+solution[i].col)} and ${solution[j].row+1}${String.fromCharCode(65+solution[j].col)}`);
-        return false;
-      }
-    }
+  if (remainingCells > 0) {
+    console.log(
+      `   Assigned ${remainingCells} remaining cells to closest regions`
+    );
   }
 
-  console.log(`✅ Solution validation passed`);
-  return true;
+  // Validation finale
+  const totalCells = regions.reduce(
+    (sum, region) => sum + region.cells.length,
+    0
+  );
+  const regionSizes = regions.map((r) => r.cells.length);
+
+  console.log(
+    `✅ Regions built: sizes [${regionSizes.join(
+      ", "
+    )}], total: ${totalCells}/${gridSize * gridSize}`
+  );
+
+  return regions;
 }
 
 /**
- * Initialise un plateau vide avec les régions colorées
+ * Helper: Obtenir le périmètre d'une région (cellules adjacentes libres)
  */
-function initializeBoard(gridSize: number, regions: ColoredRegion[]): GameCell[][] {
-  const board: GameCell[][] = [];
+function getRegionPerimeter(
+  regionCells: Position[],
+  gridSize: number
+): Position[] {
+  const perimeter: Position[] = [];
+  const regionSet = new Set(
+    regionCells.map((cell) => `${cell.row}-${cell.col}`)
+  );
+  const directions = [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+  ];
 
-  // Créer un mapping rapide région -> couleur
+  for (const cell of regionCells) {
+    for (const [dr, dc] of directions) {
+      const newRow = cell.row + dr;
+      const newCol = cell.col + dc;
+
+      if (
+        newRow >= 0 &&
+        newRow < gridSize &&
+        newCol >= 0 &&
+        newCol < gridSize &&
+        !regionSet.has(`${newRow}-${newCol}`)
+      ) {
+        // Éviter les doublons
+        if (!perimeter.some((p) => p.row === newRow && p.col === newCol)) {
+          perimeter.push({ row: newRow, col: newCol });
+        }
+      }
+    }
+  }
+
+  return perimeter;
+}
+
+/**
+ * ÉTAPE 3: Beautification optionnelle des formes
+ */
+function beautifyRegions(
+  regions: ColoredRegion[],
+  gridSize: number
+): ColoredRegion[] {
+  console.log(`🎨 Beautifying region shapes...`);
+
+  // Pour l'instant, on garde les régions telles qu'elles sont
+  // On pourrait ajouter ici :
+  // - Lissage des frontières
+  // - Élimination des enclaves
+  // - Échanges de cellules pour améliorer les formes
+
+  // Validation que chaque région contient bien sa reine
+  for (const region of regions) {
+    if (!region.queenPosition) {
+      console.error(`❌ Region ${region.id} has no queen!`);
+      continue;
+    }
+
+    const hasQueen = region.cells.some(
+      (cell) =>
+        cell.row === region.queenPosition!.row &&
+        cell.col === region.queenPosition!.col
+    );
+
+    if (!hasQueen) {
+      console.error(
+        `❌ Region ${region.id} doesn't contain its queen at ${
+          region.queenPosition.row + 1
+        }${String.fromCharCode(65 + region.queenPosition.col)}!`
+      );
+    }
+  }
+
+  return regions;
+}
+
+/**
+ * Initialise le plateau de jeu
+ */
+function initializeBoard(
+  gridSize: number,
+  regions: ColoredRegion[]
+): GameCell[][] {
+  const board: GameCell[][] = Array(gridSize)
+    .fill(null)
+    .map(() => Array(gridSize).fill(null));
+
   const regionMap = new Map<string, { id: number; color: string }>();
   regions.forEach((region) => {
     region.cells.forEach((cell) => {
@@ -385,9 +364,7 @@ function initializeBoard(gridSize: number, regions: ColoredRegion[]): GameCell[]
     });
   });
 
-  // Initialiser le plateau
   for (let row = 0; row < gridSize; row++) {
-    board[row] = [];
     for (let col = 0; col < gridSize; col++) {
       const regionInfo = regionMap.get(`${row}-${col}`);
 
@@ -396,7 +373,7 @@ function initializeBoard(gridSize: number, regions: ColoredRegion[]): GameCell[]
         col,
         regionId: regionInfo?.id ?? 0,
         regionColor: regionInfo?.color ?? REGION_COLORS[0],
-        state: 'empty',
+        state: "empty",
         isHighlighted: false,
         isConflict: false,
       };
@@ -407,85 +384,57 @@ function initializeBoard(gridSize: number, regions: ColoredRegion[]): GameCell[]
 }
 
 /**
- * ✅ CORRECTIF: Génère un plateau de jeu avec GARANTIE de résolution
+ * GÉNÉRATEUR PRINCIPAL - VERSION RÉELLEMENT CORRECTE
  */
 export function generateGameLevel(gridSize: number = 6): GameState {
-  console.log(`🎯 Generating GUARANTEED solvable Queens Game level for ${gridSize}×${gridSize} grid`);
+  console.log(
+    `🎯 Generating ACTUALLY CORRECT Queens Game level for ${gridSize}×${gridSize}`
+  );
 
-  let regions: ColoredRegion[];
-  let solution: Position[] | null = null;
-  let attempts = 0;
-  const maxAttempts = 10; // Réduit car on utilise des stratégies plus intelligentes
-
-  // ✅ Stratégie progressive pour garantir une solution
-  while (attempts < maxAttempts && !solution) {
-    attempts++;
-    console.log(`🔄 Attempt ${attempts}/${maxAttempts}`);
-
-    if (attempts <= 3) {
-      // Essayer des régions guaranties résolvables
-      regions = generateGuaranteedSolvableRegions(gridSize);
-    } else if (attempts <= 6) {
-      // Essayer des régions mixtes
-      regions = generateMixedRegions(gridSize);
-    } else {
-      // Fallback vers des régions simples (toujours résolvable)
-      console.log(`🔧 Using failsafe simple row regions`);
-      regions = generateSimpleRowRegions(gridSize);
-    }
-
-    // Essayer de résoudre
-    solution = solvePuzzle(regions, gridSize);
-
-    // ✅ Validation supplémentaire de la solution
-    if (solution && !validateSolution(solution, regions, gridSize)) {
-      console.log(`❌ Solution validation failed, retrying...`);
-      solution = null;
-    }
-
-    if (solution) {
-      console.log(`🎉 Generated VERIFIED solvable puzzle in ${attempts} attempts!`);
-      break;
-    }
-  }
-
-  // ✅ SÉCURITÉ: Si toujours pas de solution, forcer les régions simples
+  // ÉTAPE 1: Générer une solution N-Queens valide
+  const solution = generateNQueensSolution(gridSize);
   if (!solution) {
-    console.log(`⚠️ Forcing guaranteed simple row regions as last resort`);
-    regions = generateSimpleRowRegions(gridSize);
-    solution = solvePuzzle(regions, gridSize);
-    
-    // ✅ Si même ça échoue, il y a un problème grave
-    if (!solution) {
-      console.error(`🚨 CRITICAL: Cannot generate solvable puzzle for ${gridSize}x${gridSize}!`);
-      // Retourner un puzzle minimal résolvable
-      regions = generateSimpleRowRegions(Math.min(4, gridSize));
-      solution = solvePuzzle(regions, Math.min(4, gridSize));
-    }
+    throw new Error(
+      `Cannot generate N-Queens solution for ${gridSize}x${gridSize}`
+    );
   }
 
-  const board = initializeBoard(gridSize, regions!);
+  // ÉTAPE 2: Construire les régions autour des reines de la solution
+  let regions = buildRegionsAroundQueens(solution, gridSize);
+
+  // ÉTAPE 3: Beautification optionnelle
+  regions = beautifyRegions(regions, gridSize);
+
+  // ÉTAPE 4: Créer le plateau
+  const board = initializeBoard(gridSize, regions);
 
   const gameState: GameState = {
     board,
-    regions: regions!,
+    regions,
     gridSize,
     queensPlaced: 0,
     queensRequired: gridSize,
     isCompleted: false,
     moveCount: 0,
-    solution: solution || [],
+    solution,
   };
 
-  console.log(`📊 Queens Game level generated:`);
-  console.log(`   - ${regions!.length} regions`);
-  console.log(`   - Solvable: ${solution ? 'YES ✅' : 'NO ❌'}`);
-  console.log(`   - Solution: ${solution?.map(p => `${p.row+1}${String.fromCharCode(65+p.col)}`).join(', ') || 'NONE'}`);
-  
-  // ✅ Validation finale avant de retourner
-  if (!solution || solution.length === 0) {
-    console.error(`🚨 WARNING: Returning puzzle without verified solution!`);
-  }
+  // Validation finale
+  console.log(`📊 CORRECT level generated:`);
+  console.log(
+    `   - ${regions.length} regions, each containing exactly 1 queen`
+  );
+  console.log(
+    `   - Solution: ${solution
+      .map((p) => `${p.row + 1}${String.fromCharCode(65 + p.col)}`)
+      .join(", ")}`
+  );
+  console.log(
+    `   - Region sizes: ${regions.map((r) => r.cells.length).join(", ")}`
+  );
+  console.log(
+    `   - GUARANTEED SOLVABLE because regions built around solution!`
+  );
 
   return gameState;
 }
@@ -494,27 +443,27 @@ export function generateGameLevel(gridSize: number = 6): GameState {
  * Réinitialise le plateau de jeu
  */
 export function resetGameBoard(gameState: GameState): GameState {
-  const newBoard = gameState.board.map(row => 
-    row.map(cell => ({
+  const newBoard = gameState.board.map((row) =>
+    row.map((cell) => ({
       ...cell,
-      state: 'empty' as const,
+      state: "empty" as const,
       isHighlighted: false,
-      isConflict: false
+      isConflict: false,
     }))
   );
-  
-  const newRegions = gameState.regions.map(region => ({
+
+  const newRegions = gameState.regions.map((region) => ({
     ...region,
     hasQueen: false,
-    queenPosition: undefined
+    queenPosition: undefined,
   }));
-  
+
   return {
     ...gameState,
     board: newBoard,
     regions: newRegions,
     queensPlaced: 0,
     isCompleted: false,
-    moveCount: 0
+    moveCount: 0,
   };
 }
