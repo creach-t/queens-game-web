@@ -25,7 +25,7 @@ const GameStats: React.FC<{ gameState: GameState }> = ({ gameState }) => {
   }, [gameState.moveCount, gameState.isCompleted]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: number;
     if (isRunning) {
       interval = setInterval(() => {
         setTimer(prev => prev + 1);
