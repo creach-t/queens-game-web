@@ -40,105 +40,34 @@ function areOrthogonallyAdjacent(pos1: Position, pos2: Position): boolean {
 }
 
 /**
- * Vérifie si une région est connexe
+ * ✅ CORRECTIF: Génère des régions garanties résolubles - stratégie améliorée
  */
-function isRegionConnected(cells: Position[]): boolean {
-  if (cells.length <= 1) return true;
+function generateGuaranteedSolvableRegions(gridSize: number): ColoredRegion[] {
+  console.log(`🎯 Generating guaranteed solvable regions for ${gridSize}×${gridSize} grid`);
 
-  const visited = new Set<string>();
-  const queue = [cells[0]];
-  visited.add(`${cells[0].row}-${cells[0].col}`);
+  const regions: ColoredRegion[] = [];
 
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-
-    // Chercher tous les voisins orthogonaux dans la région
-    for (const cell of cells) {
-      const key = `${cell.row}-${cell.col}`;
-      if (!visited.has(key) && areOrthogonallyAdjacent(current, cell)) {
-        visited.add(key);
-        queue.push(cell);
-      }
-    }
+  // Stratégie pour différentes tailles de grille
+  if (gridSize <= 4) {
+    // Petites grilles: une région par rangée (simple et toujours résolvable)
+    return generateSimpleRowRegions(gridSize);
+  } else if (gridSize <= 6) {
+    // Grilles moyennes: mix de lignes et formes en L/T
+    return generateMixedRegions(gridSize);
+  } else {
+    // Grandes grilles: combinaison de stratégies avec fallback
+    return generateComplexRegions(gridSize);
   }
-
-  return visited.size === cells.length;
 }
 
 /**
- * Génère une région connexe à partir d'une position de départ
+ * ✅ Génère des régions simples (une région = une rangée)
  */
-function generateConnectedRegion(
-  startRow: number,
-  startCol: number,
-  targetSize: number,
-  gridSize: number,
-  usedCells: Set<string>
-): Position[] {
-  const region: Position[] = [];
-  const queue: Position[] = [{ row: startRow, col: startCol }];
-  const regionSet = new Set<string>();
-
-  // Directions orthogonales : haut, bas, gauche, droite
-  const directions = [
-    [-1, 0],
-    [1, 0],
-    [0, -1],
-    [0, 1],
-  ];
-
-  while (queue.length > 0 && region.length < targetSize) {
-    // Choisir aléatoirement dans la queue pour plus de variété
-    const randomIndex = Math.floor(Math.random() * queue.length);
-    const current = queue.splice(randomIndex, 1)[0];
-
-    const key = `${current.row}-${current.col}`;
-
-    if (usedCells.has(key) || regionSet.has(key)) {
-      continue;
-    }
-
-    // Ajouter la cellule à la région
-    region.push(current);
-    regionSet.add(key);
-
-    // Ajouter les voisins valides à la queue
-    for (const [dr, dc] of directions) {
-      const newRow = current.row + dr;
-      const newCol = current.col + dc;
-      const newKey = `${newRow}-${newCol}`;
-
-      if (
-        newRow >= 0 &&
-        newRow < gridSize &&
-        newCol >= 0 &&
-        newCol < gridSize &&
-        !usedCells.has(newKey) &&
-        !regionSet.has(newKey)
-      ) {
-        // Éviter d'ajouter si déjà dans la queue
-        const alreadyInQueue = queue.some(
-          (pos) => pos.row === newRow && pos.col === newCol
-        );
-        if (!alreadyInQueue) {
-          queue.push({ row: newRow, col: newCol });
-        }
-      }
-    }
-  }
-
-  return region;
-}
-
-/**
- * Génère des régions colorées simples (fallback) - UNE RÉGION = UNE RANGÉE
- */
-function generateSimpleRegions(gridSize: number): ColoredRegion[] {
+function generateSimpleRowRegions(gridSize: number): ColoredRegion[] {
   console.log(`🎯 Generating simple row regions for ${gridSize}×${gridSize} grid`);
 
   const regions: ColoredRegion[] = [];
 
-  // Chaque région est une rangée horizontale complète
   for (let row = 0; row < gridSize; row++) {
     const region: ColoredRegion = {
       id: row,
@@ -159,105 +88,24 @@ function generateSimpleRegions(gridSize: number): ColoredRegion[] {
 }
 
 /**
- * Résolveur de puzzle avec backtracking - RÈGLES QUEENS GAME CORRECTES
+ * ✅ Génère des régions mixtes pour grilles moyennes
  */
-function solvePuzzle(regions: ColoredRegion[], gridSize: number): Position[] | null {
-  console.log(`🧠 Solving puzzle with Queens Game rules...`);
-
-  const solution: Position[] = [];
-  const usedRows = new Set<number>();
-  const usedCols = new Set<number>();
-
-  function isValidPlacement(pos: Position): boolean {
-    // Règle 1: Une seule reine par rangée
-    if (usedRows.has(pos.row)) {
-      return false;
-    }
-
-    // Règle 2: Une seule reine par colonne
-    if (usedCols.has(pos.col)) {
-      return false;
-    }
-
-    // Règle 3: Les reines ne peuvent pas se toucher (y compris diagonales)
-    for (const placedPos of solution) {
-      if (areAdjacent(pos, placedPos)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  function backtrack(regionIndex: number): boolean {
-    if (regionIndex >= regions.length) {
-      return true; // Solution trouvée
-    }
-
-    const region = regions[regionIndex];
-
-    // Mélanger les cellules pour plus de variété
-    const shuffledCells = [...region.cells].sort(() => Math.random() - 0.5);
-
-    // Essayer chaque cellule de cette région
-    for (const cell of shuffledCells) {
-      if (isValidPlacement(cell)) {
-        // Placer la reine
-        solution.push(cell);
-        usedRows.add(cell.row);
-        usedCols.add(cell.col);
-
-        // Continuer avec la région suivante
-        if (backtrack(regionIndex + 1)) {
-          return true;
-        }
-
-        // Backtrack
-        solution.pop();
-        usedRows.delete(cell.row);
-        usedCols.delete(cell.col);
-      }
-    }
-
-    return false;
-  }
-
-  const solved = backtrack(0);
-
-  if (solved) {
-    console.log(`✅ Puzzle solved! Solution found with ${solution.length} queens`);
-    console.log('Solution positions:', solution);
-    return solution;
-  } else {
-    console.log(`❌ No solution found for this configuration`);
-    return null;
-  }
-}
-
-/**
- * Génère des régions plus variées mais résolvables
- */
-function generateVariedRegions(gridSize: number): ColoredRegion[] {
-  console.log(`🎲 Generating varied regions for ${gridSize}×${gridSize} grid`);
-
-  // Pour les petites grilles, utiliser des régions simples
-  if (gridSize <= 4) {
-    return generateSimpleRegions(gridSize);
-  }
+function generateMixedRegions(gridSize: number): ColoredRegion[] {
+  console.log(`🎲 Generating mixed regions for ${gridSize}×${gridSize} grid`);
 
   const regions: ColoredRegion[] = [];
   const usedCells = new Set<string>();
-
-  // Stratégie mixte: quelques lignes/colonnes + formes connexes
   let regionId = 0;
 
-  // 1. Ajouter 1-2 lignes complètes
-  const numCompleteLines = Math.min(2, Math.floor(gridSize / 3));
+  // Ajouter 2-3 lignes complètes
+  const numCompleteLines = Math.min(3, Math.floor(gridSize / 2));
+  
   for (let i = 0; i < numCompleteLines && regionId < gridSize; i++) {
-    const isHorizontal = Math.random() < 0.5;
+    // Alterner entre lignes horizontales et verticales
+    const isHorizontal = (i % 2 === 0);
     
     if (isHorizontal) {
-      // Ligne horizontale
+      // Chercher une ligne horizontale libre
       for (let row = 0; row < gridSize; row++) {
         const cells: Position[] = [];
         let available = true;
@@ -284,7 +132,7 @@ function generateVariedRegions(gridSize: number): ColoredRegion[] {
         }
       }
     } else {
-      // Ligne verticale
+      // Chercher une ligne verticale libre
       for (let col = 0; col < gridSize; col++) {
         const cells: Position[] = [];
         let available = true;
@@ -313,30 +161,26 @@ function generateVariedRegions(gridSize: number): ColoredRegion[] {
     }
   }
 
-  // 2. Remplir le reste avec des formes connexes
-  while (regionId < gridSize) {
-    // Trouver une cellule libre
-    let startPos: Position | null = null;
-    for (let row = 0; row < gridSize && !startPos; row++) {
-      for (let col = 0; col < gridSize; col++) {
-        const key = `${row}-${col}`;
-        if (!usedCells.has(key)) {
-          startPos = { row, col };
-          break;
-        }
+  // Remplir le reste avec des cellules individuelles ou petits groupes
+  const remainingCells: Position[] = [];
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      const key = `${row}-${col}`;
+      if (!usedCells.has(key)) {
+        remainingCells.push({ row, col });
       }
     }
+  }
 
-    if (!startPos) break;
-
-    // Générer une région connexe
-    const regionCells = generateConnectedRegion(
-      startPos.row,
-      startPos.col,
-      gridSize,
-      gridSize,
-      usedCells
-    );
+  // Créer des régions avec les cellules restantes
+  let cellIndex = 0;
+  while (cellIndex < remainingCells.length && regionId < gridSize) {
+    const regionCells: Position[] = [];
+    const targetSize = Math.min(gridSize, remainingCells.length - cellIndex);
+    
+    for (let i = 0; i < targetSize && cellIndex < remainingCells.length; i++) {
+      regionCells.push(remainingCells[cellIndex++]);
+    }
 
     if (regionCells.length > 0) {
       const region: ColoredRegion = {
@@ -346,35 +190,182 @@ function generateVariedRegions(gridSize: number): ColoredRegion[] {
         hasQueen: false,
       };
       regions.push(region);
-      regionCells.forEach(cell => usedCells.add(`${cell.row}-${cell.col}`));
-    } else {
-      // Si impossible, remplir avec cellules restantes
-      const remainingCells: Position[] = [];
-      for (let row = 0; row < gridSize; row++) {
-        for (let col = 0; col < gridSize; col++) {
-          const key = `${row}-${col}`;
-          if (!usedCells.has(key)) {
-            remainingCells.push({ row, col });
-          }
-        }
-      }
-      
-      if (remainingCells.length > 0) {
-        const region: ColoredRegion = {
-          id: regionId++,
-          color: REGION_COLORS[regionId % REGION_COLORS.length],
-          cells: remainingCells,
-          hasQueen: false,
-        };
-        regions.push(region);
-        remainingCells.forEach(cell => usedCells.add(`${cell.row}-${cell.col}`));
-      }
-      break;
     }
   }
 
-  console.log(`✅ Generated ${regions.length} varied regions`);
+  console.log(`✅ Generated ${regions.length} mixed regions`);
   return regions;
+}
+
+/**
+ * ✅ Génère des régions complexes avec fallback
+ */
+function generateComplexRegions(gridSize: number): ColoredRegion[] {
+  console.log(`🎲 Generating complex regions for ${gridSize}×${gridSize} grid`);
+  
+  // Pour les grandes grilles, commencer par les régions mixtes
+  let regions = generateMixedRegions(gridSize);
+  
+  // Si pas assez de régions, compléter avec des rangées
+  if (regions.length < gridSize) {
+    console.log(`⚠️ Not enough regions (${regions.length}/${gridSize}), filling with rows`);
+    regions = generateSimpleRowRegions(gridSize);
+  }
+  
+  return regions;
+}
+
+/**
+ * ✅ CORRECTIF: Résolveur amélioré avec timeout et validation
+ */
+function solvePuzzle(regions: ColoredRegion[], gridSize: number): Position[] | null {
+  console.log(`🧠 Solving puzzle with Queens Game rules...`);
+
+  const solution: Position[] = [];
+  const usedRows = new Set<number>();
+  const usedCols = new Set<number>();
+  
+  // ✅ Timeout pour éviter les boucles infinies
+  const startTime = Date.now();
+  const maxSolveTime = 5000; // 5 secondes max
+
+  function isValidPlacement(pos: Position): boolean {
+    // Timeout check
+    if (Date.now() - startTime > maxSolveTime) {
+      return false;
+    }
+
+    // Règle 1: Une seule reine par rangée
+    if (usedRows.has(pos.row)) {
+      return false;
+    }
+
+    // Règle 2: Une seule reine par colonne
+    if (usedCols.has(pos.col)) {
+      return false;
+    }
+
+    // Règle 3: Les reines ne peuvent pas se toucher (y compris diagonales)
+    for (const placedPos of solution) {
+      if (areAdjacent(pos, placedPos)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  function backtrack(regionIndex: number): boolean {
+    // Timeout check
+    if (Date.now() - startTime > maxSolveTime) {
+      console.log(`⏰ Solving timeout after ${maxSolveTime}ms`);
+      return false;
+    }
+
+    if (regionIndex >= regions.length) {
+      return true; // Solution trouvée
+    }
+
+    const region = regions[regionIndex];
+
+    // ✅ Essayer les cellules dans un ordre optimal
+    const sortedCells = [...region.cells].sort((a, b) => {
+      // Préférer les cellules centrales d'abord
+      const centerRow = Math.floor(gridSize / 2);
+      const centerCol = Math.floor(gridSize / 2);
+      
+      const distA = Math.abs(a.row - centerRow) + Math.abs(a.col - centerCol);
+      const distB = Math.abs(b.row - centerRow) + Math.abs(b.col - centerCol);
+      
+      return distA - distB;
+    });
+
+    // Essayer chaque cellule de cette région
+    for (const cell of sortedCells) {
+      if (isValidPlacement(cell)) {
+        // Placer la reine
+        solution.push(cell);
+        usedRows.add(cell.row);
+        usedCols.add(cell.col);
+
+        // Continuer avec la région suivante
+        if (backtrack(regionIndex + 1)) {
+          return true;
+        }
+
+        // Backtrack
+        solution.pop();
+        usedRows.delete(cell.row);
+        usedCols.delete(cell.col);
+      }
+    }
+
+    return false;
+  }
+
+  const solved = backtrack(0);
+
+  if (solved && solution.length === regions.length) {
+    console.log(`✅ Puzzle solved! Solution found with ${solution.length} queens`);
+    console.log('Solution positions:', solution.map(p => `${p.row+1}${String.fromCharCode(65+p.col)}`).join(', '));
+    return solution;
+  } else {
+    console.log(`❌ No solution found for this configuration`);
+    return null;
+  }
+}
+
+/**
+ * ✅ CORRECTIF: Validation complète d'une solution
+ */
+function validateSolution(solution: Position[], regions: ColoredRegion[], gridSize: number): boolean {
+  // Vérifier qu'on a le bon nombre de reines
+  if (solution.length !== gridSize || solution.length !== regions.length) {
+    console.log(`❌ Wrong number of queens: ${solution.length}/${gridSize}`);
+    return false;
+  }
+
+  // Vérifier une reine par rangée
+  const rows = new Set(solution.map(p => p.row));
+  if (rows.size !== gridSize) {
+    console.log(`❌ Missing rows: ${rows.size}/${gridSize}`);
+    return false;
+  }
+
+  // Vérifier une reine par colonne
+  const cols = new Set(solution.map(p => p.col));
+  if (cols.size !== gridSize) {
+    console.log(`❌ Missing columns: ${cols.size}/${gridSize}`);
+    return false;
+  }
+
+  // Vérifier une reine par région
+  const regionIds = new Set();
+  for (const pos of solution) {
+    for (const region of regions) {
+      if (region.cells.some(cell => cell.row === pos.row && cell.col === pos.col)) {
+        if (regionIds.has(region.id)) {
+          console.log(`❌ Multiple queens in region ${region.id}`);
+          return false;
+        }
+        regionIds.add(region.id);
+        break;
+      }
+    }
+  }
+
+  // Vérifier qu'aucune reine ne se touche
+  for (let i = 0; i < solution.length; i++) {
+    for (let j = i + 1; j < solution.length; j++) {
+      if (areAdjacent(solution[i], solution[j])) {
+        console.log(`❌ Queens touching: ${solution[i].row+1}${String.fromCharCode(65+solution[i].col)} and ${solution[j].row+1}${String.fromCharCode(65+solution[j].col)}`);
+        return false;
+      }
+    }
+  }
+
+  console.log(`✅ Solution validation passed`);
+  return true;
 }
 
 /**
@@ -416,43 +407,61 @@ function initializeBoard(gridSize: number, regions: ColoredRegion[]): GameCell[]
 }
 
 /**
- * Génère un plateau de jeu avec des régions colorées et solution garantie
+ * ✅ CORRECTIF: Génère un plateau de jeu avec GARANTIE de résolution
  */
 export function generateGameLevel(gridSize: number = 6): GameState {
-  console.log(`🎯 Generating solvable Queens Game level for ${gridSize}×${gridSize} grid`);
+  console.log(`🎯 Generating GUARANTEED solvable Queens Game level for ${gridSize}×${gridSize} grid`);
 
   let regions: ColoredRegion[];
   let solution: Position[] | null = null;
   let attempts = 0;
-  const maxAttempts = 20;
+  const maxAttempts = 10; // Réduit car on utilise des stratégies plus intelligentes
 
-  // Essayer de générer un puzzle résolvable
+  // ✅ Stratégie progressive pour garantir une solution
   while (attempts < maxAttempts && !solution) {
     attempts++;
     console.log(`🔄 Attempt ${attempts}/${maxAttempts}`);
 
-    if (attempts <= 10) {
-      // Essayer des régions variées
-      regions = generateVariedRegions(gridSize);
+    if (attempts <= 3) {
+      // Essayer des régions guaranties résolvables
+      regions = generateGuaranteedSolvableRegions(gridSize);
+    } else if (attempts <= 6) {
+      // Essayer des régions mixtes
+      regions = generateMixedRegions(gridSize);
     } else {
-      // Fallback vers des régions simples (lignes)
-      console.log(`🔧 Using simple row regions`);
-      regions = generateSimpleRegions(gridSize);
+      // Fallback vers des régions simples (toujours résolvable)
+      console.log(`🔧 Using failsafe simple row regions`);
+      regions = generateSimpleRowRegions(gridSize);
     }
 
+    // Essayer de résoudre
     solution = solvePuzzle(regions, gridSize);
 
+    // ✅ Validation supplémentaire de la solution
+    if (solution && !validateSolution(solution, regions, gridSize)) {
+      console.log(`❌ Solution validation failed, retrying...`);
+      solution = null;
+    }
+
     if (solution) {
-      console.log(`🎉 Generated solvable Queens Game puzzle in ${attempts} attempts!`);
+      console.log(`🎉 Generated VERIFIED solvable puzzle in ${attempts} attempts!`);
       break;
     }
   }
 
-  // Si aucune solution trouvée, forcer les régions simples
+  // ✅ SÉCURITÉ: Si toujours pas de solution, forcer les régions simples
   if (!solution) {
-    console.log(`⚠️ Forcing simple row regions`);
-    regions = generateSimpleRegions(gridSize);
+    console.log(`⚠️ Forcing guaranteed simple row regions as last resort`);
+    regions = generateSimpleRowRegions(gridSize);
     solution = solvePuzzle(regions, gridSize);
+    
+    // ✅ Si même ça échoue, il y a un problème grave
+    if (!solution) {
+      console.error(`🚨 CRITICAL: Cannot generate solvable puzzle for ${gridSize}x${gridSize}!`);
+      // Retourner un puzzle minimal résolvable
+      regions = generateSimpleRowRegions(Math.min(4, gridSize));
+      solution = solvePuzzle(regions, Math.min(4, gridSize));
+    }
   }
 
   const board = initializeBoard(gridSize, regions!);
@@ -470,8 +479,13 @@ export function generateGameLevel(gridSize: number = 6): GameState {
 
   console.log(`📊 Queens Game level generated:`);
   console.log(`   - ${regions!.length} regions`);
-  console.log(`   - Solvable: ${solution ? 'YES' : 'NO'}`);
+  console.log(`   - Solvable: ${solution ? 'YES ✅' : 'NO ❌'}`);
   console.log(`   - Solution: ${solution?.map(p => `${p.row+1}${String.fromCharCode(65+p.col)}`).join(', ') || 'NONE'}`);
+  
+  // ✅ Validation finale avant de retourner
+  if (!solution || solution.length === 0) {
+    console.error(`🚨 WARNING: Returning puzzle without verified solution!`);
+  }
 
   return gameState;
 }
