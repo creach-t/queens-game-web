@@ -2,23 +2,24 @@
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  position: relative; /* Pour le timer absolu */
 }
 
 .game-container {
   display: grid;
-  grid-template-columns: 1fr 350px;
-  gap: 30px;
-  align-items: flex-start;
+  grid-template-columns: 1fr;
+  margin: auto;
 }
 
 .game-board-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: grid;
+  place-items: center; /* Centre horizontalement et verticalement */
   min-height: 400px;
+  margin: auto;
 }
 
+.game-board-section > * {
+  max-width: 100%;
+}
 .game-controls-section {
   position: sticky;
   top: 20px;
@@ -88,19 +89,8 @@
   transform: translateY(0);
 }
 
-/* Responsive design */
-@media (max-width: 1024px) {
-  .game-container {
-    grid-template-columns: 1fr 300px;
-    gap: 20px;
-  }
-}
 
 @media (max-width: 768px) {
-  .game-container {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
 
   .game-controls-section {
     position: static;
@@ -112,7 +102,7 @@
   }
 
   .action-buttons {
-    flex-direction: column;
+    flex-direction: row;
   }
 }
 

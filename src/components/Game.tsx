@@ -1,9 +1,9 @@
+import { CirclePlus, Lightbulb, RotateCcw, Timer } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useGameLogic } from '../hooks/useGameLogic';
 import './Game.css';
 import { GameBoard } from './GameBoard';
 import { GameControls } from './GameControls';
-import { CirclePlus, Lightbulb, RotateCcw, Timer } from 'lucide-react';
 
 export const Game: React.FC = () => {
   const {
@@ -74,21 +74,7 @@ export const Game: React.FC = () => {
   return (
     <div className="game">
       {/* Timer discret en haut à droite */}
-      <div style={{
-        position: 'absolute',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        background: 'rgba(255, 255, 255, 0.9)',
-        padding: '8px',
-        borderRadius: '14px',
-        fontSize: '0.9rem',
-        color: '#666',
-        fontFamily: 'monospace',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-        backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.3)',
-        zIndex: 10
-      }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center',}}>
         <Timer /> {formatTime(seconds)}
       </div>
 
