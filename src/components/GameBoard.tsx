@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { GameState } from '../types/game';
 import { GameCell } from './GameCell';
 import './GameBoard.css';
@@ -9,21 +9,23 @@ interface GameBoardProps {
 }
 
 export const GameBoard: React.FC<GameBoardProps> = ({ gameState, onCellClick }) => {
-  // Calculer la taille des cellules
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Calcul responsive de la taille des cellules avec approche professionnelle
   const cellSize = useMemo(() => {
-    const viewportWidth = Math.min(window.innerWidth * 0.9, 600);
-    const viewportHeight = Math.min(window.innerHeight * 0.7, 600);
-    const availableSize = Math.min(viewportWidth, viewportHeight);
+    const maxWidth = Math.min(600, window.innerWidth * 0.8);
+    const maxHeight = Math.min(600, window.innerHeight * 0.7);
+    const availableSize = Math.min(maxWidth, maxHeight);
     
-    return Math.floor(availableSize / gameState.gridSize) - 6;
+    return Math.floor(availableSize / gameState.gridSize) - 4;
   }, [gameState.gridSize]);
 
-  // Calculer les bordures de régions avec une approche plus simple
+  // Calculer les bordures de régions de manière optimisée
   const getCellBorderStyle = (row: number, col: number) => {
     const cell = gameState.board[row][col];
     const borderStyle: React.CSSProperties = {};
-    const borderWidth = 3;
-    const borderColor = '#2c3e50';
+    const borderWidth = 2;
+    const borderColor = '#37474F';
     
     // Vérifier bordure top
     if (row === 0 || gameState.board[row - 1][col].regionId !== cell.regionId) {
@@ -49,27 +51,31 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, onCellClick }) 
   };
 
   return (
-    <div className="game-board">
+    <div className="game-board-professional">
       <div 
-        className="game-board__grid"
+        ref={containerRef}
+        className="game-board__grid-professional"
         style={{
           gridTemplateColumns: `repeat(${gameState.gridSize}, ${cellSize}px)`,
           gridTemplateRows: `repeat(${gameState.gridSize}, ${cellSize}px)`,
-          gap: '0px'
         }}
       >
         {gameState.board.map((row, rowIndex) =>
           row.map((cell, colIndex) => {
-            const borderStyle = getCellBorderStyle(rowIndex, colIndex);
+            // Fusionner les styles de bordure pour les régions
+            const cellWithBorders = {
+              ...cell,
+              regionColor: cell.regionColor
+            };
             
             return (
               <div
                 key={`${rowIndex}-${colIndex}`}
-                className="game-cell-wrapper"
-                style={borderStyle}
+                className="game-cell-wrapper-professional"
+                style={getCellBorderStyle(rowIndex, colIndex)}
               >
                 <GameCell
-                  cell={cell}
+                  cell={cellWithBorders}
                   size={cellSize}
                   onClick={() => onCellClick(rowIndex, colIndex)}
                 />
