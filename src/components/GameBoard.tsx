@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { GameState } from '../types/game';
-import { GameCell } from './GameCell';
 import './GameBoard.css';
+import { GameCell } from './GameCell';
 
 interface GameBoardProps {
   gameState: GameState;
@@ -9,67 +9,72 @@ interface GameBoardProps {
 }
 
 export const GameBoard: React.FC<GameBoardProps> = ({ gameState, onCellClick }) => {
-  // Calculer la taille des cellules
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const cellSize = useMemo(() => {
-    const viewportWidth = Math.min(window.innerWidth * 0.9, 600);
-    const viewportHeight = Math.min(window.innerHeight * 0.7, 600);
-    const availableSize = Math.min(viewportWidth, viewportHeight);
-    
-    return Math.floor(availableSize / gameState.gridSize) - 6;
+    const maxWidth = Math.min(600, window.innerWidth * 0.8);
+    const maxHeight = Math.min(600, window.innerHeight * 0.7);
+    const availableSize = Math.min(maxWidth, maxHeight);
+
+    return Math.floor(availableSize / gameState.gridSize) - 4;
   }, [gameState.gridSize]);
 
-  // Calculer les bordures de régions avec une approche plus simple
   const getCellBorderStyle = (row: number, col: number) => {
     const cell = gameState.board[row][col];
-    const borderStyle: React.CSSProperties = {};
-    const borderWidth = 3;
-    const borderColor = '#2c3e50';
-    
-    // Vérifier bordure top
-    if (row === 0 || gameState.board[row - 1][col].regionId !== cell.regionId) {
-      borderStyle.borderTop = `${borderWidth}px solid ${borderColor}`;
+    const style: React.CSSProperties = {};
+    const thin = '1px solid #37474F';
+    const thick = '4px solid #37474F';
+
+    if (row === 0) {
+      style.borderTop = thick;
     }
-    
-    // Vérifier bordure right  
-    if (col === gameState.gridSize - 1 || gameState.board[row][col + 1].regionId !== cell.regionId) {
-      borderStyle.borderRight = `${borderWidth}px solid ${borderColor}`;
+
+    if (col === 0) {
+      style.borderLeft = thick;
     }
-    
-    // Vérifier bordure bottom
-    if (row === gameState.gridSize - 1 || gameState.board[row + 1][col].regionId !== cell.regionId) {
-      borderStyle.borderBottom = `${borderWidth}px solid ${borderColor}`;
+
+    if (col === gameState.gridSize - 1) {
+      style.borderRight = thick;
+    } else {
+      const rightNeighbor = gameState.board[row][col + 1];
+      style.borderRight = (rightNeighbor.regionId === cell.regionId) ? thin : thick;
     }
-    
-    // Vérifier bordure left
-    if (col === 0 || gameState.board[row][col - 1].regionId !== cell.regionId) {
-      borderStyle.borderLeft = `${borderWidth}px solid ${borderColor}`;
+
+    if (row === gameState.gridSize - 1) {
+      style.borderBottom = thick;
+    } else {
+      const bottomNeighbor = gameState.board[row + 1][col];
+      style.borderBottom = (bottomNeighbor.regionId === cell.regionId) ? thin : thick;
     }
-    
-    return borderStyle;
+
+    return style;
   };
 
   return (
-    <div className="game-board">
-      <div 
-        className="game-board__grid"
+    <div className="game-board-">
+      <div
+        ref={containerRef}
+        className="game-board__grid-"
         style={{
           gridTemplateColumns: `repeat(${gameState.gridSize}, ${cellSize}px)`,
           gridTemplateRows: `repeat(${gameState.gridSize}, ${cellSize}px)`,
-          gap: '0px'
         }}
       >
         {gameState.board.map((row, rowIndex) =>
           row.map((cell, colIndex) => {
-            const borderStyle = getCellBorderStyle(rowIndex, colIndex);
-            
+            const cellWithBorders = {
+              ...cell,
+              regionColor: cell.regionColor
+            };
+
             return (
               <div
                 key={`${rowIndex}-${colIndex}`}
-                className="game-cell-wrapper"
-                style={borderStyle}
+                className="game-cell-wrapper-"
+                style={getCellBorderStyle(rowIndex, colIndex)}
               >
                 <GameCell
-                  cell={cell}
+                  cell={cellWithBorders}
                   size={cellSize}
                   onClick={() => onCellClick(rowIndex, colIndex)}
                 />

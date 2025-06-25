@@ -1,8 +1,8 @@
 import React from 'react';
-import { GameBoard } from './GameBoard';
-import { GameControls } from './GameControls';
 import { useGameLogic } from '../hooks/useGameLogic';
 import './Game.css';
+import { GameBoard } from './GameBoard';
+import { GameControls } from './GameControls';
 
 export const Game: React.FC = () => {
   const {
@@ -17,18 +17,18 @@ export const Game: React.FC = () => {
   };
 
   return (
-    <div className="game">
-      <div className="game-container">
-        {/* Plateau de jeu */}
-        <div className="game-board-section">
-          <GameBoard 
+    <div className="game-">
+      <div className="game-container-">
+        {/* Plateau de jeu - Section principale */}
+        <div className="game-board-section-">
+          <GameBoard
             gameState={gameState}
             onCellClick={handleCellClick}
           />
         </div>
-        
-        {/* Contrôles et statistiques */}
-        <div className="game-controls-section">
+
+        {/* Panneau latéral - Contrôles et statistiques */}
+        <div className="game-controlssection-">
           <GameControls
             gameState={gameState}
             onResetGame={resetGame}

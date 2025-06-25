@@ -1,24 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <defs>
-    <linearGradient id="crownGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#FFA500;stop-opacity:1" />
-    </linearGradient>
-  </defs>
-  
-  <!-- Crown base -->
-  <rect x="15" y="65" width="70" height="15" fill="url(#crownGradient)" rx="2"/>
-  
-  <!-- Crown spikes -->
-  <polygon points="20,65 30,35 40,65" fill="url(#crownGradient)"/>
-  <polygon points="35,65 50,20 65,65" fill="url(#crownGradient)"/>
-  <polygon points="60,65 70,35 80,65" fill="url(#crownGradient)"/>
-  
-  <!-- Gems -->
-  <circle cx="30" cy="50" r="3" fill="#FF6B6B"/>
-  <circle cx="50" cy="35" r="4" fill="#4ECDC4"/>
-  <circle cx="70" cy="50" r="3" fill="#45B7D1"/>
-  
-  <!-- Highlight -->
-  <ellipse cx="50" cy="40" rx="25" ry="15" fill="rgba(255,255,255,0.3)"/>
+<?xml version="1.0" encoding="utf-8"?><!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg width="800px" height="800px" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8 4C9.10457 4 10 3.10457 10 2C10 0.895431 9.10457 0 8 0C6.89543 0 6 0.895431 6 2C6 3.10457 6.89543 4 8 4Z" fill="#000000"/>
+<path d="M1 9V7L3 5L5.5 7L8 5L10.5 7L13 5L15 7V9L12.75 12.75L14 14V16H2V14L3.25 12.75L1 9Z" fill="#000000"/>
 </svg>

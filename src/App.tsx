@@ -1,31 +1,31 @@
-import React from 'react';
-import { Game } from './components/Game';
 import './App.css';
+import { Game } from './components/Game';
 
 function App() {
   return (
     <div className="App">
-      <header className="app-header">
-        <h1 className="app-title">
-          <span className="app-icon">👑</span>
-          Queens Game Web
-        </h1>
-        <p className="app-subtitle">
-          Version web responsive du célèbre puzzle Queens de LinkedIn
-        </p>
+      {/* Header épuré et  */}
+      <header className="app-header-">
+        <div className="header-container">
+          <div className="header-content">
+            <h1 className="app-title-">Queens Game</h1>
+            <p className="app-subtitle-">Puzzle de placement de reines</p>
+          </div>
+        </div>
       </header>
-      
-      <main className="app-main">
+
+      {/* Contenu principal */}
+      <main className="app-main-">
         <Game />
       </main>
-      
-      <footer className="app-footer">
-        <p>
-          Développé avec ❤️ • Inspiré du Queens Game de LinkedIn
-        </p>
-        <p className="app-footer-tech">
-          React • TypeScript • CSS Grid • Responsive Design
-        </p>
+
+      {/* Footer discret */}
+      <footer className="app-footer-">
+        <div className="footer-container">
+          <p className="footer-text">
+            Développé avec React • TypeScript • CSS Grid
+          </p>
+        </div>
       </footer>
     </div>
   );
