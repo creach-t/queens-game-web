@@ -40,18 +40,25 @@ export const GameCell: React.FC<GameCellProps> = ({ cell, size, onClick }) => {
     return classes;
   };
 
+  const handleClick = () => {
+    console.log(`Clicked cell ${cell.row}-${cell.col}, state: ${cell.state}`);
+    onClick();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick();
+    }
+  };
+
   return (
     <div
       className={getCellClasses()}
-      onClick={onClick}
+      onClick={handleClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick();
-        }
-      }}
+      onKeyDown={handleKeyDown}
       style={{
         backgroundColor: cell.regionColor,
         width: size,
@@ -59,7 +66,7 @@ export const GameCell: React.FC<GameCellProps> = ({ cell, size, onClick }) => {
         minWidth: size,
         minHeight: size
       }}
-      title={`Cellule ${cell.row + 1}-${cell.col + 1} (Région ${cell.regionId})`}
+      title={`Cellule ${cell.row + 1}-${cell.col + 1} (Région ${cell.regionId}) - État: ${cell.state}`}
     >
       <span className="game-cell__content">
         {getCellContent()}
