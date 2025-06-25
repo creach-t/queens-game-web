@@ -17,18 +17,18 @@ export const Game: React.FC = () => {
   };
 
   return (
-    <div className="game">
-      <div className="game-container">
-        {/* Plateau de jeu */}
-        <div className="game-board-section">
+    <div className="game-professional">
+      <div className="game-container-professional">
+        {/* Plateau de jeu - Section principale */}
+        <div className="game-board-section-professional">
           <GameBoard 
             gameState={gameState}
             onCellClick={handleCellClick}
           />
         </div>
         
-        {/* Contrôles et statistiques */}
-        <div className="game-controls-section">
+        {/* Panneau latéral - Contrôles et statistiques */}
+        <div className="game-controls-section-professional">
           <GameControls
             gameState={gameState}
             onResetGame={resetGame}
