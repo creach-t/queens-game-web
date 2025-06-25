@@ -1,5 +1,4 @@
-/* Styles professionnels pour GameBoard */
-.game-board-professional {
+.game-board- {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -11,7 +10,7 @@
   border: 1px solid #e5e7eb;
 }
 
-.game-board__grid-professional {
+.game-board__grid- {
   display: grid;
   background-color: #374151;
   padding: 2px;
@@ -20,56 +19,48 @@
   gap: 0;
 }
 
-/* Wrapper pour chaque cellule */
-.game-cell-wrapper-professional {
+.game-cell-wrapper- {
   box-sizing: border-box;
   position: relative;
   overflow: hidden;
 }
 
-/* Styles pour les cellules */
-.game-cell-wrapper-professional button {
+.game-cell-wrapper- button {
   border-radius: 0;
   border: none;
   box-shadow: none;
 }
 
-.game-cell-wrapper-professional button:first-child {
-  border-top-left-radius: 0px;
+.game-cell-wrapper-:first-child button {
+  border-top-left-radius: 4px;
 }
 
-.game-cell-wrapper-professional:first-child button {
-  border-top-left-radius: 0px;
-}
-
-.game-cell-wrapper-professional:last-child button {
+.game-cell-wrapper-:last-child button {
   border-top-right-radius: 4px;
 }
 
-/* Responsive design */
 @media (max-width: 768px) {
-  .game-board-professional {
+  .game-board- {
     margin: 16px;
     padding: 16px;
   }
 
-  .game-board__grid-professional {
+  .game-board__grid- {
     padding: 1px;
   }
 }
 
 @media (max-width: 480px) {
-  .game-board-professional {
+  .game-board- {
     margin: 8px;
     padding: 12px;
   }
 
-  .game-board__grid-professional {
+  .game-board__grid- {
     padding: 1px;
   }
 }
 
-/* Animation d'entrée subtile */
 @keyframes board-fade-in {
   from {
     opacity: 0;
@@ -81,11 +72,10 @@
   }
 }
 
-.game-board-professional {
+.game-board- {
   animation: board-fade-in 0.3s ease-out;
 }
 
-/* Effet de focus pour le plateau complet */
-.game-board-professional:focus-within {
+.game-board-:focus-within {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 3px rgba(59, 130, 246, 0.1);
 }

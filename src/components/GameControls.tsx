@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { GameState } from '../types/game';
 import './GameControls.css';
 
@@ -9,10 +9,39 @@ interface GameControlsProps {
   onGridSizeChange: (size: number) => void;
 }
 
-// Composant Statistiques épuré
 const GameStats: React.FC<{ gameState: GameState }> = ({ gameState }) => {
+  const [timer, setTimer] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
+
+  useEffect(() => {
+    if (gameState.moveCount === 0 && !gameState.isCompleted) {
+      setTimer(0);
+      setIsRunning(false);
+    } else if (gameState.moveCount > 0 && !gameState.isCompleted) {
+      setIsRunning(true);
+    } else if (gameState.isCompleted) {
+      setIsRunning(false);
+    }
+  }, [gameState.moveCount, gameState.isCompleted]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isRunning) {
+      interval = setInterval(() => {
+        setTimer(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isRunning]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const progressPercentage = (gameState.queensPlaced / gameState.queensRequired) * 100;
-  
+
   return (
     <div className="game-stats-professional">
       <div className="stats-grid">
@@ -23,14 +52,14 @@ const GameStats: React.FC<{ gameState: GameState }> = ({ gameState }) => {
           <div className="stat-label">Reines placées</div>
           <div className="stat-sublabel">sur {gameState.queensRequired}</div>
         </div>
-        
+
         <div className="stat-item">
           <div className="stat-value">
-            {gameState.moveCount}
+            {formatTime(timer)}
           </div>
-          <div className="stat-label">Coups</div>
+          <div className="stat-label">Temps</div>
         </div>
-        
+
         <div className="stat-item">
           <div className="stat-value">
             {gameState.gridSize}×{gameState.gridSize}
@@ -38,10 +67,9 @@ const GameStats: React.FC<{ gameState: GameState }> = ({ gameState }) => {
           <div className="stat-label">Grille</div>
         </div>
       </div>
-      
-      {/* Barre de progression discrète */}
+
       <div className="progress-container">
-        <div 
+        <div
           className="progress-bar"
           style={{ width: `${progressPercentage}%` }}
         />
@@ -50,10 +78,9 @@ const GameStats: React.FC<{ gameState: GameState }> = ({ gameState }) => {
   );
 };
 
-// Message de victoire discret
 const VictoryMessage: React.FC<{ isVisible: boolean }> = ({ isVisible }) => {
   if (!isVisible) return null;
-  
+
   return (
     <div className="victory-message-professional">
       <div className="victory-content">
@@ -67,17 +94,29 @@ const VictoryMessage: React.FC<{ isVisible: boolean }> = ({ isVisible }) => {
   );
 };
 
-// Instructions épurées
 const GameInstructions: React.FC = () => {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
     <div className="game-instructions-professional">
-      <h3>Comment jouer</h3>
-      <ul>
-        <li><strong>Clic simple :</strong> Placer/enlever un marqueur</li>
-        <li><strong>Double-clic :</strong> Placer/enlever une reine</li>
-        <li><strong>Objectif :</strong> Une reine par ligne, colonne et région</li>
-        <li><strong>Règle :</strong> Les reines ne peuvent pas se toucher</li>
-      </ul>
+      <button
+        className="instructions-toggle"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+      >
+        Comment jouer {isOpen ? '▼' : '▶'}
+      </button>
+
+      {isOpen && (
+        <div className="instructions-content">
+          <ul>
+            <li><strong>Clic simple :</strong> Placer/enlever un marqueur</li>
+            <li><strong>Double-clic :</strong> Placer/enlever une reine</li>
+            <li><strong>Objectif :</strong> Une reine par ligne, colonne et région</li>
+            <li><strong>Règle :</strong> Les reines ne peuvent pas se toucher</li>
+          </ul>
+        </div>
+      )}
     </div>
   );
 };
@@ -91,16 +130,15 @@ export const GameControls: React.FC<GameControlsProps> = ({
   return (
     <div className="game-controls-professional">
       <VictoryMessage isVisible={gameState.isCompleted} />
-      
+
       <GameStats gameState={gameState} />
-      
-      {/* Contrôles épurés */}
+
       <div className="controls-section">
         <div className="size-control">
           <label htmlFor="grid-size" className="control-label">
             Taille de grille
           </label>
-          <select 
+          <select
             id="grid-size"
             value={gameState.gridSize}
             onChange={(e) => onGridSizeChange(Number(e.target.value))}
@@ -122,7 +160,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
           >
             Réinitialiser
           </button>
-          
+
           <button
             onClick={onNewGame}
             className="btn btn-primary"
@@ -132,7 +170,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
           </button>
         </div>
       </div>
-      
+
       <GameInstructions />
     </div>
   );

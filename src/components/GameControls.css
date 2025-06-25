@@ -1,5 +1,5 @@
-/* Styles professionnels pour GameControls */
-.game-controls-professional {
+/* Styles s pour GameControls */
+.game-controls- {
   max-width: 400px;
   margin: 0 auto;
   padding: 0;
@@ -7,7 +7,7 @@
 }
 
 /* Statistiques épurées */
-.game-stats-professional {
+.game-stats- {
   background: white;
   border-radius: 8px;
   padding: 24px;
@@ -64,7 +64,7 @@
 }
 
 /* Message de victoire discret */
-.victory-message-professional {
+.victory-message- {
   background-color: #f0fdf4;
   border: 1px solid #bbf7d0;
   border-radius: 8px;
@@ -196,76 +196,76 @@
 }
 
 /* Instructions épurées */
-.game-instructions-professional {
+.game-instructions- {
   background-color: #f9fafb;
   border-radius: 8px;
   padding: 16px;
   border: 1px solid #e5e7eb;
 }
 
-.game-instructions-professional h3 {
+.game-instructions- h3 {
   font-size: 1rem;
   font-weight: 600;
   color: #111827;
   margin: 0 0 12px 0;
 }
 
-.game-instructions-professional ul {
+.game-instructions- ul {
   margin: 0;
   padding-left: 20px;
   list-style-type: disc;
 }
 
-.game-instructions-professional li {
+.game-instructions- li {
   margin: 8px 0;
   font-size: 0.875rem;
   line-height: 1.5;
   color: #6b7280;
 }
 
-.game-instructions-professional strong {
+.game-instructions- strong {
   color: #374151;
   font-weight: 600;
 }
 
 /* Responsive design */
 @media (max-width: 768px) {
-  .game-controls-professional {
+  .game-controls- {
     margin: 16px;
     padding: 0;
   }
-  
-  .game-stats-professional,
+
+  .game-stats-,
   .controls-section {
     padding: 16px;
   }
-  
+
   .stats-grid {
     grid-template-columns: 1fr;
     gap: 16px;
     text-align: center;
   }
-  
+
   .action-buttons {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 480px) {
-  .game-controls-professional {
+  .game-controls- {
     margin: 8px;
   }
-  
-  .game-stats-professional,
+
+  .game-stats-,
   .controls-section,
-  .game-instructions-professional {
+  .game-instructions- {
     padding: 12px;
   }
-  
+
   .stat-value {
     font-size: 1.5rem;
   }
-  
+
   .btn {
     padding: 8px 12px;
     font-size: 0.8rem;

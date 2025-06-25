@@ -11,7 +11,6 @@ interface GameBoardProps {
 export const GameBoard: React.FC<GameBoardProps> = ({ gameState, onCellClick }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Calcul responsive de la taille des cellules avec approche professionnelle
   const cellSize = useMemo(() => {
     const maxWidth = Math.min(600, window.innerWidth * 0.8);
     const maxHeight = Math.min(600, window.innerHeight * 0.7);
@@ -23,20 +22,17 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, onCellClick }) 
   const getCellBorderStyle = (row: number, col: number) => {
     const cell = gameState.board[row][col];
     const style: React.CSSProperties = {};
-    const thin = '0.75px solid #37474F';
-    const thick = '2px solid #37474F';
+    const thin = '1px solid #37474F';
+    const thick = '4px solid #37474F';
 
-    // Bordure du haut uniquement pour la première ligne
     if (row === 0) {
       style.borderTop = thick;
     }
 
-    // Bordure de gauche uniquement pour la première colonne
     if (col === 0) {
       style.borderLeft = thick;
     }
 
-    // Bordure de droite : uniquement dessinée par la cellule elle-même
     if (col === gameState.gridSize - 1) {
       style.borderRight = thick;
     } else {
@@ -44,7 +40,6 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, onCellClick }) 
       style.borderRight = (rightNeighbor.regionId === cell.regionId) ? thin : thick;
     }
 
-    // Bordure du bas : uniquement dessinée par la cellule elle-même
     if (row === gameState.gridSize - 1) {
       style.borderBottom = thick;
     } else {
@@ -56,10 +51,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, onCellClick }) 
   };
 
   return (
-    <div className="game-board-professional">
+    <div className="game-board-">
       <div
         ref={containerRef}
-        className="game-board__grid-professional"
+        className="game-board__grid-"
         style={{
           gridTemplateColumns: `repeat(${gameState.gridSize}, ${cellSize}px)`,
           gridTemplateRows: `repeat(${gameState.gridSize}, ${cellSize}px)`,
@@ -67,7 +62,6 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, onCellClick }) 
       >
         {gameState.board.map((row, rowIndex) =>
           row.map((cell, colIndex) => {
-            // Fusionner les styles de bordure pour les régions
             const cellWithBorders = {
               ...cell,
               regionColor: cell.regionColor
@@ -76,7 +70,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, onCellClick }) 
             return (
               <div
                 key={`${rowIndex}-${colIndex}`}
-                className="game-cell-wrapper-professional"
+                className="game-cell-wrapper-"
                 style={getCellBorderStyle(rowIndex, colIndex)}
               >
                 <GameCell
