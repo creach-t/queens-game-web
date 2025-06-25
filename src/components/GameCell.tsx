@@ -1,31 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React from 'react';
 import { GameCell as GameCellType } from '../types/game';
-
-const QueenIcon: React.FC<{ size?: number; className?: string }> = ({
-  size = 24,
-  className = ""
-}) => (
-  <img
-    src="/crown.svg"
-    width={size}
-    height={size}
-    className={className}
-    alt="Crown"
-  />
-);
-
-const CrossIcon: React.FC<{ size?: number; className?: string }> = ({
-  size = 24,
-  className = ""
-}) => (
-  <img
-    src="/cross.svg"
-    width={size}
-    height={size}
-    className={className}
-    alt="Cross"
-  />
-);
+import './GameCell.css';
 
 interface GameCellProps {
   cell: GameCellType;
@@ -34,19 +9,90 @@ interface GameCellProps {
 }
 
 export const GameCell: React.FC<GameCellProps> = ({ cell, size, onClick }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const cellRef = useRef<HTMLButtonElement>(null);
-
   const getCellContent = () => {
-    const iconSize = Math.max(16, size * 0.4);
+    const isConflict = cell.isConflict;
+    const iconSize = Math.max(16, size * 0.6);
+
     switch (cell.state) {
       case 'queen':
-        return <QueenIcon size={iconSize} />;
+        return (
+          <svg
+            width={iconSize}
+            height={iconSize}
+            viewBox="0 0 16 16"
+            className="game-cell-icon"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            {/* Tête de la couronne */}
+            <path
+              d="M8 4C9.10457 4 10 3.10457 10 2C10 0.895431 9.10457 0 8 0C6.89543 0 6 0.895431 6 2C6 3.10457 6.89543 4 8 4Z"
+              fill={isConflict ? '#e74c3c' : '#000000'}
+            />
+            {/* Corps de la couronne */}
+            <path
+              d="M1 9V7L3 5L5.5 7L8 5L10.5 7L13 5L15 7V9L12.75 12.75L14 14V16H2V14L3.25 12.75L1 9Z"
+              fill={isConflict ? '#e74c3c' : '#000000'}
+            />
+          </svg>
+        );
+
       case 'marker':
-        return <CrossIcon size={iconSize} />;
+        return (
+          <svg
+            width={iconSize}
+            height={iconSize}
+            viewBox="0 0 24 24"
+            className="game-cell-icon"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M16 8L8 16M8.00001 8L16 16"
+              stroke={isConflict ? '#e74c3c' : '#000000'}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        );
+
       default:
         return null;
     }
+  };
+
+  const getCellClasses = () => {
+    let classes = 'game-cell';
+
+    // Conflit direct sur la reine
+    if (cell.isConflict) {
+      classes += ' game-cell--conflict';
+    }
+
+    // Types de hachures selon la règle violée
+    if (cell.isInConflictLine) {
+      classes += ' game-cell--conflict-line';
+    }
+
+    if (cell.isInConflictColumn) {
+      classes += ' game-cell--conflict-column';
+    }
+
+    if (cell.isInConflictRegion) {
+      classes += ' game-cell--conflict-region';
+    }
+
+    if (cell.isAroundConflictQueen) {
+      classes += ' game-cell--around-conflict-queen';
+    }
+
+    // États normaux
+    if (cell.state === 'queen') {
+      classes += ' game-cell--queen';
+    } else if (cell.state === 'marker') {
+      classes += ' game-cell--marker';
+    }
+
+    return classes;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -57,38 +103,24 @@ export const GameCell: React.FC<GameCellProps> = ({ cell, size, onClick }) => {
   };
 
   return (
-    <button
-      ref={cellRef}
-      className={`
-        relative cursor-pointer
-        flex items-center justify-center font-bold
-        ${isHovered ? 'transform scale-105 shadow-lg z-10' : 'shadow-sm'}
-        ${cell.isConflict ? 'bg-red-100 ring-2 ring-red-300' : ''}
-        focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50
-      `}
+    <div
+      className={getCellClasses()}
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
       style={{
         backgroundColor: cell.regionColor,
         width: size,
-        height: size
+        height: size,
+        minWidth: size,
+        minHeight: size
       }}
-      onClick={onClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      onKeyDown={handleKeyDown}
-      title={`Cellule ${cell.row + 1}-${String.fromCharCode(65 + cell.col)} (Région ${cell.regionId})`}
+      title={`Cellule ${cell.row + 1}-${cell.col + 1} (Région ${cell.regionId})`}
     >
-      <span className={`
-        flex items-center justify-center
-        ${isHovered ? 'transform scale-110' : ''}
-      `}>
+      <div className="game-cell__content">
         {getCellContent()}
-      </span>
-
-      {/* Overlay subtil au hover */}
-      <div className={`
-        absolute inset-0 bg-white transition-opacity duration-200
-        ${isHovered ? 'opacity-20' : 'opacity-0'}
-      `} />
-    </button>
+      </div>
+    </div>
   );
 };

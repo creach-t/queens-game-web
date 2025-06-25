@@ -1,0 +1,175 @@
+.game-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+}
+
+.game-cell:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 2;
+}
+
+.game-cell:active {
+  transform: scale(0.95);
+}
+
+.game-cell__content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 2;
+}
+
+.game-cell-icon {
+  transition: all 0.2s ease;
+}
+
+/* 🚨 REINE EN CONFLIT - Rouge */
+.game-cell--conflict .game-cell-icon path {
+  fill: #e74c3c !important;
+  stroke: #e74c3c !important;
+}
+
+/* 🎯 HACHURES DIAGONALES UNIFIÉES - Pour tous les conflits */
+.game-cell--conflict-line::before,
+.game-cell--conflict-column::before,
+.game-cell--conflict-region::before,
+.game-cell--around-conflict-queen::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 6px,
+      rgba(231, 76, 60, 0.4) 6px,
+      rgba(231, 76, 60, 0.4) 12px
+    );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* États normaux - SVG noir */
+.game-cell--queen .game-cell-icon path {
+  fill: #000000;
+}
+
+.game-cell--marker .game-cell-icon path {
+  stroke: #000000;
+}
+
+/* Focus pour accessibilité */
+.game-cell:focus {
+  outline: 2px solid #0077b5;
+  outline-offset: -2px;
+}
+
+.game-cell:focus-visible {
+  outline: 2px solid #0077b5;
+  outline-offset: -2px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .game-cell:hover {
+    transform: scale(1.02);
+  }
+
+  /* Hachures un peu plus fines sur tablette */
+  .game-cell--conflict-line::before,
+  .game-cell--conflict-column::before,
+  .game-cell--conflict-region::before,
+  .game-cell--around-conflict-queen::before {
+    background-image:
+      repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 5px,
+        rgba(231, 76, 60, 0.4) 5px,
+        rgba(231, 76, 60, 0.4) 10px
+      );
+  }
+}
+
+@media (max-width: 480px) {
+  .game-cell:hover {
+    transform: scale(1.01);
+  }
+
+  /* Hachures plus fines sur mobile */
+  .game-cell--conflict-line::before,
+  .game-cell--conflict-column::before,
+  .game-cell--conflict-region::before,
+  .game-cell--around-conflict-queen::before {
+    background-image:
+      repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 4px,
+        rgba(231, 76, 60, 0.4) 4px,
+        rgba(231, 76, 60, 0.4) 8px
+      );
+  }
+}
+
+/* ✅ NOUVEAU: Styles pour le glissement */
+.game-cell--dragging {
+  cursor: crosshair !important;
+}
+
+.game-board--dragging {
+  cursor: crosshair;
+  user-select: none;
+}
+
+.game-board--dragging .game-cell {
+  pointer-events: auto;
+}
+
+.game-board--dragging .game-cell:hover {
+  transform: scale(1.1);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+  z-index: 3;
+}
+
+/* Effet visuel pendant le glissement */
+.game-cell--dragging {
+  transition: all 0.1s ease;
+}
+
+.game-cell--dragging:hover {
+  background-color: rgba(231, 76, 60, 0.2) !important;
+  border: 2px solid rgba(231, 76, 60, 0.6) !important;
+}
+
+/* Support pour réduction de mouvement */
+@media (prefers-reduced-motion: reduce) {
+  .game-cell,
+  .game-cell-icon {
+    transition: none !important;
+  }
+
+  .game-cell:hover {
+    transform: none !important;
+  }
+
+  .game-cell--dragging {
+    transition: none !important;
+  }
+}
