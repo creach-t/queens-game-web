@@ -67,11 +67,11 @@
 
 /* États normaux - SVG noir */
 .game-cell--queen .game-cell-icon path {
-  fill: #000000;
+  fill: #212b30;
 }
 
 .game-cell--marker .game-cell-icon path {
-  stroke: #000000;
+  stroke: #212b30;
 }
 
 /* Focus pour accessibilité */

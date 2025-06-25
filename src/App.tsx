@@ -1,3 +1,4 @@
+import { Code, ExternalLink, Github, Home, Linkedin } from 'lucide-react';
 import './App.css';
 import { Game } from './components/Game';
 
@@ -19,15 +20,19 @@ function App() {
                 href="https://github.com/creach-t"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="header-link"
+                className="header-link github-link"
+                aria-label="Voir mon profil GitHub"
               >
-                Mon GitHub
+                <Github size={18} />
+                <span>Mon GitHub</span>
               </a>
               <a
                 href="https://creachtheo.fr"
-                className="return-button"
+                className="header-link return-button"
+                aria-label="Retourner au site principal"
               >
-                Retour à creachtheo.fr
+                <Home size={18} />
+                <span>Retour à creachtheo.fr</span>
               </a>
             </div>
           </div>
@@ -50,18 +55,24 @@ function App() {
               href="https://www.linkedin.com/games/queens"
               target="_blank"
               rel="noopener noreferrer"
-              className="footer-link"
+              className="footer-link linkedin-link"
+              aria-label="Jouer au jeu original sur LinkedIn"
             >
-              Jeu original sur LinkedIn
+              <Linkedin size={16} />
+              <span>Jeu original sur LinkedIn</span>
+              <ExternalLink size={14} className="external-icon" />
             </a>
             <span className="footer-separator">•</span>
             <a
               href="https://github.com/creach-t/queens-game-web"
               target="_blank"
               rel="noopener noreferrer"
-              className="footer-link"
+              className="footer-link github-link"
+              aria-label="Voir le code source sur GitHub"
             >
-              Code source sur GitHub
+              <Code size={16} />
+              <span>Code source</span>
+              <ExternalLink size={14} className="external-icon" />
             </a>
           </div>
         </div>

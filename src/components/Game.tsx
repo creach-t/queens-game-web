@@ -3,6 +3,7 @@ import { useGameLogic } from '../hooks/useGameLogic';
 import './Game.css';
 import { GameBoard } from './GameBoard';
 import { GameControls } from './GameControls';
+import { CirclePlus, Lightbulb, RotateCcw, Timer } from 'lucide-react';
 
 export const Game: React.FC = () => {
   const {
@@ -74,7 +75,9 @@ export const Game: React.FC = () => {
     <div className="game">
       {/* Timer discret en haut à droite */}
       <div style={{
-        top: '20px',
+        position: 'absolute',
+        left: '50%',
+        transform: 'translateX(-50%)',
         background: 'rgba(255, 255, 255, 0.9)',
         padding: '8px',
         borderRadius: '14px',
@@ -86,7 +89,7 @@ export const Game: React.FC = () => {
         border: '1px solid rgba(255, 255, 255, 0.3)',
         zIndex: 10
       }}>
-        ⏱️ {formatTime(seconds)}
+        <Timer /> {formatTime(seconds)}
       </div>
 
       <div className="game-container">
@@ -144,7 +147,7 @@ export const Game: React.FC = () => {
                 className="btn btn--secondary"
                 title="Remettre à zéro le niveau actuel"
               >
-                🔄 Réinitialiser
+                <RotateCcw /> Réinitialiser
               </button>
 
               <button
@@ -152,7 +155,7 @@ export const Game: React.FC = () => {
                 className="btn btn--primary"
                 title="Générer un nouveau niveau"
               >
-                ✨ Nouveau jeu
+                <CirclePlus />Nouveau jeu
               </button>
             </div>
           </div>
@@ -183,7 +186,7 @@ export const Game: React.FC = () => {
                 transition: 'background-color 0.2s ease'
               }}
             >
-              <span>💡 Comment jouer</span>
+              <span><Lightbulb /> Comment jouer</span>
               <span style={{
                 transform: showInstructions ? 'rotate(180deg)' : 'rotate(0deg)',
                 transition: 'transform 0.3s ease',

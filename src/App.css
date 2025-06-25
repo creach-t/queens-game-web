@@ -6,6 +6,19 @@
   background-color: #f9fafb;
 }
 
+.app-main- {
+  flex: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 16px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start; /* Changé de center à flex-start pour éviter le conflit */
+  min-height: 0; /* Important: permet au flex de bien fonctionner */
+}
+
 /* Header épuré et  */
 .app-header- {
   background: white;
@@ -37,15 +50,6 @@
   color: #6b7280;
   margin: 0;
   font-weight: 400;
-}
-
-/* Contenu principal */
-.app-main- {
-  flex: 1;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 32px 16px;
-  width: 100%;
 }
 
 /* Footer discret */
@@ -83,9 +87,6 @@
     font-size: 1rem;
   }
 
-  .app-main- {
-    padding: 24px 12px;
-  }
 
   .footer-text {
     font-size: 0.8rem;
@@ -105,10 +106,6 @@
   .app-subtitle- {
     font-size: 0.9rem;
   }
-
-  .app-main- {
-    padding: 16px 8px;
-  }
 }
 
 /* Animation d'entrée subtile */
@@ -121,18 +118,6 @@
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.app-header- {
-  animation: fade-in-up 0.6s ease-out;
-}
-
-.app-main- {
-  animation: fade-in-up 0.8s ease-out;
-}
-
-.app-footer- {
-  animation: fade-in-up 1s ease-out;
 }
 
 /* Focus states pour accessibilité */
@@ -168,12 +153,141 @@
     background-color: #f9fafb; /* Garde le fond clair pour la lisibilité du jeu */
   }
 }
+/* === STYLES POUR LES LIENS AVEC ICÔNES UNIQUEMENT === */
 
-/* Réduction de mouvement pour accessibilité */
-@media (prefers-reduced-motion: reduce) {
-  .app-header-,
-  .app-main-,
-  .app-footer- {
-    animation: none;
+/* Liens du header */
+.header-links {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+
+.header-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  text-decoration: none;
+  color: #6b7280;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  font-size: 0.875rem;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.header-link:hover {
+  color: #111827;
+  background: white;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header-link.github-link:hover {
+  color: #24292f;
+  border-color: #24292f;
+}
+
+.header-link.return-button {
+  background: #111827;
+  color: white;
+  border-color: #111827;
+}
+
+.header-link.return-button:hover {
+  background: #374151;
+  border-color: #374151;
+}
+
+/* Liens du footer */
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: #9ca3af;
+  font-size: 0.875rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.footer-link:hover {
+  color: #6b7280;
+  background: #f3f4f6;
+}
+
+.footer-link.linkedin-link:hover {
+  color: #0077b5;
+}
+
+.footer-link.github-link:hover {
+  color: #24292f;
+}
+
+.external-icon {
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+
+.footer-link:hover .external-icon {
+  opacity: 0.8;
+}
+
+.footer-separator {
+  color: #d1d5db;
+  font-weight: 300;
+  user-select: none;
+}
+
+/* Focus states pour les liens */
+.header-link:focus,
+.footer-link:focus {
+  outline: 2px solid #111827;
+  outline-offset: 2px;
+}
+
+/* Responsive pour les liens */
+@media (max-width: 768px) {
+  .header-links {
+    flex-direction: row;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .header-link {
+    justify-content: center;
+    min-width: 200px;
+  }
+
+  .footer-links {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .footer-separator {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-link {
+    min-width: 180px;
+    font-size: 0.8rem;
+    padding: 6px 12px;
   }
 }
