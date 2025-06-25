@@ -9,102 +9,131 @@ interface GameControlsProps {
   onGridSizeChange: (size: number) => void;
 }
 
+// Composant Statistiques épuré
+const GameStats: React.FC<{ gameState: GameState }> = ({ gameState }) => {
+  const progressPercentage = (gameState.queensPlaced / gameState.queensRequired) * 100;
+  
+  return (
+    <div className="game-stats-professional">
+      <div className="stats-grid">
+        <div className="stat-item">
+          <div className="stat-value">
+            {gameState.queensPlaced}
+          </div>
+          <div className="stat-label">Reines placées</div>
+          <div className="stat-sublabel">sur {gameState.queensRequired}</div>
+        </div>
+        
+        <div className="stat-item">
+          <div className="stat-value">
+            {gameState.moveCount}
+          </div>
+          <div className="stat-label">Coups</div>
+        </div>
+        
+        <div className="stat-item">
+          <div className="stat-value">
+            {gameState.gridSize}×{gameState.gridSize}
+          </div>
+          <div className="stat-label">Grille</div>
+        </div>
+      </div>
+      
+      {/* Barre de progression discrète */}
+      <div className="progress-container">
+        <div 
+          className="progress-bar"
+          style={{ width: `${progressPercentage}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+
+// Message de victoire discret
+const VictoryMessage: React.FC<{ isVisible: boolean }> = ({ isVisible }) => {
+  if (!isVisible) return null;
+  
+  return (
+    <div className="victory-message-professional">
+      <div className="victory-content">
+        <div className="victory-icon">✓</div>
+        <div className="victory-text">
+          <h3>Puzzle résolu !</h3>
+          <p>Félicitations, toutes les reines sont correctement placées.</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Instructions épurées
+const GameInstructions: React.FC = () => {
+  return (
+    <div className="game-instructions-professional">
+      <h3>Comment jouer</h3>
+      <ul>
+        <li><strong>Clic simple :</strong> Placer/enlever un marqueur</li>
+        <li><strong>Double-clic :</strong> Placer/enlever une reine</li>
+        <li><strong>Objectif :</strong> Une reine par ligne, colonne et région</li>
+        <li><strong>Règle :</strong> Les reines ne peuvent pas se toucher</li>
+      </ul>
+    </div>
+  );
+};
+
 export const GameControls: React.FC<GameControlsProps> = ({
   gameState,
   onResetGame,
   onNewGame,
   onGridSizeChange
 }) => {
-  const progressPercentage = (gameState.queensPlaced / gameState.queensRequired) * 100;
-
   return (
-    <div className="game-controls">
-      {/* Statistiques du jeu */}
-      <div className="game-stats">
-        <div className="stat-card">
-          <div className="stat-label">Reines placées</div>
-          <div className="stat-value">
-            {gameState.queensPlaced} / {gameState.queensRequired}
-          </div>
-          <div className="stat-progress">
-            <div 
-              className="stat-progress-bar"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-        </div>
-        
-        <div className="stat-card">
-          <div className="stat-label">Coups joués</div>
-          <div className="stat-value">{gameState.moveCount}</div>
-        </div>
-        
-        <div className="stat-card">
-          <div className="stat-label">Grille</div>
-          <div className="stat-value">{gameState.gridSize}x{gameState.gridSize}</div>
-        </div>
-      </div>
-
-      {/* Message de victoire */}
-      {gameState.isCompleted && (
-        <div className="victory-message">
-          <div className="victory-content">
-            <div className="victory-emoji">🎉</div>
-            <div className="victory-text">
-              <h3>Félicitations !</h3>
-              <p>Puzzle résolu en {gameState.moveCount} coups</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Instructions */}
-      <div className="game-instructions">
-        <h4>Comment jouer :</h4>
-        <ul>
-          <li><strong>Clic simple</strong> : Placer/enlever un marqueur ✗</li>
-          <li><strong>Double-clic</strong> : Placer/enlever une reine ♛</li>
-          <li><strong>Objectif</strong> : Une reine par ligne, colonne et région colorée</li>
-          <li><strong>Contrainte</strong> : Les reines ne peuvent pas se toucher</li>
-        </ul>
-      </div>
-
-      {/* Contrôles */}
-      <div className="game-actions">
-        <div className="size-controls">
-          <label htmlFor="grid-size">Taille de la grille :</label>
+    <div className="game-controls-professional">
+      <VictoryMessage isVisible={gameState.isCompleted} />
+      
+      <GameStats gameState={gameState} />
+      
+      {/* Contrôles épurés */}
+      <div className="controls-section">
+        <div className="size-control">
+          <label htmlFor="grid-size" className="control-label">
+            Taille de grille
+          </label>
           <select 
             id="grid-size"
-            value={gameState.gridSize} 
+            value={gameState.gridSize}
             onChange={(e) => onGridSizeChange(Number(e.target.value))}
-            className="grid-size-select"
+            className="size-select"
           >
-            <option value={4}>4x4 (Facile)</option>
-            <option value={5}>5x5 (Moyen)</option>
-            <option value={6}>6x6 (Difficile)</option>
-            <option value={7}>7x7 (Expert)</option>
-            <option value={8}>8x8 (Maître)</option>
+            <option value={4}>4×4</option>
+            <option value={5}>5×5</option>
+            <option value={6}>6×6</option>
+            <option value={7}>7×7</option>
+            <option value={8}>8×8</option>
           </select>
         </div>
 
         <div className="action-buttons">
-          <button 
+          <button
             onClick={onResetGame}
-            className="btn btn--secondary"
+            className="btn btn-secondary"
             title="Remettre à zéro le niveau actuel"
           >
-            🔄 Réinitialiser
+            Réinitialiser
           </button>
           
-          <button 
+          <button
             onClick={onNewGame}
-            className="btn btn--primary"
+            className="btn btn-primary"
             title="Générer un nouveau niveau"
           >
-            ✨ Nouveau jeu
+            Nouveau jeu
           </button>
         </div>
       </div>
+      
+      <GameInstructions />
     </div>
   );
 };
