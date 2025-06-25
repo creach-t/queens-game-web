@@ -10,6 +10,7 @@ export function useGameLogic(initialGridSize: number = 6) {
 
   // Gérer le clic sur une cellule
   const handleCellClick = useCallback((row: number, col: number) => {
+    console.log(`handleCellClick called for ${row}-${col}`);
     const now = Date.now();
     const cellKey = `${row}-${col}`;
     const lastClick = lastClickTimeRef.current;
@@ -23,12 +24,15 @@ export function useGameLogic(initialGridSize: number = 6) {
 
     // Double-click détection (dans les 300ms)
     if (now - lastClick < 300) {
+      console.log(`Double-click detected for ${row}-${col}`);
       // Double-click: placer/enlever une reine
       handleDoubleClick(row, col);
       lastClickTimeRef.current = 0;
     } else {
+      console.log(`Single-click detected for ${row}-${col}, waiting for potential double-click...`);
       // Simple click: attendre pour voir s'il y a un double-click
       const timeout = setTimeout(() => {
+        console.log(`Single-click confirmed for ${row}-${col}`);
         handleSingleClick(row, col);
         clickTimeoutsRef.current.delete(cellKey);
       }, 300);
@@ -40,30 +44,39 @@ export function useGameLogic(initialGridSize: number = 6) {
 
   // Gérer le simple clic (marqueur)
   const handleSingleClick = useCallback((row: number, col: number) => {
+    console.log(`handleSingleClick executing for ${row}-${col}`);
     setGameState(prevState => {
       const newBoard = prevState.board.map(boardRow => 
         boardRow.map(cell => ({ ...cell }))
       );
       const cell = newBoard[row][col];
       
+      console.log(`Cell ${row}-${col} current state: ${cell.state}`);
+      
       // Cycle: empty -> marker -> empty
       if (cell.state === 'empty') {
         cell.state = 'marker';
+        console.log(`Changed cell ${row}-${col} to marker`);
       } else if (cell.state === 'marker') {
         cell.state = 'empty';
+        console.log(`Changed cell ${row}-${col} to empty`);
       }
       // Ne pas changer si c'est une reine (réservé au double-click)
       
-      return {
+      const newState = {
         ...prevState,
         board: newBoard,
         moveCount: prevState.moveCount + 1
       };
+      
+      console.log(`New state for cell ${row}-${col}:`, cell.state);
+      return newState;
     });
   }, []);
 
   // Gérer le double clic (reine)
   const handleDoubleClick = useCallback((row: number, col: number) => {
+    console.log(`handleDoubleClick executing for ${row}-${col}`);
     setGameState(prevState => {
       const newBoard = prevState.board.map(boardRow => 
         boardRow.map(cell => ({ ...cell }))
@@ -71,12 +84,15 @@ export function useGameLogic(initialGridSize: number = 6) {
       const newRegions = prevState.regions.map(region => ({ ...region }));
       const cell = newBoard[row][col];
       
+      console.log(`Cell ${row}-${col} current state: ${cell.state}`);
+      
       let queensPlaced = prevState.queensPlaced;
       
       if (cell.state === 'queen') {
         // Enlever la reine
         cell.state = 'empty';
         queensPlaced--;
+        console.log(`Removed queen from ${row}-${col}`);
         
         // Mettre à jour la région
         const region = newRegions.find(r => r.id === cell.regionId);
@@ -88,6 +104,7 @@ export function useGameLogic(initialGridSize: number = 6) {
         // Placer une reine
         cell.state = 'queen';
         queensPlaced++;
+        console.log(`Placed queen at ${row}-${col}`);
         
         // Mettre à jour la région
         const region = newRegions.find(r => r.id === cell.regionId);
@@ -103,7 +120,7 @@ export function useGameLogic(initialGridSize: number = 6) {
       // Vérifier si le puzzle est complété
       const isCompleted = isPuzzleCompleted(boardWithConflicts, newRegions);
       
-      return {
+      const newState = {
         ...prevState,
         board: boardWithConflicts,
         regions: newRegions,
@@ -111,6 +128,9 @@ export function useGameLogic(initialGridSize: number = 6) {
         isCompleted,
         moveCount: prevState.moveCount + 1
       };
+      
+      console.log(`New state for cell ${row}-${col}:`, cell.state, 'Queens placed:', queensPlaced);
+      return newState;
     });
   }, []);
 
