@@ -4,21 +4,14 @@ import { ColoredRegion, GameCell, GameState } from "../types/game";
  * Couleurs pour les régions
  */
 const REGION_COLORS = [
-  "#64B5F6",
-  "#BA68C8",
-  "#81C784",
-  "#FFB74D",
-  "#F06292",
-  "#D4E157",
-  "#4DD0E1",
-  "#FFF176",
-  "#A1887F",
-  "#7986CB",
-  "#FF8A65",
-  "#9CCC65",
-  "#42A5F5",
-  "#AB47BC",
-  "#26A69A",
+  "#26A69A", // bleu
+  "#BA68C8", // violet
+  "#81C784", // vert doux
+  "#FFB74D", // orange clair
+  "#F06292", // rose
+  "#D4E157", // jaune-vert
+  "#4DD0E1", // cyan
+  "#F84343", // jaune plus chaud (remplace#f84343)
 ];
 
 interface Position {

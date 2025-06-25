@@ -1,12 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { GameCell as GameCellType } from '../types/game';
 import './GameCell.css';
 
 // Icônes SVG simples et professionnelles
 const QueenIcon: React.FC<{ size?: number; className?: string }> = ({ size = 24, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
-    <path 
-      d="M5 16L3 20v1h18v-1l-2-4H5zM12 14c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zM12 3L10 8l2 2 2-2L12 3zM16.5 8.5L15 12l1.5 1.5L18 12l-1.5-3.5zM7.5 8.5L6 12l1.5 1.5L9 12L7.5 8.5z" 
+    <path
+      d="M5 16L3 20v1h18v-1l-2-4H5zM12 14c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zM12 3L10 8l2 2 2-2L12 3zM16.5 8.5L15 12l1.5 1.5L18 12l-1.5-3.5zM7.5 8.5L6 12l1.5 1.5L9 12L7.5 8.5z"
       fill="currentColor"
     />
     <circle cx="12" cy="8" r="1" fill="currentColor"/>
@@ -17,8 +17,8 @@ const QueenIcon: React.FC<{ size?: number; className?: string }> = ({ size = 24,
 
 const CrossIcon: React.FC<{ size?: number; className?: string }> = ({ size = 24, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
-    <path 
-      d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z" 
+    <path
+      d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"
       fill="currentColor"
     />
   </svg>
@@ -50,13 +50,13 @@ export const GameCell: React.FC<GameCellProps> = ({ cell, size, onClick }) => {
     const borders: React.CSSProperties = {};
     const borderWidth = 2;
     const borderColor = '#37474F';
-    
+
     // Bordures pour délimiter les régions
     borders.borderTop = `${borderWidth}px solid ${borderColor}`;
     borders.borderLeft = `${borderWidth}px solid ${borderColor}`;
     borders.borderRight = `${borderWidth}px solid ${borderColor}`;
     borders.borderBottom = `${borderWidth}px solid ${borderColor}`;
-    
+
     return borders;
   };
 
@@ -80,8 +80,7 @@ export const GameCell: React.FC<GameCellProps> = ({ cell, size, onClick }) => {
       style={{
         backgroundColor: cell.regionColor,
         width: size,
-        height: size,
-        ...getBorderStyle()
+        height: size
       }}
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
@@ -95,7 +94,7 @@ export const GameCell: React.FC<GameCellProps> = ({ cell, size, onClick }) => {
       `}>
         {getCellContent()}
       </span>
-      
+
       {/* Overlay subtil au hover */}
       <div className={`
         absolute inset-0 bg-white transition-opacity duration-200
