@@ -17,35 +17,9 @@ export const GameControls: React.FC<GameControlsProps> = ({
   onGridSizeChange,
   showOnlyStats = false
 }) => {
-  const progressPercentage = (gameState.queensPlaced / gameState.queensRequired) * 100;
 
   return (
     <div className="game-controls">
-      {/* Statistiques du jeu */}
-      <div className="game-stats">
-        <div className="stat-card">
-          <div className="stat-label">Reines placées</div>
-          <div className="stat-value">
-            {gameState.queensPlaced} / {gameState.queensRequired}
-          </div>
-          <div className="stat-progress">
-            <div
-              className="stat-progress-bar"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-label">Coups joués</div>
-          <div className="stat-value">{gameState.moveCount}</div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-label">Grille</div>
-          <div className="stat-value">{gameState.gridSize}x{gameState.gridSize}</div>
-        </div>
-      </div>
 
       {/* Message de victoire */}
       {gameState.isCompleted && (
@@ -67,8 +41,8 @@ export const GameControls: React.FC<GameControlsProps> = ({
           <div className="game-instructions">
             <h4>Comment jouer :</h4>
             <ul>
-              <li><strong>Clic simple</strong> : Placer/enlever un marqueur ✗</li>
-              <li><strong>Double-clic</strong> : Placer/enlever une reine ♛</li>
+              <li><strong>Clic/touche simple</strong> : Placer/enlever un marqueur ✗</li>
+              <li><strong>Double-clic/touche</strong> : Placer/enlever une reine ♛</li>
               <li><strong>Objectif</strong> : Une reine par ligne, colonne et région colorée</li>
               <li><strong>Contrainte</strong> : Les reines ne peuvent pas se toucher</li>
             </ul>

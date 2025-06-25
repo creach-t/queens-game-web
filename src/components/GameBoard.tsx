@@ -19,42 +19,45 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, onCellClick }) 
     return Math.floor(availableSize / gameState.gridSize) - 4;
   }, [gameState.gridSize]);
 
-  const getCellBorderStyle = (row: number, col: number) => {
-    const cell = gameState.board[row][col];
-    const style: React.CSSProperties = {};
-    const thin = '1px solid #37474F';
-    const thick = '4px solid #37474F';
+const getCellBorderStyle = (row: number, col: number) => {
+  const cell = gameState.board[row][col];
+  const style: React.CSSProperties = {};
 
-    if (row === 0) {
-      style.borderTop = thick;
-    }
+  const isSmallScreen = window.innerWidth < 480;
+  const borderThickness = isSmallScreen ? '2px' : '4px';
+  const thin = '1px solid #37474F';
+  const thick = `${borderThickness} solid #37474F`;
 
-    if (col === 0) {
-      style.borderLeft = thick;
-    }
+  if (row === 0) {
+    style.borderTop = thick;
+  }
 
-    if (col === gameState.gridSize - 1) {
-      style.borderRight = thick;
-    } else {
-      const rightNeighbor = gameState.board[row][col + 1];
-      style.borderRight = (rightNeighbor.regionId === cell.regionId) ? thin : thick;
-    }
+  if (col === 0) {
+    style.borderLeft = thick;
+  }
 
-    if (row === gameState.gridSize - 1) {
-      style.borderBottom = thick;
-    } else {
-      const bottomNeighbor = gameState.board[row + 1][col];
-      style.borderBottom = (bottomNeighbor.regionId === cell.regionId) ? thin : thick;
-    }
+  if (col === gameState.gridSize - 1) {
+    style.borderRight = thick;
+  } else {
+    const rightNeighbor = gameState.board[row][col + 1];
+    style.borderRight = (rightNeighbor.regionId === cell.regionId) ? thin : thick;
+  }
 
-    return style;
-  };
+  if (row === gameState.gridSize - 1) {
+    style.borderBottom = thick;
+  } else {
+    const bottomNeighbor = gameState.board[row + 1][col];
+    style.borderBottom = (bottomNeighbor.regionId === cell.regionId) ? thin : thick;
+  }
+
+  return style;
+};
 
   return (
     <div className="game-board-">
       <div
         ref={containerRef}
-        className="game-board__grid-"
+        className="game-board__grid"
         style={{
           gridTemplateColumns: `repeat(${gameState.gridSize}, ${cellSize}px)`,
           gridTemplateRows: `repeat(${gameState.gridSize}, ${cellSize}px)`,

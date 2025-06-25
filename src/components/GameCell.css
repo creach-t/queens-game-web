@@ -38,8 +38,8 @@
 
 /* 🚨 REINE EN CONFLIT - Rouge */
 .game-cell--conflict .game-cell-icon path {
-  fill: #e74c3c !important;
-  stroke: #e74c3c !important;
+  fill: #ff1900 !important;
+  stroke: #ff1900 !important;
 }
 
 /* 🎯 HACHURES DIAGONALES UNIFIÉES - Pour tous les conflits */
@@ -58,8 +58,8 @@
       45deg,
       transparent,
       transparent 6px,
-      rgba(231, 76, 60, 0.4) 6px,
-      rgba(231, 76, 60, 0.4) 12px
+      rgba(255, 25, 0, 0.4) 6px,
+      rgba(255, 25, 0, 0.4) 12px
     );
   pointer-events: none;
   z-index: 1;
@@ -101,8 +101,8 @@
         45deg,
         transparent,
         transparent 5px,
-        rgba(231, 76, 60, 0.4) 5px,
-        rgba(231, 76, 60, 0.4) 10px
+        rgba(255, 25, 0, 0.4) 5px,
+        rgba(255, 25, 0, 0.4) 10px
       );
   }
 }
@@ -122,8 +122,8 @@
         45deg,
         transparent,
         transparent 4px,
-        rgba(231, 76, 60, 0.4) 4px,
-        rgba(231, 76, 60, 0.4) 8px
+        rgba(255, 25, 0, 0.4) 4px,
+        rgba(255, 25, 0, 0.4) 8px
       );
   }
 }
@@ -155,7 +155,7 @@
 
 .game-cell--dragging:hover {
   background-color: rgba(231, 76, 60, 0.2) !important;
-  border: 2px solid rgba(231, 76, 60, 0.6) !important;
+  border: 2px solid rgba(255, 25, 0, 0.6) !important;
 }
 
 /* Support pour réduction de mouvement */

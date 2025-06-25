@@ -10,7 +10,7 @@ export const Game: React.FC = () => {
     handleCellClick,
     resetGame,
     newGame
-  } = useGameLogic(6); // Commencer avec une grille 6x6
+  } = useGameLogic(5); // Commencer avec une grille 5x5
 
   // Timer state
   const [seconds, setSeconds] = useState(0);
@@ -22,19 +22,17 @@ export const Game: React.FC = () => {
   const handleGridSizeChange = (newSize: number) => {
     newGame(newSize);
     setSeconds(0);
-    setIsTimerActive(false);
+    setIsTimerActive(true);
   };
 
   const handleReset = () => {
     resetGame();
-    setSeconds(0);
-    setIsTimerActive(false);
   };
 
   const handleNewGame = () => {
     newGame();
     setSeconds(0);
-    setIsTimerActive(false);
+    setIsTimerActive(true);
   };
 
   // Timer logic
@@ -54,15 +52,17 @@ export const Game: React.FC = () => {
     };
   }, [isTimerActive, seconds]);
 
-  // Start timer when first queen is placed
+  // Start timer at mount
   useEffect(() => {
-    if (gameState.queensPlaced > 0 && !gameState.isCompleted && !isTimerActive) {
-      setIsTimerActive(true);
-    }
+    setIsTimerActive(true);
+  }, []);
+
+  // Stop timer when game is completed
+  useEffect(() => {
     if (gameState.isCompleted) {
       setIsTimerActive(false);
     }
-  }, [gameState.queensPlaced, gameState.isCompleted, isTimerActive]);
+  }, [gameState.isCompleted]);
 
   const formatTime = (totalSeconds: number) => {
     const minutes = Math.floor(totalSeconds / 60);
@@ -74,12 +74,10 @@ export const Game: React.FC = () => {
     <div className="game">
       {/* Timer discret en haut à droite */}
       <div style={{
-        position: 'absolute',
         top: '20px',
-        right: '20px',
         background: 'rgba(255, 255, 255, 0.9)',
-        padding: '8px 16px',
-        borderRadius: '20px',
+        padding: '8px',
+        borderRadius: '14px',
         fontSize: '0.9rem',
         color: '#666',
         fontFamily: 'monospace',
