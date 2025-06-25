@@ -1,167 +1,121 @@
-/* Reset et styles globaux */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 
-               'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 
-               'Helvetica Neue', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  min-height: 100vh;
-  color: #333;
-}
-
+/* Styles professionnels pour App */
 .App {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background-color: #f9fafb;
 }
 
-/* Header */
-.app-header {
-  text-align: center;
-  padding: 30px 20px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+/* Header épuré et professionnel */
+.app-header-professional {
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.app-title {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: white;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 15px;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.app-icon {
-  font-size: 3rem;
-  animation: crown-bounce 2s ease-in-out infinite;
-}
-
-.app-subtitle {
-  font-size: 1.1rem;
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 300;
-  max-width: 600px;
+.header-container {
+  max-width: 1200px;
   margin: 0 auto;
+  padding: 0 16px;
 }
 
-@keyframes crown-bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-/* Main content */
-.app-main {
-  flex: 1;
-  padding: 20px;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-}
-
-/* Footer */
-.app-footer {
+.header-content {
   text-align: center;
-  padding: 20px;
-  background: rgba(0, 0, 0, 0.1);
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.9rem;
+  padding: 32px 0;
 }
 
-.app-footer p {
-  margin: 5px 0;
+.app-title-professional {
+  font-size: 2.5rem;
+  font-weight: 300;
+  color: #111827;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.025em;
 }
 
-.app-footer-tech {
-  font-size: 0.8rem;
-  opacity: 0.7;
+.app-subtitle-professional {
+  font-size: 1.125rem;
+  color: #6b7280;
+  margin: 0;
+  font-weight: 400;
+}
+
+/* Contenu principal */
+.app-main-professional {
+  flex: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 16px;
+  width: 100%;
+}
+
+/* Footer discret */
+.app-footer-professional {
+  background: white;
+  border-top: 1px solid #e5e7eb;
+  margin-top: auto;
+}
+
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.footer-text {
+  text-align: center;
+  padding: 16px 0;
+  color: #9ca3af;
+  font-size: 0.875rem;
+  margin: 0;
 }
 
 /* Responsive design */
 @media (max-width: 768px) {
-  .app-header {
-    padding: 20px 15px;
+  .header-content {
+    padding: 24px 0;
   }
   
-  .app-title {
+  .app-title-professional {
     font-size: 2rem;
-    flex-direction: column;
-    gap: 10px;
   }
   
-  .app-icon {
-    font-size: 2.5rem;
-  }
-  
-  .app-subtitle {
+  .app-subtitle-professional {
     font-size: 1rem;
   }
   
-  .app-main {
-    padding: 10px;
+  .app-main-professional {
+    padding: 24px 12px;
   }
   
-  .app-footer {
-    padding: 15px;
+  .footer-text {
+    font-size: 0.8rem;
+    padding: 12px 0;
   }
 }
 
 @media (max-width: 480px) {
-  .app-title {
-    font-size: 1.8rem;
+  .header-content {
+    padding: 20px 0;
   }
   
-  .app-icon {
-    font-size: 2rem;
+  .app-title-professional {
+    font-size: 1.75rem;
   }
   
-  .app-subtitle {
+  .app-subtitle-professional {
     font-size: 0.9rem;
   }
   
-  .app-main {
-    padding: 5px;
+  .app-main-professional {
+    padding: 16px 8px;
   }
 }
 
-/* Scrollbar personnalisée */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
-}
-
-/* Animations d'entrée */
-@keyframes fadeInUp {
+/* Animation d'entrée subtile */
+@keyframes fade-in-up {
   from {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -169,14 +123,57 @@ body {
   }
 }
 
-.app-header {
-  animation: fadeInUp 0.6s ease-out;
+.app-header-professional {
+  animation: fade-in-up 0.6s ease-out;
 }
 
-.app-main {
-  animation: fadeInUp 0.8s ease-out;
+.app-main-professional {
+  animation: fade-in-up 0.8s ease-out;
 }
 
-.app-footer {
-  animation: fadeInUp 1s ease-out;
+.app-footer-professional {
+  animation: fade-in-up 1s ease-out;
+}
+
+/* Focus states pour accessibilité */
+.app-title-professional:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* Amélioration des contrastes pour accessibilité */
+@media (prefers-contrast: high) {
+  .app-title-professional {
+    color: #000;
+  }
+  
+  .app-subtitle-professional {
+    color: #374151;
+  }
+  
+  .footer-text {
+    color: #6b7280;
+  }
+  
+  .app-header-professional,
+  .app-footer-professional {
+    border-color: #000;
+  }
+}
+
+/* Support du mode sombre respectueux */
+@media (prefers-color-scheme: dark) {
+  .App {
+    background-color: #f9fafb; /* Garde le fond clair pour la lisibilité du jeu */
+  }
+}
+
+/* Réduction de mouvement pour accessibilité */
+@media (prefers-reduced-motion: reduce) {
+  .app-header-professional,
+  .app-main-professional,
+  .app-footer-professional {
+    animation: none;
+  }
 }
