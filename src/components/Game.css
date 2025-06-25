@@ -20,7 +20,7 @@
   min-height: 400px;
 }
 
-.game-controls-section- {
+.game-controlssection- {
   position: sticky;
   top: 32px;
   max-height: calc(100vh - 200px);
@@ -41,7 +41,7 @@
     gap: 24px;
   }
 
-  .game-controls-section- {
+  .game-controlssection- {
     position: static;
     order: -1; /* Mettre les contrôles en haut sur mobile */
     max-height: none;
@@ -80,26 +80,26 @@
 }
 
 /* Amélioration de l'accessibilité */
-.game-controls-section-:focus-within {
+.game-controlssection-:focus-within {
   outline: none;
 }
 
 /* Scrollbar custom pour le panneau latéral */
-.game-controls-section-::-webkit-scrollbar {
+.game-controlssection-::-webkit-scrollbar {
   width: 6px;
 }
 
-.game-controls-section-::-webkit-scrollbar-track {
+.game-controlssection-::-webkit-scrollbar-track {
   background: #f1f5f9;
   border-radius: 3px;
 }
 
-.game-controls-section-::-webkit-scrollbar-thumb {
+.game-controlssection-::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 3px;
 }
 
-.game-controls-section-::-webkit-scrollbar-thumb:hover {
+.game-controlssection-::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
 
@@ -109,7 +109,7 @@
     animation: none;
   }
 
-  .game-controls-section- {
+  .game-controlssection- {
     scroll-behavior: auto;
   }
 }
@@ -121,7 +121,7 @@
     gap: 16px;
   }
 
-  .game-controls-section- {
+  .game-controlssection- {
     display: none;
   }
 

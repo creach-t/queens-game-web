@@ -1,13 +1,12 @@
-/* Styles s pour GameControls */
-.game-controls- {
+/* Styles pour GameControls */
+.game-controls {
   max-width: 400px;
   margin: 0 auto;
   padding: 0;
-  space-y: 24px;
 }
 
-/* Statistiques épurées */
-.game-stats- {
+/* Statistiques */
+.game-stats {
   background: white;
   border-radius: 8px;
   padding: 24px;
@@ -47,7 +46,7 @@
   margin-top: 2px;
 }
 
-/* Barre de progression discrète */
+/* Barre de progression */
 .progress-container {
   width: 100%;
   background-color: #f3f4f6;
@@ -63,8 +62,8 @@
   transition: width 0.5s ease-out;
 }
 
-/* Message de victoire discret */
-.victory-message- {
+/* Message de victoire */
+.victory-message {
   background-color: #f0fdf4;
   border: 1px solid #bbf7d0;
   border-radius: 8px;
@@ -195,47 +194,81 @@
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-/* Instructions épurées */
-.game-instructions- {
+/* Instructions avec dropdown */
+.game-instructions {
   background-color: #f9fafb;
   border-radius: 8px;
-  padding: 16px;
   border: 1px solid #e5e7eb;
 }
 
-.game-instructions- h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #111827;
-  margin: 0 0 12px 0;
+.instructions-toggle {
+  width: 100%;
+  padding: 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.15s ease-in-out;
+  border-radius: 8px;
 }
 
-.game-instructions- ul {
+.instructions-toggle:hover {
+  background-color: #f3f4f6;
+}
+
+.instructions-toggle:focus {
+  outline: none;
+  background-color: #f3f4f6;
+}
+
+.instructions-content {
+  padding: 0 16px 16px 16px;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.instructions-content ul {
   margin: 0;
   padding-left: 20px;
   list-style-type: disc;
 }
 
-.game-instructions- li {
+.instructions-content li {
   margin: 8px 0;
   font-size: 0.875rem;
   line-height: 1.5;
   color: #6b7280;
 }
 
-.game-instructions- strong {
+.instructions-content strong {
   color: #374151;
   font-weight: 600;
 }
 
 /* Responsive design */
 @media (max-width: 768px) {
-  .game-controls- {
+  .game-controls {
     margin: 16px;
     padding: 0;
   }
 
-  .game-stats-,
+  .game-stats,
   .controls-section {
     padding: 16px;
   }
@@ -252,13 +285,17 @@
 }
 
 @media (max-width: 480px) {
-  .game-controls- {
+  .game-controls {
     margin: 8px;
   }
 
-  .game-stats-,
-  .controls-section,
-  .game-instructions- {
+  .game-stats,
+  .controls-section {
+    padding: 12px;
+  }
+
+  .instructions-toggle,
+  .instructions-content {
     padding: 12px;
   }
 

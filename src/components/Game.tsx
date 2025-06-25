@@ -28,7 +28,7 @@ export const Game: React.FC = () => {
         </div>
 
         {/* Panneau latéral - Contrôles et statistiques */}
-        <div className="game-controls-section-">
+        <div className="game-controlssection-">
           <GameControls
             gameState={gameState}
             onResetGame={resetGame}

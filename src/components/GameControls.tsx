@@ -14,18 +14,22 @@ const GameStats: React.FC<{ gameState: GameState }> = ({ gameState }) => {
   const [isRunning, setIsRunning] = useState(false);
 
   useEffect(() => {
-    if (gameState.moveCount === 0 && !gameState.isCompleted) {
-      setTimer(0);
+    if (gameState.isCompleted) {
       setIsRunning(false);
-    } else if (gameState.moveCount > 0 && !gameState.isCompleted) {
+    } else {
       setIsRunning(true);
-    } else if (gameState.isCompleted) {
-      setIsRunning(false);
     }
-  }, [gameState.moveCount, gameState.isCompleted]);
+  }, [gameState.isCompleted]);
 
   useEffect(() => {
-    let interval: number;
+    // Reset timer when starting a new game
+    if (gameState.moveCount === 0) {
+      setTimer(0);
+    }
+  }, [gameState.gridSize, gameState.moveCount]);
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
     if (isRunning) {
       interval = setInterval(() => {
         setTimer(prev => prev + 1);
@@ -43,7 +47,7 @@ const GameStats: React.FC<{ gameState: GameState }> = ({ gameState }) => {
   const progressPercentage = (gameState.queensPlaced / gameState.queensRequired) * 100;
 
   return (
-    <div className="game-stats-professional">
+    <div className="game-stats">
       <div className="stats-grid">
         <div className="stat-item">
           <div className="stat-value">
@@ -82,7 +86,7 @@ const VictoryMessage: React.FC<{ isVisible: boolean }> = ({ isVisible }) => {
   if (!isVisible) return null;
 
   return (
-    <div className="victory-message-professional">
+    <div className="victory-message">
       <div className="victory-content">
         <div className="victory-icon">✓</div>
         <div className="victory-text">
@@ -98,7 +102,7 @@ const GameInstructions: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="game-instructions-professional">
+    <div className="game-instructions">
       <button
         className="instructions-toggle"
         onClick={() => setIsOpen(!isOpen)}
@@ -128,7 +132,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
   onGridSizeChange
 }) => {
   return (
-    <div className="game-controls-professional">
+    <div className="game-controls">
       <VictoryMessage isVisible={gameState.isCompleted} />
 
       <GameStats gameState={gameState} />
