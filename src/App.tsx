@@ -5,27 +5,28 @@ import './App.css';
 function App() {
   return (
     <div className="App">
-      <header className="app-header">
-        <h1 className="app-title">
-          <span className="app-icon">👑</span>
-          Queens Game Web
-        </h1>
-        <p className="app-subtitle">
-          Version web responsive du célèbre puzzle Queens de LinkedIn
-        </p>
+      {/* Header épuré et professionnel */}
+      <header className="app-header-professional">
+        <div className="header-container">
+          <div className="header-content">
+            <h1 className="app-title-professional">Queens Game</h1>
+            <p className="app-subtitle-professional">Puzzle de placement de reines</p>
+          </div>
+        </div>
       </header>
       
-      <main className="app-main">
+      {/* Contenu principal */}
+      <main className="app-main-professional">
         <Game />
       </main>
       
-      <footer className="app-footer">
-        <p>
-          Développé avec ❤️ • Inspiré du Queens Game de LinkedIn
-        </p>
-        <p className="app-footer-tech">
-          React • TypeScript • CSS Grid • Responsive Design
-        </p>
+      {/* Footer discret */}
+      <footer className="app-footer-professional">
+        <div className="footer-container">
+          <p className="footer-text">
+            Développé avec React • TypeScript • CSS Grid
+          </p>
+        </div>
       </footer>
     </div>
   );
