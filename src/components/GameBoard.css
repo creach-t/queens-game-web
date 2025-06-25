@@ -1,0 +1,57 @@
+.game-board {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 15px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  margin: 20px;
+}
+
+.game-board__grid {
+  display: grid;
+  background-color: #333;
+  padding: 4px;
+  border-radius: 8px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .game-board {
+    margin: 10px;
+    padding: 15px;
+  }
+  
+  .game-board__grid {
+    padding: 2px;
+  }
+}
+
+@media (max-width: 480px) {
+  .game-board {
+    margin: 5px;
+    padding: 10px;
+  }
+  
+  .game-board__grid {
+    padding: 1px;
+  }
+}
+
+/* Animation d'entrée */
+@keyframes board-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.game-board {
+  animation: board-enter 0.3s ease-out;
+}
