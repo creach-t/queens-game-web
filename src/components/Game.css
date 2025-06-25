@@ -1,74 +1,131 @@
-.game {
+/* Styles professionnels pour Game */
+.game-professional {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
 }
 
-.game-container {
+.game-container-professional {
   display: grid;
-  grid-template-columns: 1fr 400px;
-  gap: 30px;
+  grid-template-columns: 2fr 1fr;
+  gap: 32px;
   align-items: flex-start;
+  min-height: 500px;
 }
 
-.game-board-section {
+.game-board-section-professional {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 400px;
 }
 
-.game-controls-section {
+.game-controls-section-professional {
   position: sticky;
-  top: 20px;
+  top: 32px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
 }
 
 /* Responsive design */
 @media (max-width: 1024px) {
-  .game-container {
-    grid-template-columns: 1fr 350px;
-    gap: 20px;
+  .game-container-professional {
+    grid-template-columns: 3fr 2fr;
+    gap: 24px;
   }
 }
 
 @media (max-width: 768px) {
-  .game-container {
+  .game-container-professional {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 24px;
   }
   
-  .game-controls-section {
+  .game-controls-section-professional {
     position: static;
     order: -1; /* Mettre les contrôles en haut sur mobile */
+    max-height: none;
+    overflow-y: visible;
   }
   
-  .game-board-section {
+  .game-board-section-professional {
     min-height: 300px;
   }
 }
 
 @media (max-width: 480px) {
-  .game-container {
-    gap: 15px;
+  .game-container-professional {
+    gap: 16px;
   }
   
-  .game-board-section {
+  .game-board-section-professional {
     min-height: 250px;
   }
 }
 
 /* Animation d'entrée */
-.game {
-  animation: game-enter 0.5s ease-out;
+.game-professional {
+  animation: game-enter-professional 0.5s ease-out;
 }
 
-@keyframes game-enter {
+@keyframes game-enter-professional {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0);
+  }
+}
+
+/* Amélioration de l'accessibilité */
+.game-controls-section-professional:focus-within {
+  outline: none;
+}
+
+/* Scrollbar custom pour le panneau latéral */
+.game-controls-section-professional::-webkit-scrollbar {
+  width: 6px;
+}
+
+.game-controls-section-professional::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.game-controls-section-professional::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.game-controls-section-professional::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Support pour les utilisateurs qui préfèrent moins de mouvement */
+@media (prefers-reduced-motion: reduce) {
+  .game-professional {
+    animation: none;
+  }
+  
+  .game-controls-section-professional {
+    scroll-behavior: auto;
+  }
+}
+
+/* Layout en mode impression */
+@media print {
+  .game-container-professional {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .game-controls-section-professional {
+    display: none;
+  }
+  
+  .game-board-section-professional {
+    min-height: auto;
   }
 }
