@@ -17,14 +17,14 @@ COPY . .
 # Build de l'application pour la production
 RUN npm run build
 
-# Stage 2: Serveur Nginx pour servir l'application
+FROM node:20 AS builder
+WORKDIR /app
+COPY . .
+RUN npm ci && npm run build
+
 FROM nginx:alpine
-
-# Copier la configuration Nginx personnalisée
-COPY nginx.conf /etc/nginx/nginx.conf
-
-# Copier les fichiers buildés depuis le stage précédent
 COPY --from=builder /app/dist /usr/share/nginx/html
+COPY ./nginx.conf /etc/nginx/nginx.conf
 
 # Exposer le port 80
 EXPOSE 80
