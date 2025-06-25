@@ -41,9 +41,17 @@ export const GameCell: React.FC<GameCellProps> = ({ cell, size, onClick }) => {
   };
 
   return (
-    <button
+    <div
       className={getCellClasses()}
       onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       style={{
         backgroundColor: cell.regionColor,
         width: size,
@@ -56,6 +64,6 @@ export const GameCell: React.FC<GameCellProps> = ({ cell, size, onClick }) => {
       <span className="game-cell__content">
         {getCellContent()}
       </span>
-    </button>
+    </div>
   );
 };
