@@ -1,131 +1,148 @@
-/* Styles s pour Game */
-.game- {
+.game {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
+  position: relative; /* Pour le timer absolu */
 }
 
-.game-container- {
+.game-container {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 32px;
+  grid-template-columns: 1fr 350px;
+  gap: 30px;
   align-items: flex-start;
-  min-height: 500px;
 }
 
-.game-board-section- {
+.game-board-section {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
   min-height: 400px;
 }
 
-.game-controlssection- {
+.game-controls-section {
   position: sticky;
-  top: 32px;
-  max-height: calc(100vh - 200px);
-  overflow-y: auto;
+  top: 20px;
+}
+
+/* Styles pour les éléments déplacés sous la grille */
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.grid-size-select {
+  flex: 1;
+  min-width: 150px;
+  padding: 8px 12px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  background: white;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.grid-size-select:focus {
+  outline: none;
+  border-color: #0077b5;
+}
+
+.btn {
+  flex: 1;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn--primary {
+  background: linear-gradient(135deg, #0077b5 0%, #005582 100%);
+  color: white;
+  box-shadow: 0 2px 10px rgba(0, 119, 181, 0.3);
+}
+
+.btn--primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 119, 181, 0.4);
+}
+
+.btn--secondary {
+  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+  color: white;
+  box-shadow: 0 2px 10px rgba(108, 117, 125, 0.3);
+}
+
+.btn--secondary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4);
+}
+
+.btn:active {
+  transform: translateY(0);
 }
 
 /* Responsive design */
 @media (max-width: 1024px) {
-  .game-container- {
-    grid-template-columns: 3fr 2fr;
-    gap: 24px;
+  .game-container {
+    grid-template-columns: 1fr 300px;
+    gap: 20px;
   }
 }
 
 @media (max-width: 768px) {
-  .game-container- {
+  .game-container {
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: 20px;
   }
 
-  .game-controlssection- {
+  .game-controls-section {
     position: static;
-    order: -1; /* Mettre les contrôles en haut sur mobile */
-    max-height: none;
-    overflow-y: visible;
+    order: -1; /* Mettre les statistiques en haut sur mobile */
   }
 
-  .game-board-section- {
+  .game-board-section {
     min-height: 300px;
+  }
+
+  .action-buttons {
+    flex-direction: column;
   }
 }
 
 @media (max-width: 480px) {
-  .game-container- {
-    gap: 16px;
+  .game-container {
+    gap: 15px;
   }
 
-  .game-board-section- {
+  .game-board-section {
     min-height: 250px;
+  }
+
+  .btn {
+    padding: 10px 15px;
+    font-size: 0.85rem;
   }
 }
 
 /* Animation d'entrée */
-.game- {
-  animation: game-enter- 0.5s ease-out;
+.game {
+  animation: game-enter 0.5s ease-out;
 }
 
-@keyframes game-enter- {
+@keyframes game-enter {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Amélioration de l'accessibilité */
-.game-controlssection-:focus-within {
-  outline: none;
-}
-
-/* Scrollbar custom pour le panneau latéral */
-.game-controlssection-::-webkit-scrollbar {
-  width: 6px;
-}
-
-.game-controlssection-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 3px;
-}
-
-.game-controlssection-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-
-.game-controlssection-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-/* Support pour les utilisateurs qui préfèrent moins de mouvement */
-@media (prefers-reduced-motion: reduce) {
-  .game- {
-    animation: none;
-  }
-
-  .game-controlssection- {
-    scroll-behavior: auto;
-  }
-}
-
-/* Layout en mode impression */
-@media print {
-  .game-container- {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .game-controlssection- {
-    display: none;
-  }
-
-  .game-board-section- {
-    min-height: auto;
+    transform: scale(1);
   }
 }
