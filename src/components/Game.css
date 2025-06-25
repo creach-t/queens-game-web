@@ -1,0 +1,74 @@
+.game {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.game-container {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 30px;
+  align-items: flex-start;
+}
+
+.game-board-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.game-controls-section {
+  position: sticky;
+  top: 20px;
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .game-container {
+    grid-template-columns: 1fr 350px;
+    gap: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .game-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .game-controls-section {
+    position: static;
+    order: -1; /* Mettre les contrôles en haut sur mobile */
+  }
+  
+  .game-board-section {
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .game-container {
+    gap: 15px;
+  }
+  
+  .game-board-section {
+    min-height: 250px;
+  }
+}
+
+/* Animation d'entrée */
+.game {
+  animation: game-enter 0.5s ease-out;
+}
+
+@keyframes game-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
