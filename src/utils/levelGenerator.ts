@@ -304,10 +304,10 @@ class ProceduralLevelGenerator {
 
     switch (strategy) {
       case "spiral":
-        return this.selectSpiralCell(candidates, regionCells, queen);
+        return this.selectSpiralCell(candidates, queen);
 
       case "cross":
-        return this.selectCrossCell(candidates, regionCells, queen);
+        return this.selectCrossCell(candidates, queen);
 
       case "snake":
         return this.selectSnakeCell(candidates, regionCells);
@@ -334,11 +334,7 @@ class ProceduralLevelGenerator {
     return candidates[0];
   }
 
-  private selectSpiralCell(
-    candidates: Position[],
-    regionCells: Position[],
-    queen: Position
-  ): Position {
+  private selectSpiralCell(candidates: Position[], queen: Position): Position {
     // Privilégier les cellules qui créent un mouvement spiralé autour de la reine
     candidates.sort((a, b) => {
       const angleA = Math.atan2(a.row - queen.row, a.col - queen.col);
@@ -353,11 +349,7 @@ class ProceduralLevelGenerator {
     return candidates[0];
   }
 
-  private selectCrossCell(
-    candidates: Position[],
-    regionCells: Position[],
-    queen: Position
-  ): Position {
+  private selectCrossCell(candidates: Position[], queen: Position): Position {
     // Privilégier les cellules alignées horizontalement ou verticalement avec la reine
     candidates.sort((a, b) => {
       const alignmentA =
@@ -381,8 +373,6 @@ class ProceduralLevelGenerator {
   ): Position {
     // Créer des formes serpentines en évitant les formes trop compactes
     if (regionCells.length <= 1) return candidates[0];
-
-    const lastCell = regionCells[regionCells.length - 1];
 
     candidates.sort((a, b) => {
       // Privilégier les cellules qui continuent dans la même direction
