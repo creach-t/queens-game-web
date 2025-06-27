@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { GameState, GameCell, ColoredRegion, CellState } from '../types/game';
+import { GameState } from '../types/game';
 import { validateQueenPlacement, isPuzzleCompleted, updateConflicts } from '../utils/gameValidation';
 import { generateGameLevel, resetGameBoard } from '../utils/levelGenerator';
 
