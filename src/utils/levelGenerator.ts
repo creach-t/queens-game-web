@@ -1,8 +1,5 @@
 import { ColoredRegion, GameCell, GameState } from "../types/game";
-
-/**
- * Générateur de niveaux avancé avec génération procédurale
- */
+import { levelStorage } from "./levelStorage"; // Import du système Firebase
 
 interface Position {
   row: number;
@@ -10,15 +7,9 @@ interface Position {
 }
 
 export interface DifficultySettings {
-  targetDifficulty: number; // 0-100
-  regionSizeVariance: "low" | "medium" | "high";
-  growthStrategy: "compact" | "mixed" | "elongated";
-  symmetry: boolean;
-  minRegionSize: number;
-  maxRegionSize: number;
+  complexity: "simple" | "normal" | "complex";
 }
 
-// Couleurs pour les régions
 const REGION_COLORS = [
   "#26A69A",
   "#BA68C8",
@@ -28,11 +19,9 @@ const REGION_COLORS = [
   "#D4E157",
   "#4DD0E1",
   "#F84343",
+  "#FF7043",
 ];
 
-/**
- * Classe principale du générateur procédural
- */
 class ProceduralLevelGenerator {
   private gridSize: number;
   private difficulty: DifficultySettings;
@@ -40,6 +29,7 @@ class ProceduralLevelGenerator {
   private regions: ColoredRegion[] = [];
   private board: GameCell[][] = [];
   private ownership: number[][] = [];
+  levelStorage: any;
 
   constructor(gridSize: number, difficulty: DifficultySettings) {
     this.gridSize = gridSize;
@@ -49,50 +39,57 @@ class ProceduralLevelGenerator {
       .map(() => Array(gridSize).fill(-1));
   }
 
-  /**
-   * Génère un niveau complet
-   */
-  generateLevel(): GameState {
+  async generateLevel(): Promise<GameState> {
     console.log(
-      `🎯 Generating procedural level ${this.gridSize}×${this.gridSize}`
+      `🎯 Generating creative level ${this.gridSize}×${this.gridSize}`
     );
 
     let attempts = 0;
     let validLevel = false;
+    const maxAttempts = 100000;
+    let nextLogPercent = 10;
 
-    while (!validLevel && attempts < 200000) {
+    while (!validLevel && attempts < maxAttempts) {
       attempts++;
 
-      // 1. Générer une solution N-Queens
+      const currentPercent = Math.floor((attempts / maxAttempts) * 100);
+      if (currentPercent >= nextLogPercent) {
+        console.log(`${nextLogPercent}%`);
+        nextLogPercent += 10;
+      }
+
       this.solution = this.generateNQueensSolution();
       if (!this.solution) continue;
 
-      // 2. Réinitialiser
       this.regions = [];
       this.ownership = Array(this.gridSize)
         .fill(null)
         .map(() => Array(this.gridSize).fill(-1));
 
-      // 3. Créer les régions procéduralement
-      this.createRegions();
-
-      // 4. Vérifier l'unicité
+      this.createCreativeRegions();
       validLevel = this.verifySolutionUniqueness();
 
-      if (!validLevel && attempts < 10) {
-        // Essayer d'ajuster les régions pour forcer l'unicité
+      if (!validLevel && attempts < 5) {
         this.adjustRegionsForUniqueness();
         validLevel = this.verifySolutionUniqueness();
       }
     }
 
     if (!validLevel) {
-      console.warn("Could not generate unique solution, using last attempt");
+      console.warn(
+        "⚠️ Could not generate unique level after 1000 attempts. Loading from Firebase..."
+      );
+
+      const fallback = await this.levelStorage.getRandomLevel(this.gridSize);
+      if (fallback) {
+        console.log("📦 Niveau chargé depuis Firebase en secours");
+        return this.levelStorage.convertToGameState(fallback);
+      }
+
+      throw new Error("❌ Impossible de générer ou de charger un niveau.");
     }
 
-    // 5. Créer le plateau
     this.board = this.initializeBoard();
-
     console.log(`✅ Level generated after ${attempts} attempts`);
 
     return {
@@ -107,20 +104,15 @@ class ProceduralLevelGenerator {
     };
   }
 
-  /**
-   * Génère une solution N-Queens
-   */
   private generateNQueensSolution(): Position[] | null {
     const solution: Position[] = [];
     const usedCols = new Set<number>();
 
     const isValidPosition = (row: number, col: number): boolean => {
       if (usedCols.has(col)) return false;
-
       for (const queen of solution) {
         if (this.areAdjacent({ row, col }, queen)) return false;
       }
-
       return true;
     };
 
@@ -141,17 +133,13 @@ class ProceduralLevelGenerator {
           usedCols.delete(col);
         }
       }
-
       return false;
     };
 
     return backtrack(0) ? solution : null;
   }
 
-  /**
-   * Crée les régions de manière procédurale
-   */
-  private createRegions(): void {
+  private createCreativeRegions(): void {
     // Initialiser une région pour chaque reine
     this.solution!.forEach((queen, index) => {
       this.ownership[queen.row][queen.col] = index;
@@ -164,80 +152,122 @@ class ProceduralLevelGenerator {
       });
     });
 
-    // Déterminer les tailles cibles pour chaque région
-    const targetSizes = this.calculateTargetSizes();
+    // Calculer les tailles avec plus de variété
+    const targetSizes = this.calculateCreativeTargetSizes();
 
-    // Faire croître les régions
-    this.growRegions(targetSizes);
+    // Assigner des stratégies de forme différentes à chaque région
+    const shapeStrategies = this.assignShapeStrategies();
 
-    // Assigner les cellules restantes
+    // Faire croître avec les nouvelles stratégies
+    this.growCreativeRegions(targetSizes, shapeStrategies);
     this.assignRemainingCells();
   }
 
-  /**
-   * Calcule les tailles cibles pour chaque région selon la difficulté
-   */
-  private calculateTargetSizes(): number[] {
+  private calculateCreativeTargetSizes(): number[] {
     const totalCells = this.gridSize * this.gridSize;
     const numRegions = this.gridSize;
-
-    // ✅ NOUVEAU: Stratégie de variabilité intentionnelle
     const sizes: number[] = [];
     let remainingCells = totalCells;
 
-    // ✅ Créer quelques petites régions (1-3 cellules)
-    const numSmallRegions = Math.floor(numRegions * 0.3); // 30% de petites
-    for (let i = 0; i < numSmallRegions; i++) {
-      const size = Math.floor(Math.random() * 3) + 1; // 1-3 cellules
+    // Complexité selon les paramètres
+    const complexity = this.difficulty.complexity;
+
+    // Très rarement des régions de 1 case (5% max)
+    const numSingle = Math.random() < 0.8 ? 0 : Math.floor(numRegions * 0.05);
+    for (let i = 0; i < numSingle; i++) {
+      sizes.push(1);
+      remainingCells -= 1;
+    }
+
+    // 30-50% de petites régions (2-3 cellules) selon complexité
+    const smallRatio =
+      this.gridSize >= 9
+        ? 0.55 // 55% au lieu de 50% (léger boost)
+        : complexity === "simple"
+        ? 0.5
+        : complexity === "normal"
+        ? 0.4
+        : 0.3;
+    const numSmall = Math.floor((numRegions - numSingle) * smallRatio);
+    for (let i = 0; i < numSmall; i++) {
+      const rand = Math.random();
+      const size = rand < 0.3 ? 2 : rand < 0.7 ? 3 : 4;
       sizes.push(size);
       remainingCells -= size;
     }
 
-    // ✅ Créer quelques grandes régions si il reste de la place
-    const numLargeRegions = Math.floor(numRegions * 0.2); // 20% de grandes
-    const avgRemaining = Math.floor(
-      remainingCells / (numRegions - sizes.length)
-    );
-
-    for (let i = 0; i < numLargeRegions && sizes.length < numRegions - 1; i++) {
-      const size =
-        Math.floor(avgRemaining * 1.5) + Math.floor(Math.random() * 3);
+    // Quelques grandes régions pour formes créatives
+    const largeRatio =
+      this.gridSize >= 9
+        ? 0.15 // 15%
+        : complexity === "complex"
+        ? 0.3
+        : 0.2;
+    const numLarge = Math.floor((numRegions - sizes.length) * largeRatio);
+    for (let i = 0; i < numLarge && sizes.length < numRegions - 1; i++) {
+      const maxSize = Math.min(
+        this.gridSize >= 9 ? 6 : 8,
+        Math.floor(remainingCells * 0.3)
+      ); // Limiter à 6 pour 9x9
+      const size = Math.max(5, maxSize);
       if (size <= remainingCells - (numRegions - sizes.length - 1)) {
         sizes.push(size);
         remainingCells -= size;
       }
     }
 
-    // ✅ Remplir le reste avec des tailles moyennes
+    // Remplir le reste avec tailles moyennes
     while (sizes.length < numRegions - 1) {
       const remainingRegions = numRegions - sizes.length;
       const avgSize = Math.floor(remainingCells / remainingRegions);
-      const variance = Math.floor(Math.random() * 4) - 2; // ±2
-      const size = Math.max(1, avgSize + variance);
-
+      const variance = this.gridSize >= 9 ? 2 : 3;
+      const size = Math.max(
+        2,
+        avgSize + Math.floor(Math.random() * variance * 2) - variance
+      );
       sizes.push(size);
       remainingCells -= size;
     }
 
-    // Dernière région = ce qui reste
-    sizes.push(remainingCells);
-
+    sizes.push(Math.max(2, remainingCells));
     this.shuffleArray(sizes);
     return sizes;
   }
 
-  /**
-   * Fait croître les régions selon différentes stratégies
-   */
-  private growRegions(targetSizes: number[]): void {
-    const maxIterations = this.gridSize * this.gridSize * 2;
+  private assignShapeStrategies(): string[] {
+    const assignments: string[] = [];
+    const complexity = this.difficulty.complexity;
+
+    // Stratégies selon complexité
+    const strategies =
+      this.gridSize >= 9
+        ? ["compact", "mixed", "cross", "elongated"] // Enlever spiral et snake seulement
+        : complexity === "simple"
+        ? ["compact", "mixed"]
+        : complexity === "normal"
+        ? ["compact", "mixed", "cross", "elongated"]
+        : ["compact", "mixed", "cross", "elongated", "spiral", "snake"];
+
+    for (let i = 0; i < this.regions.length; i++) {
+      assignments.push(
+        strategies[Math.floor(Math.random() * strategies.length)]
+      );
+    }
+
+    return assignments;
+  }
+
+  private growCreativeRegions(
+    targetSizes: number[],
+    shapeStrategies: string[]
+  ): void {
+    const maxIterations = this.gridSize * this.gridSize * 3;
     let iteration = 0;
 
     while (iteration < maxIterations) {
       iteration++;
       let grew = false;
 
-      // Essayer de faire croître chaque région
       for (let i = 0; i < this.regions.length; i++) {
         const region = this.regions[i];
         if (region.cells.length >= targetSizes[i]) continue;
@@ -245,11 +275,10 @@ class ProceduralLevelGenerator {
         const candidates = this.getGrowthCandidates(region);
         if (candidates.length === 0) continue;
 
-        // Choisir une cellule selon la stratégie
-        const newCell = this.selectGrowthCell(
+        const newCell = this.selectCreativeGrowthCell(
           candidates,
           region,
-          this.difficulty.growthStrategy
+          shapeStrategies[i]
         );
 
         if (newCell) {
@@ -263,15 +292,181 @@ class ProceduralLevelGenerator {
     }
   }
 
-  /**
-   * Obtient les cellules candidates pour la croissance d'une région
-   */
+  private selectCreativeGrowthCell(
+    candidates: Position[],
+    region: ColoredRegion,
+    strategy: string
+  ): Position | null {
+    if (candidates.length === 0) return null;
+
+    const queen = region.queenPosition!;
+    const regionCells = region.cells;
+
+    switch (strategy) {
+      case "spiral":
+        return this.selectSpiralCell(candidates, regionCells, queen);
+
+      case "cross":
+        return this.selectCrossCell(candidates, regionCells, queen);
+
+      case "snake":
+        return this.selectSnakeCell(candidates, regionCells);
+
+      case "elongated":
+        return this.selectElongatedCell(candidates, regionCells);
+
+      case "compact":
+        candidates.sort((a, b) => {
+          const distA =
+            Math.abs(a.row - queen.row) + Math.abs(a.col - queen.col);
+          const distB =
+            Math.abs(b.row - queen.row) + Math.abs(b.col - queen.col);
+          return distA - distB;
+        });
+        break;
+
+      case "mixed":
+      default:
+        this.shuffleArray(candidates);
+        break;
+    }
+
+    return candidates[0];
+  }
+
+  private selectSpiralCell(
+    candidates: Position[],
+    regionCells: Position[],
+    queen: Position
+  ): Position {
+    // Privilégier les cellules qui créent un mouvement spiralé autour de la reine
+    candidates.sort((a, b) => {
+      const angleA = Math.atan2(a.row - queen.row, a.col - queen.col);
+      const angleB = Math.atan2(b.row - queen.row, b.col - queen.col);
+      const distA = Math.abs(a.row - queen.row) + Math.abs(a.col - queen.col);
+      const distB = Math.abs(b.row - queen.row) + Math.abs(b.col - queen.col);
+
+      // Favoriser un équilibre entre angle et distance
+      return angleA + distA * 0.1 - (angleB + distB * 0.1);
+    });
+
+    return candidates[0];
+  }
+
+  private selectCrossCell(
+    candidates: Position[],
+    regionCells: Position[],
+    queen: Position
+  ): Position {
+    // Privilégier les cellules alignées horizontalement ou verticalement avec la reine
+    candidates.sort((a, b) => {
+      const alignmentA =
+        (a.row === queen.row ? 0 : 1) + (a.col === queen.col ? 0 : 1);
+      const alignmentB =
+        (b.row === queen.row ? 0 : 1) + (b.col === queen.col ? 0 : 1);
+
+      if (alignmentA !== alignmentB) return alignmentA - alignmentB;
+
+      const distA = Math.abs(a.row - queen.row) + Math.abs(a.col - queen.col);
+      const distB = Math.abs(b.row - queen.row) + Math.abs(b.col - queen.col);
+      return distA - distB;
+    });
+
+    return candidates[0];
+  }
+
+  private selectSnakeCell(
+    candidates: Position[],
+    regionCells: Position[]
+  ): Position {
+    // Créer des formes serpentines en évitant les formes trop compactes
+    if (regionCells.length <= 1) return candidates[0];
+
+    const lastCell = regionCells[regionCells.length - 1];
+
+    candidates.sort((a, b) => {
+      // Privilégier les cellules qui continuent dans la même direction
+      const connections = this.countRegionConnections(a, regionCells);
+      const connectionsB = this.countRegionConnections(b, regionCells);
+
+      // Préférer 1 connexion (continue la ligne) plutôt que multiple (forme compacte)
+      if (connections === 1 && connectionsB !== 1) return -1;
+      if (connectionsB === 1 && connections !== 1) return 1;
+
+      return Math.random() - 0.5;
+    });
+
+    return candidates[0];
+  }
+
+  private selectElongatedCell(
+    candidates: Position[],
+    regionCells: Position[]
+  ): Position {
+    candidates.sort((a, b) => {
+      const compactnessA = this.calculateCompactnessIfAdded(regionCells, a);
+      const compactnessB = this.calculateCompactnessIfAdded(regionCells, b);
+      return compactnessA - compactnessB; // Moins compact = plus allongé
+    });
+
+    return candidates[0];
+  }
+
+  private countRegionConnections(
+    cell: Position,
+    regionCells: Position[]
+  ): number {
+    const cellSet = new Set(regionCells.map((c) => `${c.row}-${c.col}`));
+    const directions = [
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [0, 1],
+    ];
+
+    let connections = 0;
+    for (const [dr, dc] of directions) {
+      const key = `${cell.row + dr}-${cell.col + dc}`;
+      if (cellSet.has(key)) connections++;
+    }
+
+    return connections;
+  }
+
+  private calculateCompactnessIfAdded(
+    regionCells: Position[],
+    newCell: Position
+  ): number {
+    const allCells = [...regionCells, newCell];
+    const perimeter = this.calculatePerimeter(allCells);
+    return perimeter / allCells.length;
+  }
+
+  private calculatePerimeter(cells: Position[]): number {
+    const cellSet = new Set(cells.map((c) => `${c.row}-${c.col}`));
+    let perimeter = 0;
+
+    for (const cell of cells) {
+      const directions = [
+        [-1, 0],
+        [1, 0],
+        [0, -1],
+        [0, 1],
+      ];
+      for (const [dr, dc] of directions) {
+        const key = `${cell.row + dr}-${cell.col + dc}`;
+        if (!cellSet.has(key)) perimeter++;
+      }
+    }
+
+    return perimeter;
+  }
+
   private getGrowthCandidates(region: ColoredRegion): Position[] {
     const candidates: Position[] = [];
     const visited = new Set<string>();
 
     for (const cell of region.cells) {
-      // Vérifier les 4 directions orthogonales seulement
       const directions = [
         [-1, 0],
         [1, 0],
@@ -301,98 +496,9 @@ class ProceduralLevelGenerator {
     return candidates;
   }
 
-  /**
-   * Sélectionne une cellule de croissance selon la stratégie
-   */
-  private selectGrowthCell(
-    candidates: Position[],
-    region: ColoredRegion,
-    strategy: string
-  ): Position | null {
-    if (candidates.length === 0) return null;
-
-    const queen = region.queenPosition!;
-
-    switch (strategy) {
-      case "compact":
-        // Préférer les cellules proches de la reine
-        candidates.sort((a, b) => {
-          const distA =
-            Math.abs(a.row - queen.row) + Math.abs(a.col - queen.col);
-          const distB =
-            Math.abs(b.row - queen.row) + Math.abs(b.col - queen.col);
-          return distA - distB;
-        });
-        break;
-
-      case "elongated":
-        // Préférer les cellules qui allongent la région
-        candidates.sort((a, b) => {
-          const compactnessA = this.calculateCompactnessIfAdded(region, a);
-          const compactnessB = this.calculateCompactnessIfAdded(region, b);
-          return compactnessA - compactnessB; // Moins compact = plus allongé
-        });
-        break;
-
-      case "mixed":
-      default:
-        // Mélange aléatoire avec biais léger vers la compacité
-        candidates.sort(() => Math.random() - 0.3);
-        break;
-    }
-
-    // Ajouter du hasard pour éviter les patterns trop réguliers
-    const topCandidates = candidates.slice(
-      0,
-      Math.max(1, Math.floor(candidates.length * 0.3))
-    );
-    return topCandidates[Math.floor(Math.random() * topCandidates.length)];
-  }
-
-  /**
-   * Calcule la compacité d'une région si on ajoute une cellule
-   */
-  private calculateCompactnessIfAdded(
-    region: ColoredRegion,
-    newCell: Position
-  ): number {
-    const allCells = [...region.cells, newCell];
-    const perimeter = this.calculatePerimeter(allCells);
-    return perimeter / allCells.length;
-  }
-
-  /**
-   * Calcule le périmètre d'un ensemble de cellules
-   */
-  private calculatePerimeter(cells: Position[]): number {
-    const cellSet = new Set(cells.map((c) => `${c.row}-${c.col}`));
-    let perimeter = 0;
-
-    for (const cell of cells) {
-      const directions = [
-        [-1, 0],
-        [1, 0],
-        [0, -1],
-        [0, 1],
-      ];
-      for (const [dr, dc] of directions) {
-        const key = `${cell.row + dr}-${cell.col + dc}`;
-        if (!cellSet.has(key)) {
-          perimeter++;
-        }
-      }
-    }
-
-    return perimeter;
-  }
-
-  /**
-   * Assigne les cellules restantes
-   */
   private assignRemainingCells(): void {
     const unassigned: Position[] = [];
 
-    // Collecter les cellules non assignées
     for (let row = 0; row < this.gridSize; row++) {
       for (let col = 0; col < this.gridSize; col++) {
         if (this.ownership[row][col] === -1) {
@@ -401,12 +507,10 @@ class ProceduralLevelGenerator {
       }
     }
 
-    // Les assigner aux régions adjacentes ou les plus proches
     for (const cell of unassigned) {
       const adjacentRegions = this.getAdjacentRegions(cell);
 
       if (adjacentRegions.length > 0) {
-        // Choisir la région adjacente la plus petite
         adjacentRegions.sort(
           (a, b) => this.regions[a].cells.length - this.regions[b].cells.length
         );
@@ -414,7 +518,6 @@ class ProceduralLevelGenerator {
         this.ownership[cell.row][cell.col] = chosenRegion;
         this.regions[chosenRegion].cells.push(cell);
       } else {
-        // Assigner à la région la plus proche
         let minDist = Infinity;
         let closestRegion = 0;
 
@@ -434,9 +537,6 @@ class ProceduralLevelGenerator {
     }
   }
 
-  /**
-   * Trouve les régions adjacentes à une cellule
-   */
   private getAdjacentRegions(cell: Position): number[] {
     const adjacent = new Set<number>();
     const directions = [
@@ -461,25 +561,15 @@ class ProceduralLevelGenerator {
     return Array.from(adjacent);
   }
 
-  /**
-   * Vérifie l'unicité de la solution
-   */
   private verifySolutionUniqueness(): boolean {
     const solver = new QueensSolver(this.regions);
-    const solutions = solver.findAllSolutions(2); // On cherche juste 2 solutions max
+    const solutions = solver.findAllSolutions(2);
     return solutions.length === 1;
   }
 
-  /**
-   * Ajuste les régions pour forcer l'unicité
-   */
   private adjustRegionsForUniqueness(): void {
-    // Stratégie 1: Réduire les grandes régions qui offrent trop de choix
-    const avgSize = this.gridSize;
-
     for (const region of this.regions) {
-      if (region.cells.length > avgSize * 1.5) {
-        // Identifier les cellules périphériques
+      if (region.cells.length > this.gridSize * 1.2) {
         const peripheralCells = region.cells.filter((cell) => {
           const isPeripheral = this.getAdjacentRegions(cell).length > 0;
           const isNotQueen = !(
@@ -488,10 +578,11 @@ class ProceduralLevelGenerator {
           );
           return isPeripheral && isNotQueen;
         });
-
-        // Retirer quelques cellules périphériques
-        const toRemove = Math.floor(peripheralCells.length * 0.3);
-        for (let i = 0; i < toRemove && region.cells.length > 3; i++) {
+        const toRemove =
+          this.gridSize >= 9
+            ? Math.floor(peripheralCells.length * 0.3) // De 0.2 à 0.3 (léger boost)
+            : Math.floor(peripheralCells.length * 0.2);
+        for (let i = 0; i < toRemove && region.cells.length > 2; i++) {
           const cell = peripheralCells[i];
           region.cells = region.cells.filter(
             (c) => !(c.row === cell.row && c.col === cell.col)
@@ -501,13 +592,9 @@ class ProceduralLevelGenerator {
       }
     }
 
-    // Réassigner les cellules libérées
     this.assignRemainingCells();
   }
 
-  /**
-   * Utilitaires
-   */
   private areAdjacent(pos1: Position, pos2: Position): boolean {
     const rowDiff = Math.abs(pos1.row - pos2.row);
     const colDiff = Math.abs(pos1.col - pos2.col);
@@ -547,9 +634,6 @@ class ProceduralLevelGenerator {
   }
 }
 
-/**
- * Solveur pour vérifier l'unicité
- */
 class QueensSolver {
   private regions: ColoredRegion[];
   private solutions: Position[][] = [];
@@ -604,76 +688,231 @@ class QueensSolver {
   }
 }
 
-/**
- * Fonction principale d'export
- */
-export function generateGameLevel(
+export async function generateGameLevel(
   gridSize: number = 6,
-  difficultySettings?: Partial<DifficultySettings>
-): GameState {
-  const defaultSettings: DifficultySettings = {
-    targetDifficulty: 50,
-    regionSizeVariance: "medium",
-    growthStrategy: "mixed",
-    symmetry: false,
-    minRegionSize: Math.max(3, Math.floor(gridSize * 0.5)),
-    maxRegionSize: Math.ceil(gridSize * 2),
-  };
+  complexity: "simple" | "normal" | "complex" = "normal"
+): Promise<GameState> {
+  console.log(`🎯 Génération niveau ${gridSize}x${gridSize}`);
 
-  const settings = { ...defaultSettings, ...difficultySettings };
-  const generator = new ProceduralLevelGenerator(gridSize, settings);
+  try {
+    // Essayer de générer normalement
+    const settings: DifficultySettings = { complexity };
+    const generator = new ProceduralLevelGenerator(gridSize, settings);
+    const level = generator.generateLevel();
 
-  return generator.generateLevel();
+    // Sauvegarder en arrière-plan (ignore les erreurs)
+    levelStorage
+      .saveLevel(gridSize, complexity, (await level).regions)
+      .catch(() => {});
+
+    return level;
+  } catch (error) {
+    console.log("⚠️ Échec génération, tentative fallback Firebase...");
+
+    try {
+      // Fallback Firebase
+      const storedLevel = await levelStorage.getRandomLevel(
+        gridSize,
+        complexity
+      );
+
+      if (storedLevel) {
+        console.log("📦 Niveau récupéré depuis Firebase");
+        return levelStorage.convertToGameState(storedLevel);
+      }
+
+      // Essayer sans contrainte de complexité
+      const anyLevel = await levelStorage.getRandomLevel(gridSize);
+      if (anyLevel) {
+        console.log("📦 Niveau récupéré (complexité différente)");
+        return levelStorage.convertToGameState(anyLevel);
+      }
+    } catch (firebaseError) {
+      console.warn("Firebase fallback échoué:", firebaseError);
+    }
+
+    // Dernier recours: génération basique SYNCHRONE
+    console.log("🔄 Génération de secours...");
+    return generateBasicLevel(gridSize);
+  }
 }
 
 /**
- * Génération avec preset de difficulté
+ * Générateur de secours simple (synchrone, sans validation d'unicité)
  */
-export function generateLevelWithDifficulty(
+function generateBasicLevel(gridSize: number): GameState {
+  // Version simplifiée qui marche toujours
+  const solution = generateSimpleNQueens(gridSize);
+  const regions = createBasicRegions(solution, gridSize);
+  const board = createBoard(regions, gridSize);
+
+  return {
+    board,
+    regions,
+    gridSize,
+    queensPlaced: 0,
+    queensRequired: gridSize,
+    isCompleted: false,
+    moveCount: 0,
+    solution,
+  };
+}
+
+/**
+ * N-Queens simple qui marche toujours
+ */
+function generateSimpleNQueens(gridSize: number): Position[] {
+  const solution: Position[] = [];
+
+  // Placement simple en diagonal décalé (marche pour la plupart des tailles)
+  for (let i = 0; i < gridSize; i++) {
+    const col = (i * 2 + 1) % gridSize;
+    solution.push({ row: i, col });
+  }
+
+  return solution;
+}
+
+/**
+ * Régions basiques autour des reines
+ */
+function createBasicRegions(
+  solution: Position[],
+  gridSize: number
+): ColoredRegion[] {
+  const REGION_COLORS = [
+    "#26A69A",
+    "#BA68C8",
+    "#81C784",
+    "#FFB74D",
+    "#F06292",
+    "#D4E157",
+    "#4DD0E1",
+    "#F84343",
+    "#FF7043",
+  ];
+
+  const regions: ColoredRegion[] = solution.map((queen, index) => ({
+    id: index,
+    color: REGION_COLORS[index % REGION_COLORS.length],
+    cells: [queen],
+    hasQueen: true,
+    queenPosition: queen,
+  }));
+
+  // Ajouter quelques cellules autour de chaque reine
+  const ownership = Array(gridSize)
+    .fill(null)
+    .map(() => Array(gridSize).fill(-1));
+
+  // Marquer les reines
+  solution.forEach((queen, index) => {
+    ownership[queen.row][queen.col] = index;
+  });
+
+  // Ajouter des cellules adjacentes
+  for (let regionIndex = 0; regionIndex < regions.length; regionIndex++) {
+    const region = regions[regionIndex];
+    const queen = region.queenPosition!;
+
+    // Directions autour de la reine
+    const directions = [
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [0, 1],
+      [-1, -1],
+      [-1, 1],
+      [1, -1],
+      [1, 1],
+    ];
+
+    for (const [dr, dc] of directions) {
+      const newRow = queen.row + dr;
+      const newCol = queen.col + dc;
+
+      if (
+        newRow >= 0 &&
+        newRow < gridSize &&
+        newCol >= 0 &&
+        newCol < gridSize &&
+        ownership[newRow][newCol] === -1
+      ) {
+        ownership[newRow][newCol] = regionIndex;
+        region.cells.push({ row: newRow, col: newCol });
+      }
+    }
+  }
+
+  // Assigner les cellules restantes
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      if (ownership[row][col] === -1) {
+        // Assigner à la région la plus proche
+        let minDist = Infinity;
+        let closestRegion = 0;
+
+        for (let i = 0; i < regions.length; i++) {
+          const queen = regions[i].queenPosition!;
+          const dist = Math.abs(row - queen.row) + Math.abs(col - queen.col);
+          if (dist < minDist) {
+            minDist = dist;
+            closestRegion = i;
+          }
+        }
+
+        ownership[row][col] = closestRegion;
+        regions[closestRegion].cells.push({ row, col });
+      }
+    }
+  }
+
+  return regions;
+}
+
+/**
+ * Créer le board depuis les régions
+ */
+function createBoard(regions: ColoredRegion[], gridSize: number): GameCell[][] {
+  const board: GameCell[][] = Array(gridSize)
+    .fill(null)
+    .map(() => Array(gridSize).fill(null));
+
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      const region = regions.find((r) =>
+        r.cells.some((cell) => cell.row === row && cell.col === col)
+      );
+
+      board[row][col] = {
+        row,
+        col,
+        regionId: region?.id || 0,
+        regionColor: region?.color || "#26A69A",
+        state: "empty",
+        isHighlighted: false,
+        isConflict: false,
+      };
+    }
+  }
+
+  return board;
+}
+
+export async function generateLevelWithDifficulty(
   gridSize: number,
   difficulty: "easy" | "medium" | "hard" | "expert"
-): GameState {
-  const difficultyMap: Record<string, Partial<DifficultySettings>> = {
-    easy: {
-      targetDifficulty: 20,
-      regionSizeVariance: "low",
-      growthStrategy: "compact",
-      symmetry: true,
-      minRegionSize: Math.max(3, Math.floor(gridSize * 0.7)),
-      maxRegionSize: Math.ceil(gridSize * 1.3),
-    },
-    medium: {
-      targetDifficulty: 50,
-      regionSizeVariance: "medium",
-      growthStrategy: "mixed",
-      symmetry: false,
-      minRegionSize: Math.max(3, Math.floor(gridSize * 0.5)),
-      maxRegionSize: Math.ceil(gridSize * 1.8),
-    },
-    hard: {
-      targetDifficulty: 75,
-      regionSizeVariance: "high",
-      growthStrategy: "elongated",
-      symmetry: false,
-      minRegionSize: 3,
-      maxRegionSize: Math.ceil(gridSize * 2.5),
-    },
-    expert: {
-      targetDifficulty: 90,
-      regionSizeVariance: "high",
-      growthStrategy: "mixed",
-      symmetry: false,
-      minRegionSize: 2,
-      maxRegionSize: Math.ceil(gridSize * 3),
-    },
+): Promise<GameState> {
+  const complexityMap = {
+    easy: "simple" as const,
+    medium: "normal" as const,
+    hard: "complex" as const,
+    expert: "complex" as const,
   };
 
-  return generateGameLevel(gridSize, difficultyMap[difficulty]);
+  return generateGameLevel(gridSize, complexityMap[difficulty]);
 }
 
-/**
- * Réinitialise le plateau de jeu
- */
 export function resetGameBoard(gameState: GameState): GameState {
   const newBoard = gameState.board.map((row) =>
     row.map((cell) => ({

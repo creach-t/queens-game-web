@@ -10,7 +10,20 @@ interface CellClickInfo {
 }
 
 export function useGameLogic(initialGridSize: number = 6) {
-  const [gameState, setGameState] = useState<GameState>(() => generateGameLevel(initialGridSize));
+  const [gameState, setGameState] = useState<GameState>(() => ({
+    board: [],
+    regions: [],
+    gridSize: initialGridSize,
+    queensPlaced: 0,
+    queensRequired: initialGridSize,
+    isCompleted: false,
+    moveCount: 0
+  }));
+
+  useEffect(() => {
+    generateGameLevel(initialGridSize).then(setGameState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialGridSize]);
 
   // Map pour tracker les clics par cellule individuelle
   const cellClicksRef = useRef<Map<string, CellClickInfo>>(new Map());
@@ -141,7 +154,7 @@ export function useGameLogic(initialGridSize: number = 6) {
   }, []);
 
   // Nouveau jeu avec la même taille ou une nouvelle taille
-  const newGame = useCallback((gridSize?: number) => {
+  const newGame = useCallback(async (gridSize?: number) => {
     // Nettoyer tous les timeouts actifs
     cellClicksRef.current.forEach(clickInfo => {
       if (clickInfo.timeout) {
@@ -151,7 +164,7 @@ export function useGameLogic(initialGridSize: number = 6) {
     cellClicksRef.current.clear();
 
     const size = gridSize || gameState.gridSize;
-    setGameState(generateGameLevel(size));
+    setGameState(await generateGameLevel(size));
   }, [gameState.gridSize]);
 
   // Vérifier la validité d'un placement

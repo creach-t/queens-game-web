@@ -21,10 +21,10 @@ export const Game: React.FC = () => {
       <div className="game-container">
         {/* Plateau de jeu */}
         <div className="game-board-section">
-          <GameBoard
-            gameState={gameState}
-            onCellClick={handleCellClick}
-          />
+            <GameBoard
+              gameState={gameState}
+              onCellClick={handleCellClick}
+            />
         </div>
 
         {/* Contrôles et statistiques */}
