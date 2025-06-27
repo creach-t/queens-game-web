@@ -1,11 +1,16 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import svgr from "vite-plugin-svgr";
-import tailwindcssPostcss from '@tailwindcss/postcss';
-import autoprefixer from 'autoprefixer';
+import tailwindcss from '@tailwindcss/vite';
+import path from "path";
 
 export default defineConfig({
-  plugins: [react(), svgr()],
+  plugins: [react(), svgr(), tailwindcss()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
   server: {
     port: 3000,
     open: true,
@@ -13,13 +18,5 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: true,
-  },
-  css: {
-    postcss: {
-      plugins: [
-        tailwindcssPostcss,
-        autoprefixer,
-      ],
-    },
   },
 });
