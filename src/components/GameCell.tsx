@@ -1,58 +1,55 @@
 import React from 'react';
+import { Crown, X } from 'lucide-react';
 import { GameCell as GameCellType } from '../types/game';
-import './GameCell.css';
 
 interface GameCellProps {
   cell: GameCellType;
   size: number;
   onClick: () => void;
+  showVictoryAnimation?: boolean;
+  isLoading?: boolean;
 }
 
-export const GameCell: React.FC<GameCellProps> = ({ cell, size, onClick }) => {
+export const GameCell: React.FC<GameCellProps> = ({
+  cell,
+  size,
+  onClick,
+  showVictoryAnimation = false,
+  isLoading = false
+}) => {
   const getCellContent = () => {
-    const isConflict = cell.isConflict;
-    const iconSize = Math.max(16, size * 0.6);
+    const iconSize = Math.max(20, size * 0.5);
+
+    // Couleur spéciale pour l'animation de victoire
+    const getIconColor = () => {
+      if (showVictoryAnimation && cell.state === 'queen') {
+        return 'text-yellow-400 animate-pulse-subtle';
+      }
+      if (cell.isConflict) {
+        return 'text-red-500';
+      }
+      return 'text-slate-800';
+    };
 
     switch (cell.state) {
       case 'queen':
         return (
-          <svg
-            width={iconSize}
-            height={iconSize}
-            viewBox="0 0 16 16"
-            className="game-cell-icon"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            {/* Tête de la couronne */}
-            <path
-              d="M8 4C9.10457 4 10 3.10457 10 2C10 0.895431 9.10457 0 8 0C6.89543 0 6 0.895431 6 2C6 3.10457 6.89543 4 8 4Z"
-              fill={isConflict ? '#e74c3c' : '#000000'}
-            />
-            {/* Corps de la couronne */}
-            <path
-              d="M1 9V7L3 5L5.5 7L8 5L10.5 7L13 5L15 7V9L12.75 12.75L14 14V16H2V14L3.25 12.75L1 9Z"
-              fill={isConflict ? '#e74c3c' : '#000000'}
-            />
-          </svg>
+          <Crown
+            size={iconSize}
+            className={`transition-all duration-300 ${getIconColor()}`}
+            fill="currentColor"
+          />
         );
 
       case 'marker':
         return (
-          <svg
-            width={iconSize}
-            height={iconSize}
-            viewBox="0 0 24 24"
-            className="game-cell-icon"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M16 8L8 16M8.00001 8L16 16"
-              stroke={isConflict ? '#e74c3c' : '#000000'}
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <X
+            size={iconSize-9}
+            className={`transition-all duration-200 ${
+              cell.isConflict ? 'text-red-500' : 'text-slate-700'
+            }`}
+            strokeWidth={2}
+          />
         );
 
       default:
@@ -61,35 +58,28 @@ export const GameCell: React.FC<GameCellProps> = ({ cell, size, onClick }) => {
   };
 
   const getCellClasses = () => {
-    let classes = 'game-cell';
+    let classes = `
+      w-full h-full flex items-center justify-center
+      cursor-pointer transition-all duration-300
+      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset
+      relative overflow-hidden
+    `;
 
-    // Conflit direct sur la reine
-    if (cell.isConflict) {
-      classes += ' game-cell--conflict';
+    // Animation de chargement
+    if (isLoading) {
+      classes += ' animate-pulse';
+    } else {
+      classes += ' hover:scale-105 hover:shadow-lg active:scale-95';
     }
 
-    // Types de hachures selon la règle violée
-    if (cell.isInConflictLine) {
-      classes += ' game-cell--conflict-line';
+    // Animation de victoire
+    if (showVictoryAnimation && cell.state === 'queen') {
+      classes += ' animate-bounce shadow-lg shadow-yellow-400/50 ring-2 ring-yellow-400';
     }
 
-    if (cell.isInConflictColumn) {
-      classes += ' game-cell--conflict-column';
-    }
-
-    if (cell.isInConflictRegion) {
-      classes += ' game-cell--conflict-region';
-    }
-
-    if (cell.isAroundConflictQueen) {
-      classes += ' game-cell--around-conflict-queen';
-    }
-
-    // États normaux
-    if (cell.state === 'queen') {
-      classes += ' game-cell--queen';
-    } else if (cell.state === 'marker') {
-      classes += ' game-cell--marker';
+    // Conflits
+    if (cell.isConflict && !showVictoryAnimation) {
+      classes += ' bg-red-50 ring-2 ring-red-200';
     }
 
     return classes;
@@ -102,6 +92,13 @@ export const GameCell: React.FC<GameCellProps> = ({ cell, size, onClick }) => {
     }
   };
 
+  const getCellBackgroundColor = () => {
+    if (showVictoryAnimation && cell.state === 'queen') {
+      return '#fef3c7'; // Jaune clair pour l'animation de victoire
+    }
+    return cell.regionColor;
+  };
+
   return (
     <div
       className={getCellClasses()}
@@ -110,7 +107,7 @@ export const GameCell: React.FC<GameCellProps> = ({ cell, size, onClick }) => {
       tabIndex={0}
       onKeyDown={handleKeyDown}
       style={{
-        backgroundColor: cell.regionColor,
+        backgroundColor: getCellBackgroundColor(),
         width: size,
         height: size,
         minWidth: size,
@@ -118,9 +115,53 @@ export const GameCell: React.FC<GameCellProps> = ({ cell, size, onClick }) => {
       }}
       title={`Cellule ${cell.row + 1}-${cell.col + 1} (Région ${cell.regionId})`}
     >
-      <div className="game-cell__content">
-        {getCellContent()}
-      </div>
+      {/* Animation de chargement - effet de shimmer */}
+      {isLoading && (
+        <div
+          className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent"
+          style={{
+            animation: 'shimmer 2s infinite'
+          }}
+        />
+      )}
+
+      {getCellContent()}
+
+      {/* Overlay pour les hachures de conflit - SEULEMENT s'il y a des conflits réels */}
+      {(cell.isInConflictLine || cell.isInConflictColumn ||
+        cell.isInConflictRegion || cell.isAroundConflictQueen) &&
+        !showVictoryAnimation && (
+        <div
+          className="absolute inset-0 pointer-events-none opacity-60"
+          style={{
+            backgroundImage: `repeating-linear-gradient(
+              45deg,
+              transparent,
+              transparent 4px,
+              rgba(239, 68, 68, 0.3) 4px,
+              rgba(239, 68, 68, 0.3) 8px
+            )`
+          }}
+        />
+      )}
+
+      {/* Effet de particules pour l'animation de victoire */}
+      {showVictoryAnimation && cell.state === 'queen' && (
+        <div className="absolute inset-0 pointer-events-none">
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-1 h-1 bg-yellow-400 rounded-full animate-ping"
+              style={{
+                top: `${20 + Math.random() * 60}%`,
+                left: `${20 + Math.random() * 60}%`,
+                animationDelay: `${i * 200}ms`,
+                animationDuration: '1s'
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

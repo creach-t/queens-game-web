@@ -1,80 +1,36 @@
-import { Code, ExternalLink, Github, Home, Linkedin } from 'lucide-react';
-import './App.css';
 import { Game } from './components/Game';
+import { Crown } from 'lucide-react';
 
 function App() {
   return (
-    <div className="App">
-      {/* Header épuré */}
-      <header className="app-header-">
-        <div className="header-container">
-          <div className="header-content">
-            <div className="title-block">
-              <h1 className="app-title-">Queens Game</h1>
-              <p className="app-subtitle-">
-                Clone du jeu original, avec des niveaux générés aléatoirement
-              </p>
-            </div>
-            <div className="header-links">
-              <a
-                href="https://github.com/creach-t"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="header-link github-link"
-                aria-label="Voir mon profil GitHub"
-              >
-                <Github size={18} />
-                <span>Mon GitHub</span>
-              </a>
-              <a
-                href="https://creachtheo.fr"
-                className="header-link return-button"
-                aria-label="Retourner au site principal"
-              >
-                <Home size={18} />
-                <span>Retour à creachtheo.fr</span>
-              </a>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900">
+      {/* Header */}
+      <header className="text-center py-4 px-4">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3 flex items-center justify-center gap-4">
+            <Crown className="w-12 h-12 text-yellow-400" />
+            Queens Game
+          </h1>
+          <p className="text-lg md:text-xl text-slate-300 font-light">
+            Version web responsive du célèbre puzzle Queens de LinkedIn
+          </p>
         </div>
       </header>
 
-      {/* Contenu principal */}
-      <main className="app-main-">
+      {/* Main game */}
+      <main className="pb-8">
         <Game />
       </main>
 
-      {/* Footer discret */}
-      <footer className="app-footer-">
-        <div className="footer-container">
-          <p className="footer-text">
-            Développé avec React • TypeScript • CSS Grid
+      {/* Footer */}
+      <footer className="text-center py-6 px-4 bg-black/10">
+        <div className="max-w-4xl mx-auto">
+          <p className="text-slate-300 mb-1">
+            Développé pour la communauté • Inspiré du Queens Game de LinkedIn
           </p>
-          <div className="footer-links">
-            <a
-              href="https://www.linkedin.com/games/queens"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="footer-link linkedin-link"
-              aria-label="Jouer au jeu original sur LinkedIn"
-            >
-              <Linkedin size={16} />
-              <span>Jeu original sur LinkedIn</span>
-              <ExternalLink size={14} className="external-icon" />
-            </a>
-            <span className="footer-separator">•</span>
-            <a
-              href="https://github.com/creach-t/queens-game-web"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="footer-link github-link"
-              aria-label="Voir le code source sur GitHub"
-            >
-              <Code size={16} />
-              <span>Code source</span>
-              <ExternalLink size={14} className="external-icon" />
-            </a>
-          </div>
+          <p className="text-sm text-slate-400">
+            React • TypeScript • Tailwind CSS
+          </p>
         </div>
       </footer>
     </div>
