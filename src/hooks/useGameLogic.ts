@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { GameState } from '../types/game';
-import { validateQueenPlacement, isPuzzleCompleted, updateConflicts } from '../utils/gameValidation';
+import { GameState, GameCell, ColoredRegion } from '../types/game';
+import { validateQueenPlacement, updateConflicts } from '../utils/gameValidation';
 import { generateGameLevel, resetGameBoard } from '../utils/levelGenerator';
 
 // Interface pour tracker les clics par cellule
@@ -20,16 +20,117 @@ export function useGameLogic(initialGridSize: number = 6) {
     moveCount: 0
   }));
 
+  const [timerStarted, setTimerStarted] = useState(true);
+  const [gameTime, setGameTime] = useState(0);
+  const [showVictoryAnimation, setShowVictoryAnimation] = useState(false);
+  const [isGameBlocked, setIsGameBlocked] = useState(false);
+
+  // Initialisation du niveau
   useEffect(() => {
-    generateGameLevel(initialGridSize).then(setGameState);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const initLevel = async () => {
+      try {
+        const newLevel = await generateGameLevel(initialGridSize);
+        setGameState(newLevel);
+      } catch (error) {
+        console.error('Erreur génération niveau:', error);
+        // Générer niveau de base en cas d'erreur
+        setGameState({
+          board: [],
+          regions: [],
+          gridSize: initialGridSize,
+          queensPlaced: 0,
+          queensRequired: initialGridSize,
+          isCompleted: false,
+          moveCount: 0
+        });
+      }
+    };
+
+    initLevel();
   }, [initialGridSize]);
 
   // Map pour tracker les clics par cellule individuelle
   const cellClicksRef = useRef<Map<string, CellClickInfo>>(new Map());
 
+  // Timer automatique
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (timerStarted && !gameState.isCompleted && !showVictoryAnimation && gameState.board.length > 0) {
+      interval = setInterval(() => {
+        setGameTime(prevTime => prevTime + 1);
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [timerStarted, gameState.isCompleted, showVictoryAnimation, gameState.board.length]);
+
+  // Animation de victoire et blocage du jeu
+  useEffect(() => {
+    if (gameState.isCompleted && !showVictoryAnimation) {
+      setIsGameBlocked(true);
+      setShowVictoryAnimation(true);
+
+      // Animation des reines en jaune pendant 1.5 secondes
+      setTimeout(() => {
+        setShowVictoryAnimation(false);
+      }, 1500);
+    }
+  }, [gameState.isCompleted, showVictoryAnimation]);
+
+  // Validation corrigée - vérifier si le puzzle est résolu
+  const checkPuzzleCompletion = useCallback((board: GameCell[][], regions: ColoredRegion[]) => {
+    const gridSize = board.length;
+
+    // Compter les reines placées
+    const queensCount = board.flat().filter(cell => cell.state === 'queen').length;
+
+    // Il faut exactement gridSize reines
+    if (queensCount !== gridSize) {
+      return false;
+    }
+
+    // Vérifier qu'il y a exactement une reine par ligne
+    for (let row = 0; row < gridSize; row++) {
+      const queensInRow = board[row].filter(cell => cell.state === 'queen').length;
+      if (queensInRow !== 1) return false;
+    }
+
+    // Vérifier qu'il y a exactement une reine par colonne
+    for (let col = 0; col < gridSize; col++) {
+      const queensInCol = board.map(row => row[col]).filter(cell => cell.state === 'queen').length;
+      if (queensInCol !== 1) return false;
+    }
+
+    // Vérifier qu'il y a exactement une reine par région
+    for (const region of regions) {
+      if (!region.hasQueen) return false;
+    }
+
+    // Vérifier qu'aucune reine ne se touche
+    const queens = board.flat().filter(cell => cell.state === 'queen');
+    for (let i = 0; i < queens.length; i++) {
+      for (let j = i + 1; j < queens.length; j++) {
+        const rowDiff = Math.abs(queens[i].row - queens[j].row);
+        const colDiff = Math.abs(queens[i].col - queens[j].col);
+        if (rowDiff <= 1 && colDiff <= 1) {
+          return false; // Les reines se touchent
+        }
+      }
+    }
+
+    return true;
+  }, []);
+
   // Gérer le clic sur une cellule avec logique corrigée
   const handleCellClick = useCallback((row: number, col: number) => {
+    // Bloquer les clics si le jeu est terminé ou en animation
+    if (isGameBlocked || showVictoryAnimation || gameState.board.length === 0) {
+      return;
+    }
+
     const now = Date.now();
     const cellKey = `${row}-${col}`;
     const cellClickInfo = cellClicksRef.current.get(cellKey);
@@ -57,13 +158,21 @@ export function useGameLogic(initialGridSize: number = 6) {
         timeout: timeout
       });
     }
-  }, []);
+  }, [isGameBlocked, showVictoryAnimation, gameState.board.length]);
 
   // Gérer le simple clic (marqueur)
   const handleSingleClick = useCallback((row: number, col: number) => {
     setGameState(prevState => {
       const newBoard = prevState.board.map(boardRow =>
-        boardRow.map(cell => ({ ...cell }))
+        boardRow.map(cell => ({
+          ...cell,
+          // Réinitialiser tous les conflits visuels
+          isConflict: false,
+          isInConflictLine: false,
+          isInConflictColumn: false,
+          isInConflictRegion: false,
+          isAroundConflictQueen: false
+        }))
       );
       const cell = newBoard[row][col];
 
@@ -75,9 +184,12 @@ export function useGameLogic(initialGridSize: number = 6) {
       }
       // Ne pas modifier si c'est une reine (réservé au double-click)
 
+      // Recalculer les conflits
+      const boardWithConflicts = updateConflicts(newBoard, prevState.regions);
+
       return {
         ...prevState,
-        board: newBoard,
+        board: boardWithConflicts,
         moveCount: prevState.moveCount + 1
       };
     });
@@ -87,7 +199,15 @@ export function useGameLogic(initialGridSize: number = 6) {
   const handleDoubleClick = useCallback((row: number, col: number) => {
     setGameState(prevState => {
       const newBoard = prevState.board.map(boardRow =>
-        boardRow.map(cell => ({ ...cell }))
+        boardRow.map(cell => ({
+          ...cell,
+          // Réinitialiser tous les conflits visuels
+          isConflict: false,
+          isInConflictLine: false,
+          isInConflictColumn: false,
+          isInConflictRegion: false,
+          isAroundConflictQueen: false
+        }))
       );
       const newRegions = prevState.regions.map(region => ({ ...region }));
       const cell = newBoard[row][col];
@@ -126,8 +246,8 @@ export function useGameLogic(initialGridSize: number = 6) {
       // Mettre à jour les conflits
       const boardWithConflicts = updateConflicts(newBoard, newRegions);
 
-      // Vérifier si le puzzle est complété
-      const isCompleted = isPuzzleCompleted(boardWithConflicts, newRegions);
+      // Vérifier si le puzzle est complété avec la nouvelle validation
+      const isCompleted = checkPuzzleCompletion(boardWithConflicts, newRegions);
 
       return {
         ...prevState,
@@ -138,9 +258,9 @@ export function useGameLogic(initialGridSize: number = 6) {
         moveCount: prevState.moveCount + 1
       };
     });
-  }, []);
+  }, [checkPuzzleCompletion]);
 
-  // Réinitialiser le jeu avec nettoyage des timeouts
+  // Réinitialiser le jeu avec nettoyage des timeouts (le timer continue)
   const resetGame = useCallback(() => {
     // Nettoyer tous les timeouts actifs
     cellClicksRef.current.forEach(clickInfo => {
@@ -150,10 +270,31 @@ export function useGameLogic(initialGridSize: number = 6) {
     });
     cellClicksRef.current.clear();
 
-    setGameState(prevState => resetGameBoard(prevState));
+    setGameState(prevState => {
+      const resetState = resetGameBoard(prevState);
+      // Nettoyer tous les conflits visuels
+      const cleanBoard = resetState.board.map(row =>
+        row.map(cell => ({
+          ...cell,
+          isConflict: false,
+          isInConflictLine: false,
+          isInConflictColumn: false,
+          isInConflictRegion: false,
+          isAroundConflictQueen: false
+        }))
+      );
+      return {
+        ...resetState,
+        board: cleanBoard
+      };
+    });
+
+    setIsGameBlocked(false);
+    setShowVictoryAnimation(false);
+    // Le timer continue (pas de reset)
   }, []);
 
-  // Nouveau jeu avec la même taille ou une nouvelle taille
+  // Nouveau jeu avec la même taille ou une nouvelle taille (reset complet)
   const newGame = useCallback(async (gridSize?: number) => {
     // Nettoyer tous les timeouts actifs
     cellClicksRef.current.forEach(clickInfo => {
@@ -164,11 +305,24 @@ export function useGameLogic(initialGridSize: number = 6) {
     cellClicksRef.current.clear();
 
     const size = gridSize || gameState.gridSize;
-    setGameState(await generateGameLevel(size));
+
+    try {
+      const newLevel = await generateGameLevel(size);
+      setGameState(newLevel);
+    } catch (error) {
+      console.error('Erreur génération nouveau niveau:', error);
+    }
+
+    // Reset complet du timer pour nouveau jeu
+    setGameTime(0);
+    setTimerStarted(true);
+    setIsGameBlocked(false);
+    setShowVictoryAnimation(false);
   }, [gameState.gridSize]);
 
   // Vérifier la validité d'un placement
   const checkValidPlacement = useCallback((row: number, col: number): boolean => {
+    if (gameState.board.length === 0) return false;
     const validation = validateQueenPlacement(gameState.board, gameState.regions, row, col);
     return validation.isValid;
   }, [gameState.board, gameState.regions]);
@@ -177,6 +331,8 @@ export function useGameLogic(initialGridSize: number = 6) {
   const getConflictingCells = useCallback((row: number, col: number): {row: number, col: number}[] => {
     const conflicts: {row: number, col: number}[] = [];
     const gridSize = gameState.gridSize;
+
+    if (gameState.board.length === 0) return conflicts;
 
     // Conflits dans la même rangée
     for (let c = 0; c < gridSize; c++) {
@@ -213,6 +369,9 @@ export function useGameLogic(initialGridSize: number = 6) {
     resetGame,
     newGame,
     checkValidPlacement,
-    getConflictingCells
+    getConflictingCells,
+    gameTime,
+    showVictoryAnimation,
+    isGameBlocked
   };
 }
