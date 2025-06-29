@@ -203,7 +203,7 @@ export function updateConflicts(
 }
 
 /**
- * ✅ Vérifie si le puzzle est complètement résolu avec logging détaillé
+ * ✅ CORRECTIF: Vérifie si le puzzle est complètement résolu en se basant sur le plateau réel
  */
 export function isPuzzleCompleted(
   board: GameCell[][],
@@ -212,7 +212,7 @@ export function isPuzzleCompleted(
   const gridSize = board.length;
   let isValid = true;
 
-  // Collecter toutes les reines
+  // Collecter toutes les reines du plateau (source de vérité unique)
   const queens: {row: number, col: number}[] = [];
   for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++) {
@@ -223,7 +223,7 @@ export function isPuzzleCompleted(
   }
 
   //console.log(`🔍 Validating puzzle completion with ${queens.length} queens:`);
- // console.log(`   Queens positions: ${queens.map(q => `${q.row+1}${String.fromCharCode(65+q.col)}`).join(', ')}`);
+  //console.log(`   Queens positions: ${queens.map(q => `${q.row+1}${String.fromCharCode(65+q.col)}`).join(', ')}`);
 
   // Règle 1: Il doit y avoir exactement une reine par rangée
   for (let row = 0; row < gridSize; row++) {
@@ -243,10 +243,14 @@ export function isPuzzleCompleted(
     }
   }
 
-  // Règle 3: Il doit y avoir exactement une reine par région colorée
+  // ✅ CORRECTIF: Règle 3 basée sur le plateau réel, pas sur region.hasQueen
   for (const region of regions) {
-    if (!region.hasQueen) {
-      console.log(`❌ Region ${region.id+1} (color ${region.color}) has no queen`);
+    const queensInRegion = region.cells.filter(cell =>
+      board[cell.row][cell.col].state === 'queen'
+    ).length;
+
+    if (queensInRegion !== 1) {
+      //console.log(`❌ Region ${region.id+1} (color ${region.color}) has ${queensInRegion} queens (should be 1)`);
       isValid = false;
     }
   }
@@ -271,7 +275,7 @@ export function isPuzzleCompleted(
     console.log(`✅ Puzzle completed! All ${queens.length} queens placed correctly`);
     console.log(`🎉 BRAVO! Solution: ${queens.map(q => `${q.row+1}${String.fromCharCode(65+q.col)}`).join(', ')}`);
   } else {
-    console.log(`❌ Puzzle not yet completed - validation failed`);
+    //console.log(`❌ Puzzle not yet completed - validation failed`);
   }
 
   return isValid;

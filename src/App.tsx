@@ -1,38 +1,35 @@
 import { Game } from './components/Game';
+import { Toaster } from './components/ui/toaster';
 import { Crown } from 'lucide-react';
 
 function App() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900">
-      {/* Header */}
-      <header className="text-center py-4 px-4">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3 flex items-center justify-center gap-4">
-            <Crown className="w-12 h-12 text-yellow-400" />
-            Queens Game
-          </h1>
-          <p className="text-lg md:text-xl text-slate-300 font-light">
-            Version web responsive et générative du célèbre puzzle Queens de LinkedIn
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <header className="border-b bg-white/80 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex items-center justify-center gap-3">
+            <Crown className="h-8 w-8 text-slate-700" />
+            <div className="text-center">
+              <h1 className="text-2xl font-semibold text-slate-900">
+                Queens Game
+              </h1>
+              <p className="text-sm text-slate-600">
+                Place queens without conflicts
+              </p>
+            </div>
+          </div>
         </div>
       </header>
 
-      {/* Main game */}
-      <main className="pb-8">
+      <main className="container mx-auto px-4 py-8">
         <Game />
       </main>
 
-      {/* Footer */}
-      <footer className="text-center py-6 px-4 bg-black/10">
-        <div className="max-w-4xl mx-auto">
-          <p className="text-slate-300 mb-1">
-            Développé pour la communauté • Inspiré du Queens Game de LinkedIn
-          </p>
-          <p className="text-sm text-slate-400">
-            React • TypeScript • Tailwind CSS
-          </p>
-        </div>
+      <footer className="border-t bg-white/50 py-4 text-center text-xs text-slate-500">
+        <p>Built with React & TypeScript</p>
       </footer>
+
+      <Toaster />
     </div>
   );
 }

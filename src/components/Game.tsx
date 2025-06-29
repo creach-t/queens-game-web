@@ -1,16 +1,18 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { GameBoard } from './GameBoard';
 import { GameControls } from './GameControls';
 import { useGameLogic } from '../hooks/useGameLogic';
 import { generateGameLevel, GenerationProgress } from '../utils/levelGenerator';
-import { Crown, AlertCircle } from 'lucide-react';
+import { Crown } from 'lucide-react';
+import { Timer } from './Timer';
 
 export const Game: React.FC = () => {
   const {
     gameState,
     handleCellClick,
     resetGame,
-    newGame: originalNewGame
+    newGame: originalNewGame,
+    gameTime
   } = useGameLogic(6);
 
   // États de génération
@@ -50,7 +52,7 @@ export const Game: React.FC = () => {
 
     try {
       // Génération en arrière-plan pendant que l'animation tourne
-      const newGameState = await generateGameLevel(
+      await generateGameLevel(
         gridSize || gameState.gridSize,
         'normal',
         (progress) => {
@@ -103,6 +105,8 @@ export const Game: React.FC = () => {
     <>
       <div className="game">
         <div className="game-container">
+          {/* Timer */}
+          <Timer gameTime={gameTime} isCompleted={gameState.isCompleted}/>
           {/* Plateau - animation TOUJOURS active */}
           <div className="game-board-section">
             <GameBoard
@@ -113,32 +117,13 @@ export const Game: React.FC = () => {
               key={boardAnimationKey} // Relance l'animation à chaque changement
             />
 
-            {/* Indicateur de génération sous le plateau */}
-            {isGenerating && (
-              <div className="mt-4 flex justify-center">
-                <div className="bg-blue-100 border border-blue-200 rounded-lg px-4 py-2 flex items-center gap-2">
-                  <Crown className="w-4 h-4 text-blue-600 animate-bounce" />
-                  <span className="text-sm text-blue-800">
-                    {pendingGridSize ?
-                      `Génération optimisée ${pendingGridSize}×${pendingGridSize}...` :
-                      'Amélioration du niveau...'
-                    }
-                  </span>
-                  {generationProgress && (
-                    <span className="text-xs text-blue-600 ml-2">
-                      {generationProgress.percentage.toFixed(0)}%
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Contrôles */}
           <div className="game-controls-section">
             <GameControls
               gameState={gameState}
-              gameTime={0}
+              gameTime={gameTime}
               onResetGame={handleResetGame}
               onNewGame={handleNewGame}
               onGridSizeChange={handleGridSizeChange} // Animation immédiate

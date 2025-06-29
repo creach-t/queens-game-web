@@ -18,8 +18,12 @@ const REGION_COLORS = [
   "#F06292",
   "#D4E157",
   "#4DD0E1",
-  "#F84343",
-  "#FF7043",
+  "#fa6464",
+  "#b0a997",
+  "#615f87",
+  "#995d36",
+  "#02f760"
+
 ];
 
 class ProceduralLevelGenerator {
@@ -114,6 +118,9 @@ class ProceduralLevelGenerator {
       isCompleted: false,
       moveCount: 0,
       solution: this.solution ?? undefined,
+      startTime: 0,
+      isTimerRunning: false,
+      elapsedTime: 0,
     };
   }
 
@@ -332,7 +339,7 @@ private selectCreativeGrowthCell(
       return this.selectClusterCell(candidates, regionCells);
 
     case "corner":
-      return this.selectCornerCell(candidates, queen);
+      return this.selectCornerCell(candidates);
 
     case "bridge":
       return this.selectBridgeCell(candidates, regionCells);
@@ -468,7 +475,7 @@ private selectClusterCell(candidates: Position[], regionCells: Position[]): Posi
   return candidates[0];
 }
 
-private selectCornerCell(candidates: Position[], queen: Position): Position {
+private selectCornerCell(candidates: Position[]): Position {
   // Créer des formes dans les coins de la grille
   candidates.sort((a, b) => {
     // Distance aux coins de la grille
@@ -533,7 +540,7 @@ private calculateConnectivity(pos: Position, regionCells: Position[]): number {
       // Vérifier si ce voisin appartient à un groupe déjà identifié
       let addedToExisting = false;
       for (const group of neighborGroups) {
-        if (this.isConnectedToGroup(existingCell, group, regionCells)) {
+        if (this.isConnectedToGroup(existingCell, group)) {
           group.push(existingCell);
           addedToExisting = true;
           break;
@@ -550,7 +557,7 @@ private calculateConnectivity(pos: Position, regionCells: Position[]): number {
   return neighborGroups.length;
 }
 
-private isConnectedToGroup(cell: Position, group: Position[], allCells: Position[]): boolean {
+private isConnectedToGroup(cell: Position, group: Position[]): boolean {
   // Vérification simplifiée de connectivité
   return group.some(groupCell => {
     const distance = Math.abs(cell.row - groupCell.row) + Math.abs(cell.col - groupCell.col);
@@ -590,42 +597,6 @@ private isConnectedToGroup(cell: Position, group: Position[], allCells: Position
 
       if (!grew) break;
     }
-  }
-
-  private selectCreativeGrowthCell(
-    candidates: Position[],
-    region: ColoredRegion,
-    strategy: string
-  ): Position | null {
-    if (candidates.length === 0) return null;
-
-    const queen = region.queenPosition!;
-    const regionCells = region.cells;
-
-    switch (strategy) {
-      case "cross":
-        return this.selectCrossCell(candidates, queen);
-
-      case "elongated":
-        return this.selectElongatedCell(candidates, regionCells);
-
-      case "compact":
-        candidates.sort((a, b) => {
-          const distA =
-            Math.abs(a.row - queen.row) + Math.abs(a.col - queen.col);
-          const distB =
-            Math.abs(b.row - queen.row) + Math.abs(b.col - queen.col);
-          return distA - distB;
-        });
-        break;
-
-      case "mixed":
-      default:
-        this.shuffleArray(candidates);
-        break;
-    }
-
-    return candidates[0];
   }
 
   private selectCrossCell(candidates: Position[], queen: Position): Position {
@@ -995,76 +966,6 @@ class OptimizedQueensSolver {
     return true;
   }
 }
-class QueensSolver {
-  private regions: ColoredRegion[];
-  private solutions: Position[][] = [];
-  private maxSolutions: number;
-  private bestFirstOrder: number[]; // Ordre optimisé des régions
-
-  constructor(regions: ColoredRegion[]) {
-    this.regions = regions;
-    this.maxSolutions = 2;
-    // Trier les régions par nombre de positions valides (contraintes d'abord)
-    this.bestFirstOrder = this.calculateBestOrder();
-  }
-
-  private calculateBestOrder(): number[] {
-    const regionConstraints = this.regions.map((region, index) => ({
-      index,
-      validPositions: region.cells.length, // Simplification pour le test
-    }));
-
-    // Trier par nombre croissant de positions (plus contraint d'abord)
-    regionConstraints.sort((a, b) => a.validPositions - b.validPositions);
-
-    return regionConstraints.map((r) => r.index);
-  }
-
-  findAllSolutions(maxSolutions: number = 2): Position[][] {
-    this.solutions = [];
-    this.maxSolutions = maxSolutions;
-    this.solve(0, []);
-    return this.solutions;
-  }
-
-  private solve(orderIndex: number, currentSolution: Position[]): void {
-    if (this.solutions.length >= this.maxSolutions) return;
-
-    if (orderIndex >= this.regions.length) {
-      this.solutions.push([...currentSolution]);
-      return;
-    }
-
-    const regionIndex = this.bestFirstOrder[orderIndex];
-    const region = this.regions[regionIndex];
-
-    for (const cell of region.cells) {
-      if (this.isValidPlacement(cell, currentSolution)) {
-        currentSolution.push(cell);
-        this.solve(orderIndex + 1, currentSolution);
-        currentSolution.pop();
-
-        // Early termination si on a déjà trouvé assez de solutions
-        if (this.solutions.length >= this.maxSolutions) return;
-      }
-    }
-  }
-
-  private isValidPlacement(
-    pos: Position,
-    currentSolution: Position[]
-  ): boolean {
-    for (const queen of currentSolution) {
-      if (queen.row === pos.row || queen.col === pos.col) return false;
-      if (
-        Math.abs(queen.row - pos.row) <= 1 &&
-        Math.abs(queen.col - pos.col) <= 1
-      )
-        return false;
-    }
-    return true;
-  }
-}
 
 // Interface avec callback de progression
 export interface GenerationProgress {
@@ -1158,6 +1059,8 @@ function generateBasicLevel(gridSize: number): GameState {
     isCompleted: false,
     moveCount: 0,
     solution,
+    elapsedTime: 0,
+    isTimerRunning: false,
   };
 }
 
