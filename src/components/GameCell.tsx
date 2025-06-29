@@ -1,5 +1,5 @@
-import React from 'react';
 import { Crown, X } from 'lucide-react';
+import React from 'react';
 import { GameCell as GameCellType } from '../types/game';
 
 interface GameCellProps {
@@ -23,10 +23,10 @@ export const GameCell: React.FC<GameCellProps> = ({
     // Couleur spéciale pour l'animation de victoire
     const getIconColor = () => {
       if (showVictoryAnimation && cell.state === 'queen') {
-        return 'text-yellow-400 animate-pulse-subtle';
+        return 'text-yellow-400 animate-pulse-subtle animate-bounce ';
       }
       if (cell.isConflict) {
-        return 'text-red-500';
+        return 'text-red-600';
       }
       return 'text-slate-800';
     };
@@ -44,10 +44,8 @@ export const GameCell: React.FC<GameCellProps> = ({
       case 'marker':
         return (
           <X
-            size={iconSize-9}
-            className={`transition-all duration-200 ${
-              cell.isConflict ? 'text-red-500' : 'text-slate-700'
-            }`}
+            size={iconSize-8}
+            className={`transition-all duration-200 text-slate-700`}
             strokeWidth={2}
           />
         );
@@ -65,16 +63,16 @@ export const GameCell: React.FC<GameCellProps> = ({
       relative overflow-hidden
     `;
 
+    // Animation de victoire
+    if (showVictoryAnimation && cell.state === 'queen') {
+      classes += ' shadow-lg shadow-yellow-400/50 ring-2 ring-yellow-400'; // ✅ Espace ajouté
+    }
+
     // Animation de chargement
     if (isLoading) {
       classes += ' animate-pulse';
     } else {
       classes += ' hover:scale-105 hover:shadow-lg active:scale-95';
-    }
-
-    // Animation de victoire
-    if (showVictoryAnimation && cell.state === 'queen') {
-      classes += ' animate-bounce shadow-lg shadow-yellow-400/50 ring-2 ring-yellow-400';
     }
 
     // Conflits
@@ -93,9 +91,6 @@ export const GameCell: React.FC<GameCellProps> = ({
   };
 
   const getCellBackgroundColor = () => {
-    if (showVictoryAnimation && cell.state === 'queen') {
-      return '#fef3c7'; // Jaune clair pour l'animation de victoire
-    }
     return cell.regionColor;
   };
 
@@ -137,9 +132,9 @@ export const GameCell: React.FC<GameCellProps> = ({
             backgroundImage: `repeating-linear-gradient(
               45deg,
               transparent,
-              transparent 4px,
-              rgba(239, 68, 68, 0.3) 4px,
-              rgba(239, 68, 68, 0.3) 8px
+              transparent 8px,
+              rgba(247,0,0,0.9) 8px,
+              rgba(247,0,0,0.4) 16px
             )`
           }}
         />

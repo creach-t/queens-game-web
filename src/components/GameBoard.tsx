@@ -7,16 +7,21 @@ interface GameBoardProps {
   onCellClick: (row: number, col: number) => void;
   showVictoryAnimation?: boolean;
   isGameBlocked?: boolean;
+  animationMode?: 'construction' | 'destruction' | 'none';
+  onAnimationComplete?: () => void;
 }
 
 export const GameBoard: React.FC<GameBoardProps> = ({
   gameState,
   onCellClick,
   showVictoryAnimation = false,
-  isGameBlocked = false
+  isGameBlocked = false,
+  animationMode = 'none',
+  onAnimationComplete
 }) => {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [loadedCells, setLoadedCells] = useState<Set<string>>(new Set());
+  const [isDestroying, setIsDestroying] = useState(false);
 
   const cellSize = useMemo(() => {
     // Calcul responsive de la taille des cellules
@@ -27,26 +32,25 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     return Math.floor(availableSize / (gameState.gridSize || 6)) - 2;
   }, [gameState.gridSize]);
 
-  // Animation de chargement des cellules
-  useEffect(() => {
-    // Vérifier que le board est valide avant de commencer l'animation
+  // Animation de construction (votre animation en spirale)
+  const startConstructionAnimation = () => {
     if (!gameState.board || gameState.board.length === 0) {
       setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
+    setIsDestroying(false);
     setLoadedCells(new Set());
 
     const totalCells = gameState.gridSize * gameState.gridSize;
     let loadedCount = 0;
 
-    // Charger les cellules progressivement avec un effet en spirale
     const loadCells = () => {
       const cells: { row: number; col: number; }[] = [];
       const { gridSize } = gameState;
 
-      // Créer un effet de spiral depuis le centre
+      // Spirale depuis le centre
       const centerRow = Math.floor(gridSize / 2);
       const centerCol = Math.floor(gridSize / 2);
 
@@ -69,14 +73,84 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           loadedCount++;
 
           if (loadedCount === totalCells) {
-            setTimeout(() => setIsLoading(false), 300);
+            setTimeout(() => {
+              setIsLoading(false);
+              if (onAnimationComplete) onAnimationComplete();
+            }, 300);
           }
         }, index * 50);
       });
     };
 
     setTimeout(loadCells, 200);
-  }, [gameState.gridSize, gameState.board.length]);
+  };
+
+  // Animation de destruction (spirale inverse)
+  const startDestructionAnimation = () => {
+    if (!gameState.board || gameState.board.length === 0) {
+      if (onAnimationComplete) onAnimationComplete();
+      return;
+    }
+
+    setIsDestroying(true);
+    const { gridSize } = gameState;
+    const centerRow = Math.floor(gridSize / 2);
+    const centerCol = Math.floor(gridSize / 2);
+
+    // Créer l'ordre de destruction (de l'extérieur vers le centre)
+    const destructionOrder: { row: number; col: number; }[] = [];
+
+    for (let radius = Math.max(centerRow, centerCol, gridSize - centerRow, gridSize - centerCol); radius >= 0; radius--) {
+      for (let row = Math.max(0, centerRow - radius); row <= Math.min(gridSize - 1, centerRow + radius); row++) {
+        for (let col = Math.max(0, centerCol - radius); col <= Math.min(gridSize - 1, centerCol + radius); col++) {
+          if ((row === centerRow - radius || row === centerRow + radius ||
+               col === centerCol - radius || col === centerCol + radius) &&
+               !destructionOrder.find(c => c.row === row && c.col === col)) {
+            destructionOrder.push({ row, col });
+          }
+        }
+      }
+    }
+
+    // Supprimer les cellules progressivement
+    destructionOrder.forEach((cell, index) => {
+      setTimeout(() => {
+        setLoadedCells(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(`${cell.row}-${cell.col}`);
+          return newSet;
+        });
+
+        // Animation terminée
+        if (index === destructionOrder.length - 1) {
+          setTimeout(() => {
+            setIsDestroying(false);
+            if (onAnimationComplete) onAnimationComplete();
+          }, 200);
+        }
+      }, index * 30); // Plus rapide que la construction
+    });
+  };
+
+  // Déclenchement des animations selon le mode
+  useEffect(() => {
+    if (animationMode === 'construction') {
+      startConstructionAnimation();
+    } else if (animationMode === 'destruction') {
+      startDestructionAnimation();
+    } else if (animationMode === 'none') {
+      // Afficher immédiatement toutes les cellules
+      setIsLoading(false);
+      setIsDestroying(false);
+      const allCells = new Set<string>();
+      for (let row = 0; row < gameState.gridSize; row++) {
+        for (let col = 0; col < gameState.gridSize; col++) {
+          allCells.add(`${row}-${col}`);
+        }
+      }
+      setLoadedCells(allCells);
+    }
+  }, [animationMode, gameState.gridSize, gameState.board.length]);
 
   const getCellBorderClasses = (row: number, col: number) => {
     if (!gameState.board || !gameState.board[row] || !gameState.board[row][col]) {
@@ -121,69 +195,83 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   };
 
   const handleCellClick = (row: number, col: number) => {
-    if (isLoading || isGameBlocked) return;
+    if (isLoading || isGameBlocked || isDestroying) return;
     onCellClick(row, col);
   };
 
-  // Protection: vérifier que le gameState est valide APRÈS tous les hooks
+  // Protection: vérifier que le gameState est valide
   if (!gameState.board || gameState.board.length === 0) {
     return (
-      <div className="bg-white p-6 rounded-2xl shadow-2xl border border-gray-200">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Chargement du plateau...</div>
+      <div className="flex justify-center items-center w-full">
+        <div className="bg-white p-6 rounded-2xl shadow-2xl border border-gray-200">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-gray-500">Chargement du plateau...</div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`bg-white p-6 rounded-2xl shadow-2xl border border-gray-200 transition-all duration-300 ${
-      isGameBlocked ? 'pointer-events-none' : ''
-    }`}>
-      <div
-        className="grid bg-gray-800 p-1 rounded-lg shadow-inner overflow-hidden relative"
-        style={{
-          gridTemplateColumns: `repeat(${gameState.gridSize}, ${cellSize}px)`,
-          gridTemplateRows: `repeat(${gameState.gridSize}, ${cellSize}px)`,
-          gap: '0px'
-        }}
-      >
-        {gameState.board.map((row, rowIndex) =>
-          row.map((cell, colIndex) => {
-            const cellKey = `${rowIndex}-${colIndex}`;
-            const isLoaded = loadedCells.has(cellKey);
+    <div className="flex justify-center items-center w-full"> {/* Centrage corrigé */}
+      <div className={`bg-white p-6 rounded-2xl shadow-2xl border border-gray-200 transition-all duration-300 ${
+        isGameBlocked ? 'pointer-events-none' : ''
+      }`}>
+        <div
+          className="grid bg-gray-800 p-1 rounded-lg shadow-inner overflow-hidden relative"
+          style={{
+            gridTemplateColumns: `repeat(${gameState.gridSize}, ${cellSize}px)`,
+            gridTemplateRows: `repeat(${gameState.gridSize}, ${cellSize}px)`,
+            gap: '0px'
+          }}
+        >
+          {gameState.board.map((row, rowIndex) =>
+            row.map((cell, colIndex) => {
+              const cellKey = `${rowIndex}-${colIndex}`;
+              const isLoaded = loadedCells.has(cellKey);
 
-            return (
-              <div
-                key={cellKey}
-                className={`
-                  relative overflow-hidden transition-all duration-500
-                  ${getCellBorderClasses(rowIndex, colIndex)}
-                  ${getCornerClasses(rowIndex, colIndex)}
-                  ${isLoaded ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}
-                `}
-                style={{
-                  transitionDelay: isLoaded ? '0ms' : '0ms'
-                }}
-              >
-                <GameCell
-                  cell={cell}
-                  size={cellSize}
-                  onClick={() => handleCellClick(rowIndex, colIndex)}
-                  showVictoryAnimation={showVictoryAnimation}
-                  isLoading={!isLoaded}
-                />
-              </div>
-            );
-          })
-        )}
+              return (
+                <div
+                  key={cellKey}
+                  className={`
+                    relative overflow-hidden transition-all duration-500
+                    ${getCellBorderClasses(rowIndex, colIndex)}
+                    ${getCornerClasses(rowIndex, colIndex)}
+                    ${isLoaded ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}
+                    ${isDestroying ? 'animate-pulse' : ''}
+                  `}
+                  style={{
+                    transitionDelay: '0ms',
+                    transform: isLoaded ? 'scale(1)' : 'scale(0.5)',
+                    opacity: isLoaded ? 1 : 0
+                  }}
+                >
+                  <GameCell
+                    cell={cell}
+                    size={cellSize}
+                    onClick={() => handleCellClick(rowIndex, colIndex)}
+                    showVictoryAnimation={showVictoryAnimation && !isLoading && !isDestroying}
+                    isLoading={!isLoaded}
+                  />
+                </div>
+              );
+            })
+          )}
 
-        {/* Overlay de chargement */}
-        {isLoading && (
-          <div className="absolute inset-0 bg-gray-900/20 backdrop-blur-sm flex items-center justify-center rounded-lg">
-            <div className="text-white font-medium">Chargement...</div>
-          </div>
-        )}
+          {/* Overlay pendant destruction */}
+          {isDestroying && (
+            <div className="absolute inset-0 bg-red-900/10 backdrop-blur-sm flex items-center justify-center rounded-lg">
+              <div className="text-red-700 font-medium text-sm">Reconstruction...</div>
+            </div>
+          )}
+
+          {/* Overlay pendant construction */}
+          {isLoading && (
+            <div className="absolute inset-0 bg-blue-900/10 backdrop-blur-sm flex items-center justify-center rounded-lg">
+              <div className="text-blue-700 font-medium text-sm">Chargement...</div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

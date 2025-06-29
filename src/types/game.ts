@@ -30,6 +30,10 @@ export interface GameState {
   isCompleted: boolean;
   moveCount: number;
   solution?: {row: number, col: number}[];
+  startTime?: number;
+  elapsedTime: number;
+  isTimerRunning: boolean;
+  bestTime?: number;
 }
 
 export interface GameMove {
