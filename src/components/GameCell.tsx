@@ -65,7 +65,7 @@ export const GameCell: React.FC<GameCellProps> = ({
 
     // Animation de victoire
     if (showVictoryAnimation && cell.state === 'queen') {
-      classes += 'shadow-lg shadow-yellow-400/50 ring-2 ring-yellow-400';
+      classes += ' shadow-lg shadow-yellow-400/50 ring-2 ring-yellow-400'; // ✅ Espace ajouté
     }
 
     // Animation de chargement
