@@ -12,7 +12,7 @@ function App() {
             Queens Game
           </h1>
           <p className="text-lg md:text-xl text-slate-300 font-light">
-            Version web responsive du célèbre puzzle Queens de LinkedIn
+            Version web responsive et générative du célèbre puzzle Queens de LinkedIn
           </p>
         </div>
       </header>

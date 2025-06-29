@@ -94,7 +94,7 @@ export const GameCell: React.FC<GameCellProps> = ({
 
   const getCellBackgroundColor = () => {
     if (showVictoryAnimation && cell.state === 'queen') {
-      return '#fef3c7'; // Jaune clair pour l'animation de victoire
+      return '#FFD700'; // Jaune doré
     }
     return cell.regionColor;
   };

@@ -46,38 +46,47 @@ class ProceduralLevelGenerator {
 
     let attempts = 0;
     let validLevel = false;
-    const maxAttempts = 100000;
+    const maxAttempts = 3000;
+    const batchSize = 50; // Traiter par batches de 50 tentatives
     let nextLogPercent = 10;
 
     while (!validLevel && attempts < maxAttempts) {
-      attempts++;
+      // Traiter un batch de tentatives
+      for (let batchCount = 0; batchCount < batchSize && attempts < maxAttempts && !validLevel; batchCount++) {
+        attempts++;
 
-      const currentPercent = Math.floor((attempts / maxAttempts) * 100);
-      if (currentPercent >= nextLogPercent) {
-        console.log(`${nextLogPercent}%`);
-        nextLogPercent += 10;
+        const currentPercent = Math.floor((attempts / maxAttempts) * 100);
+        if (currentPercent >= nextLogPercent) {
+          console.log(`${nextLogPercent}%`);
+          nextLogPercent += 10;
+        }
+
+        this.solution = this.generateNQueensSolution();
+        if (!this.solution) continue;
+
+        this.regions = [];
+        this.ownership = Array(this.gridSize)
+          .fill(null)
+          .map(() => Array(this.gridSize).fill(-1));
+
+        this.createCreativeRegions();
+        validLevel = this.verifySolutionUniqueness();
+
+        if (!validLevel && attempts < 5) {
+          this.adjustRegionsForUniqueness();
+          validLevel = this.verifySolutionUniqueness();
+        }
       }
 
-      this.solution = this.generateNQueensSolution();
-      if (!this.solution) continue;
-
-      this.regions = [];
-      this.ownership = Array(this.gridSize)
-        .fill(null)
-        .map(() => Array(this.gridSize).fill(-1));
-
-      this.createCreativeRegions();
-      validLevel = this.verifySolutionUniqueness();
-
-      if (!validLevel && attempts < 5) {
-        this.adjustRegionsForUniqueness();
-        validLevel = this.verifySolutionUniqueness();
+      // Céder le contrôle au navigateur entre les batches
+      if (!validLevel && attempts < maxAttempts) {
+        await this.yieldToMainThread();
       }
     }
 
     if (!validLevel) {
       console.warn(
-        "⚠️ Could not generate unique level after 1000 attempts. Loading from Firebase..."
+        "⚠️ Could not generate unique level after max attempts. Loading from Firebase..."
       );
 
       const fallback = await this.levelStorage.getRandomLevel(this.gridSize);
@@ -102,6 +111,24 @@ class ProceduralLevelGenerator {
       moveCount: 0,
       solution: this.solution ?? undefined,
     };
+  }
+
+  /**
+   * Céder le contrôle au thread principal pour éviter de bloquer l'UI
+   */
+  private async yieldToMainThread(): Promise<void> {
+    return new Promise(resolve => {
+      setTimeout(resolve, 0);
+    });
+  }
+
+  /**
+   * Version alternative avec requestAnimationFrame (plus smooth)
+   */
+  private async yieldToMainThreadRAF(): Promise<void> {
+    return new Promise(resolve => {
+      requestAnimationFrame(() => resolve());
+    });
   }
 
   private generateNQueensSolution(): Position[] | null {
@@ -137,6 +164,50 @@ class ProceduralLevelGenerator {
     };
 
     return backtrack(0) ? solution : null;
+  }
+
+  // Version asynchrone de growCreativeRegions si nécessaire
+  private async growCreativeRegionsAsync(
+    targetSizes: number[],
+    shapeStrategies: string[]
+  ): Promise<void> {
+    const maxIterations = this.gridSize * this.gridSize * 3;
+    let iteration = 0;
+    let yieldCounter = 0;
+
+    while (iteration < maxIterations) {
+      iteration++;
+      yieldCounter++;
+      let grew = false;
+
+      for (let i = 0; i < this.regions.length; i++) {
+        const region = this.regions[i];
+        if (region.cells.length >= targetSizes[i]) continue;
+
+        const candidates = this.getGrowthCandidates(region);
+        if (candidates.length === 0) continue;
+
+        const newCell = this.selectCreativeGrowthCell(
+          candidates,
+          region,
+          shapeStrategies[i]
+        );
+
+        if (newCell) {
+          this.ownership[newCell.row][newCell.col] = i;
+          region.cells.push(newCell);
+          grew = true;
+        }
+      }
+
+      // Céder le contrôle tous les 100 itérations
+      if (yieldCounter >= 100) {
+        await this.yieldToMainThread();
+        yieldCounter = 0;
+      }
+
+      if (!grew) break;
+    }
   }
 
   private createCreativeRegions(): void {
@@ -678,9 +749,18 @@ class QueensSolver {
   }
 }
 
+// Interface avec callback de progression
+export interface GenerationProgress {
+  attempts: number;
+  maxAttempts: number;
+  percentage: number;
+  status: string;
+}
+
 export async function generateGameLevel(
   gridSize: number = 6,
-  complexity: "simple" | "normal" | "complex" = "normal"
+  complexity: "simple" | "normal" | "complex" = "normal",
+  onProgress?: (progress: GenerationProgress) => void
 ): Promise<GameState> {
   console.log(`🎯 Génération niveau ${gridSize}x${gridSize}`);
 
@@ -688,12 +768,26 @@ export async function generateGameLevel(
     // Essayer de générer normalement
     const settings: DifficultySettings = { complexity };
     const generator = new ProceduralLevelGenerator(gridSize, settings);
-    const level = generator.generateLevel();
+
+    // Wrapper pour les callbacks de progression si fournis
+    if (onProgress) {
+      // Vous pouvez modifier la classe pour supporter les callbacks
+      onProgress({
+        attempts: 0,
+        maxAttempts: 2000,
+        percentage: 0,
+        status: "Génération en cours..."
+      });
+    }
+
+    const level = await generator.generateLevel();
 
     // Sauvegarder en arrière-plan (ignore les erreurs)
-    levelStorage
-      .saveLevel(gridSize, complexity, (await level).regions)
-      .catch(() => {});
+    if (levelStorage) {
+      levelStorage
+        .saveLevel(gridSize, complexity, level.regions)
+        .catch(() => {});
+    }
 
     return level;
   } catch (error) {
@@ -701,21 +795,23 @@ export async function generateGameLevel(
 
     try {
       // Fallback Firebase
-      const storedLevel = await levelStorage.getRandomLevel(
-        gridSize,
-        complexity
-      );
+      if (levelStorage) {
+        const storedLevel = await levelStorage.getRandomLevel(
+          gridSize,
+          complexity
+        );
 
-      if (storedLevel) {
-        console.log("📦 Niveau récupéré depuis Firebase");
-        return levelStorage.convertToGameState(storedLevel);
-      }
+        if (storedLevel) {
+          console.log("📦 Niveau récupéré depuis Firebase");
+          return levelStorage.convertToGameState(storedLevel);
+        }
 
-      // Essayer sans contrainte de complexité
-      const anyLevel = await levelStorage.getRandomLevel(gridSize);
-      if (anyLevel) {
-        console.log("📦 Niveau récupéré (complexité différente)");
-        return levelStorage.convertToGameState(anyLevel);
+        // Essayer sans contrainte de complexité
+        const anyLevel = await levelStorage.getRandomLevel(gridSize);
+        if (anyLevel) {
+          console.log("📦 Niveau récupéré (complexité différente)");
+          return levelStorage.convertToGameState(anyLevel);
+        }
       }
     } catch (firebaseError) {
       console.warn("Firebase fallback échoué:", firebaseError);
@@ -770,18 +866,6 @@ function createBasicRegions(
   solution: Position[],
   gridSize: number
 ): ColoredRegion[] {
-  const REGION_COLORS = [
-    "#26A69A",
-    "#BA68C8",
-    "#81C784",
-    "#FFB74D",
-    "#F06292",
-    "#D4E157",
-    "#4DD0E1",
-    "#F84343",
-    "#FF7043",
-  ];
-
   const regions: ColoredRegion[] = solution.map((queen, index) => ({
     id: index,
     color: REGION_COLORS[index % REGION_COLORS.length],
@@ -891,7 +975,8 @@ function createBoard(regions: ColoredRegion[], gridSize: number): GameCell[][] {
 
 export async function generateLevelWithDifficulty(
   gridSize: number,
-  difficulty: "easy" | "medium" | "hard" | "expert"
+  difficulty: "easy" | "medium" | "hard" | "expert",
+  onProgress?: (progress: GenerationProgress) => void
 ): Promise<GameState> {
   const complexityMap = {
     easy: "simple" as const,
@@ -900,7 +985,7 @@ export async function generateLevelWithDifficulty(
     expert: "complex" as const,
   };
 
-  return generateGameLevel(gridSize, complexityMap[difficulty]);
+  return generateGameLevel(gridSize, complexityMap[difficulty], onProgress);
 }
 
 export function resetGameBoard(gameState: GameState): GameState {
