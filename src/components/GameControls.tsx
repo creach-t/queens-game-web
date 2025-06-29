@@ -10,7 +10,7 @@ import {
   X as XIcon
 } from 'lucide-react';
 import React, { useState } from 'react';
-import { GameState } from '../types/game';
+import { GameCell, GameState } from '../types/game';
 
 interface GameControlsProps {
   gameState: GameState;

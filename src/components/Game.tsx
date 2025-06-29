@@ -23,15 +23,11 @@ export const Game: React.FC = () => {
   // Key pour forcer l'animation - se déclenche IMMÉDIATEMENT
   const [boardAnimationKey, setBoardAnimationKey] = useState(0);
 
-  // État temporaire pour la nouvelle taille pendant la génération
-  const [pendingGridSize, setPendingGridSize] = useState<number | null>(null);
-
   // Fonction pour changer la taille de grille avec animation immédiate
   const handleGridSizeChange = useCallback((newSize: number) => {
     // ✅ ANIMATION IMMÉDIATE : Changer la taille tout de suite
     originalNewGame(newSize);
     setBoardAnimationKey(prev => prev + 1); // Lance l'animation en spirale
-    setPendingGridSize(newSize);
 
     // Puis lancer la génération en arrière-plan
     generateNewGameAsync(newSize);
@@ -47,7 +43,6 @@ export const Game: React.FC = () => {
     setCancelGeneration(() => () => {
       isCancelled = true;
       setIsGenerating(false);
-      setPendingGridSize(null);
     });
 
     try {
@@ -76,7 +71,6 @@ export const Game: React.FC = () => {
     } finally {
       if (!isCancelled) {
         setIsGenerating(false);
-        setPendingGridSize(null);
       }
     }
 
@@ -123,7 +117,7 @@ export const Game: React.FC = () => {
           <div className="game-controls-section">
             <GameControls
               gameState={gameState}
-              gameTime={gameTime}
+              gameTime={0}
               onResetGame={handleResetGame}
               onNewGame={handleNewGame}
               onGridSizeChange={handleGridSizeChange} // Animation immédiate
