@@ -272,8 +272,8 @@ export function isPuzzleCompleted(
   }
 
   if (isValid) {
-    console.log(`✅ Puzzle completed! All ${queens.length} queens placed correctly`);
-    console.log(`🎉 BRAVO! Solution: ${queens.map(q => `${q.row+1}${String.fromCharCode(65+q.col)}`).join(', ')}`);
+    //console.log(`✅ Puzzle completed! All ${queens.length} queens placed correctly`);
+    //console.log(`🎉 BRAVO! Solution: ${queens.map(q => `${q.row+1}${String.fromCharCode(65+q.col)}`).join(', ')}`);
   } else {
     //console.log(`❌ Puzzle not yet completed - validation failed`);
   }

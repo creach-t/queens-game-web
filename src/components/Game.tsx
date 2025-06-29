@@ -65,7 +65,7 @@ export const Game: React.FC = () => {
 
     } catch (error) {
       if (!isCancelled) {
-        console.error('Erreur génération:', error);
+        //console.error('Erreur génération:', error);
         // Le niveau simple est déjà en place, pas besoin de changer
       }
     } finally {
@@ -117,7 +117,7 @@ export const Game: React.FC = () => {
           <div className="game-controls-section">
             <GameControls
               gameState={gameState}
-              gameTime={0}
+              gameTime={gameTime}
               onResetGame={handleResetGame}
               onNewGame={handleNewGame}
               onGridSizeChange={handleGridSizeChange} // Animation immédiate

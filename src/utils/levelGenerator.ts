@@ -44,9 +44,9 @@ class ProceduralLevelGenerator {
   }
 
   async generateLevel(): Promise<GameState> {
-    console.log(
-      `🎯 Generating creative level ${this.gridSize}×${this.gridSize}`
-    );
+    // console.log(
+    //   `🎯 Generating creative level ${this.gridSize}×${this.gridSize}`
+    // );
 
     let attempts = 0;
     let validLevel = false;
@@ -65,7 +65,7 @@ class ProceduralLevelGenerator {
 
         const currentPercent = Math.floor((attempts / maxAttempts) * 100);
         if (currentPercent >= nextLogPercent) {
-          console.log(`${nextLogPercent}%`);
+          //console.log(`${nextLogPercent}%`);
           nextLogPercent += 10;
         }
 
@@ -93,13 +93,13 @@ class ProceduralLevelGenerator {
     }
 
     if (!validLevel) {
-      console.warn(
+      /*console.warn(
         "⚠️ Could not generate unique level after max attempts. Loading from Firebase..."
-      );
+      );*/
 
       const fallback = await this.levelStorage.getRandomLevel(this.gridSize);
       if (fallback) {
-        console.log("📦 Niveau chargé depuis Firebase en secours");
+        //console.log("📦 Niveau chargé depuis Firebase en secours");
         return this.levelStorage.convertToGameState(fallback);
       }
 
@@ -107,7 +107,7 @@ class ProceduralLevelGenerator {
     }
 
     this.board = this.initializeBoard();
-    console.log(`✅ Level generated after ${attempts} attempts`);
+    //console.log(`✅ Level generated after ${attempts} attempts`);
 
     return {
       board: this.board,
@@ -980,7 +980,7 @@ export async function generateGameLevel(
   complexity: "simple" | "normal" | "complex" = "normal",
   onProgress?: (progress: GenerationProgress) => void
 ): Promise<GameState> {
-  console.log(`🎯 Génération niveau ${gridSize}x${gridSize}`);
+  //console.log(`🎯 Génération niveau ${gridSize}x${gridSize}`);
 
   try {
     // Essayer de générer normalement
@@ -1009,7 +1009,7 @@ export async function generateGameLevel(
 
     return level;
   } catch (error) {
-    console.log("⚠️ Échec génération, tentative fallback Firebase...");
+    //console.log("⚠️ Échec génération, tentative fallback Firebase...");
 
     try {
       // Fallback Firebase
@@ -1020,23 +1020,23 @@ export async function generateGameLevel(
         );
 
         if (storedLevel) {
-          console.log("📦 Niveau récupéré depuis Firebase");
+          //console.log("📦 Niveau récupéré depuis Firebase");
           return levelStorage.convertToGameState(storedLevel);
         }
 
         // Essayer sans contrainte de complexité
         const anyLevel = await levelStorage.getRandomLevel(gridSize);
         if (anyLevel) {
-          console.log("📦 Niveau récupéré (complexité différente)");
+          //console.log("📦 Niveau récupéré (complexité différente)");
           return levelStorage.convertToGameState(anyLevel);
         }
       }
     } catch (firebaseError) {
-      console.warn("Firebase fallback échoué:", firebaseError);
+      //console.warn("Firebase fallback échoué:", firebaseError);
     }
 
     // Dernier recours: génération basique SYNCHRONE
-    console.log("🔄 Génération de secours...");
+    //console.log("🔄 Génération de secours...");
     return generateBasicLevel(gridSize);
   }
 }

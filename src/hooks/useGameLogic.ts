@@ -39,7 +39,7 @@ export function useGameLogic(initialGridSize: number = 6) {
         setTimerStarted(true);
         setGameTime(0);
       } catch (error) {
-        console.error("Erreur génération niveau:", error);
+        //console.error("Erreur génération niveau:", error);
         // Générer niveau de base en cas d'erreur
         setGameState({
           board: [],
@@ -358,7 +358,7 @@ export function useGameLogic(initialGridSize: number = 6) {
         const newLevel = await generateGameLevel(size);
         setGameState(newLevel);
       } catch (error) {
-        console.error("Erreur génération nouveau niveau:", error);
+        //console.error("Erreur génération nouveau niveau:", error);
       }
 
       // Reset complet du timer pour nouveau jeu

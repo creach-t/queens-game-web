@@ -63,11 +63,6 @@ export const GameCell: React.FC<GameCellProps> = ({
       relative overflow-hidden
     `;
 
-    // Animation de victoire
-    if (showVictoryAnimation && cell.state === 'queen') {
-      classes += ' shadow-lg shadow-yellow-400/50 ring-2 ring-yellow-400'; // ✅ Espace ajouté
-    }
-
     // Animation de chargement
     if (isLoading) {
       classes += ' animate-pulse';
@@ -75,12 +70,40 @@ export const GameCell: React.FC<GameCellProps> = ({
       classes += ' hover:scale-105 hover:shadow-lg active:scale-95';
     }
 
+    return classes;
+  };
+
+  // ✅ Calculer l'épaisseur des bordures selon la taille
+  const getBorderWidth = () => {
+    if (size <= 40) return 1;      // Très petit écran
+    if (size <= 60) return 2;      // Petit écran
+    if (size <= 80) return 3;      // Moyen
+    return 4;                      // Grand écran
+  };
+
+  // ✅ Style dynamique pour les effets visuels
+  const getDynamicStyles = () => {
+    const borderWidth = getBorderWidth();
+    let styles: React.CSSProperties = {
+      backgroundColor: cell.regionColor,
+      width: size,
+      height: size,
+      minWidth: size,
+      minHeight: size
+    };
+
+    // Animation de victoire
+    if (showVictoryAnimation && cell.state === 'queen') {
+      styles.boxShadow = `0 10px 25px rgba(251, 191, 36, 0.5)`;
+      styles.border = `${borderWidth}px solid rgb(251, 191, 36)`;
+    }
     // Conflits
-    if (cell.isConflict && !showVictoryAnimation) {
-      classes += ' bg-red-50 ring-2 ring-red-200';
+    else if (cell.isConflict && !showVictoryAnimation) {
+      styles.backgroundColor = 'rgba(254, 242, 242, 1)';
+      styles.border = `${borderWidth}px solid rgb(248, 113, 113)`;
     }
 
-    return classes;
+    return styles;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -90,10 +113,6 @@ export const GameCell: React.FC<GameCellProps> = ({
     }
   };
 
-  const getCellBackgroundColor = () => {
-    return cell.regionColor;
-  };
-
   return (
     <div
       className={getCellClasses()}
@@ -101,13 +120,7 @@ export const GameCell: React.FC<GameCellProps> = ({
       role="button"
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      style={{
-        backgroundColor: getCellBackgroundColor(),
-        width: size,
-        height: size,
-        minWidth: size,
-        minHeight: size
-      }}
+      style={getDynamicStyles()}
       title={`Cellule ${cell.row + 1}-${cell.col + 1} (Région ${cell.regionId})`}
     >
       {/* Animation de chargement - effet de shimmer */}

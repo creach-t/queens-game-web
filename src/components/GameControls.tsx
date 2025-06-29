@@ -174,6 +174,7 @@ https://queens-game.creachtheo.fr
         <div className="flex gap-2 min-w-0">
           <button
             onClick={onResetGame}
+            disabled={gameState.isCompleted}
             className="flex-1 min-w-0 py-3 px-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-1 text-sm"
           >
             <RotateCcw className="w-4 h-4 flex-shrink-0" />

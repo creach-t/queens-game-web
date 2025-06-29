@@ -1,6 +1,6 @@
 // levelStorage.ts
-import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, push, get } from 'firebase/database';
+import { initializeApp } from "firebase/app";
+import { get, getDatabase, push, ref } from "firebase/database";
 
 interface Position {
   row: number;
@@ -29,16 +29,16 @@ class LevelStorage {
     try {
       // Vérifier que la config contient databaseURL
       if (!firebaseConfig.databaseURL) {
-        console.warn('Firebase: databaseURL manquante, stockage désactivé');
+        //console.warn('Firebase: databaseURL manquante, stockage désactivé');
         return;
       }
 
       const app = initializeApp(firebaseConfig);
       this.db = getDatabase(app);
       this.isAvailable = true;
-      console.log('✅ Firebase Database initialisé');
+      //console.log('✅ Firebase Database initialisé');
     } catch (error) {
-      console.warn('Firebase non disponible:', error);
+      //console.warn('Firebase non disponible:', error);
       this.isAvailable = false;
     }
   }
@@ -56,24 +56,24 @@ class LevelStorage {
     }
 
     try {
-      const storedRegions: StoredRegion[] = regions.map(region => ({
+      const storedRegions: StoredRegion[] = regions.map((region) => ({
         id: region.id,
         cells: region.cells,
-        queenPosition: region.queenPosition
+        queenPosition: region.queenPosition,
       }));
 
-      const levelsRef = ref(this.db, 'generated_levels');
+      const levelsRef = ref(this.db, "generated_levels");
       await push(levelsRef, {
         gridSize: gridSize,
         complexity: complexity,
         regions: storedRegions,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       });
 
-      console.log(`✅ Niveau ${gridSize}x${gridSize} sauvegardé`);
+      //console.log(`✅ Niveau ${gridSize}x${gridSize} sauvegardé`);
       return true;
     } catch (error) {
-      console.warn('Erreur sauvegarde (ignorée):', error);
+      //console.warn('Erreur sauvegarde (ignorée):', error);
       return false;
     }
   }
@@ -90,7 +90,7 @@ class LevelStorage {
     }
 
     try {
-      const levelsRef = ref(this.db, 'generated_levels');
+      const levelsRef = ref(this.db, "generated_levels");
       const snapshot = await get(levelsRef);
 
       if (!snapshot.exists()) {
@@ -113,19 +113,20 @@ class LevelStorage {
         return null;
       }
 
-      const randomLevel = matchingLevels[Math.floor(Math.random() * matchingLevels.length)];
+      const randomLevel =
+        matchingLevels[Math.floor(Math.random() * matchingLevels.length)];
 
-      console.log(`📦 Niveau récupéré depuis Firebase (${matchingLevels.length} disponibles)`);
+      //console.log(`📦 Niveau récupéré depuis Firebase (${matchingLevels.length} disponibles)`);
 
       return {
         key: randomLevel.key,
         gridSize: randomLevel.data.gridSize,
         complexity: randomLevel.data.complexity,
         regions: randomLevel.data.regions,
-        createdAt: randomLevel.data.createdAt
+        createdAt: randomLevel.data.createdAt,
       };
     } catch (error) {
-      console.warn('Erreur récupération (ignorée):', error);
+      //console.warn('Erreur récupération (ignorée):', error);
       return null;
     }
   }
@@ -135,16 +136,26 @@ class LevelStorage {
    */
   convertToGameState(storedLevel: StoredLevel): any {
     const REGION_COLORS = [
-      "#26A69A", "#BA68C8", "#81C784", "#FFB74D",
-      "#F06292", "#D4E157", "#4DD0E1", "#F84343",
+      "#26A69A",
+      "#BA68C8",
+      "#81C784",
+      "#FFB74D",
+      "#F06292",
+      "#D4E157",
+      "#4DD0E1",
+      "#fa6464",
+      "#b0a997",
+      "#615f87",
+      "#995d36",
+      "#02f760",
     ];
 
-    const regions = storedLevel.regions.map(storedRegion => ({
+    const regions = storedLevel.regions.map((storedRegion) => ({
       id: storedRegion.id,
       color: REGION_COLORS[storedRegion.id % REGION_COLORS.length],
       cells: storedRegion.cells,
       hasQueen: true,
-      queenPosition: storedRegion.queenPosition
+      queenPosition: storedRegion.queenPosition,
     }));
 
     const board = Array(storedLevel.gridSize)
@@ -153,8 +164,8 @@ class LevelStorage {
 
     for (let row = 0; row < storedLevel.gridSize; row++) {
       for (let col = 0; col < storedLevel.gridSize; col++) {
-        const region = regions.find(r =>
-          r.cells.some(cell => cell.row === row && cell.col === col)
+        const region = regions.find((r) =>
+          r.cells.some((cell) => cell.row === row && cell.col === col)
         );
 
         board[row][col] = {
@@ -177,20 +188,20 @@ class LevelStorage {
       queensRequired: storedLevel.gridSize,
       isCompleted: false,
       moveCount: 0,
-      solution: regions.map(r => r.queenPosition)
+      solution: regions.map((r) => r.queenPosition),
     };
   }
 }
 
 // Configuration Firebase - remplace par tes vraies valeurs
 const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 // Instance exportée (safe)
