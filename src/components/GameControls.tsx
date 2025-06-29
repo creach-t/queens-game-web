@@ -156,12 +156,13 @@ export const GameControls: React.FC<GameControlsProps> = ({
   }, [gameState.isCompleted]);
 
   const difficultyInfo = {
-    4: { name: "Tutoriel", color: "bg-green-100 text-green-700" },
-    5: { name: "Facile", color: "bg-blue-100 text-blue-700" },
-    6: { name: "Normal", color: "bg-yellow-100 text-yellow-700" },
-    7: { name: "Difficile", color: "bg-orange-100 text-orange-700" },
-    8: { name: "Expert", color: "bg-red-100 text-red-700" },
-    9: { name: "Maître", color: "bg-purple-100 text-purple-700" }
+    5: { name: "Tutoriel", color: "bg-green-100 text-green-700" },
+    6: { name: "Facile", color: "bg-blue-100 text-blue-700" },
+    7: { name: "Normal", color: "bg-yellow-100 text-yellow-700" },
+    8: { name: "Difficile", color: "bg-orange-100 text-orange-700" },
+    9: { name: "Expert", color: "bg-red-100 text-red-700" },
+    10: { name: "Maître", color: "bg-purple-100 text-purple-700" }
+
   };
 
   return (
@@ -189,7 +190,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
             </button>
           </div>
         </div>
-        
+
         {/* Contrôles de difficulté */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
@@ -206,12 +207,12 @@ export const GameControls: React.FC<GameControlsProps> = ({
             onChange={(e) => onGridSizeChange(Number(e.target.value))}
             className="w-full h-12 border border-gray-300 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value={4}>4×4 — Tutoriel</option>
-            <option value={5}>5×5 — Facile</option>
-            <option value={6}>6×6 — Normal</option>
-            <option value={7}>7×7 — Difficile</option>
-            <option value={8}>8×8 — Expert</option>
-            <option value={9}>9×9 — Maître</option>
+            <option value={5}>5×5 — Tutoriel</option>
+            <option value={6}>6×6 — Facile</option>
+            <option value={7}>7×7 — Normal</option>
+            <option value={8}>8×8 — Difficile</option>
+            <option value={9}>9×9 — Expert</option>
+            <option value={10}>10×10 — Maître</option>
           </select>
         </div>
 
