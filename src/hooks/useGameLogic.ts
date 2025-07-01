@@ -401,8 +401,7 @@ export function useGameLogic(initialGridSize: number = 6) {
       const validation = validateQueenPlacement(
         gameState.board,
         gameState.regions,
-        row,
-        col
+        { row, col },
       );
       return validation.isValid;
     },

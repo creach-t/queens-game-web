@@ -16,16 +16,19 @@ export const Game: React.FC = () => {
     gameTime
   } = useGameLogic(6);
 
+
   // États de génération
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<GenerationProgress | null>(null);
   const [cancelGeneration, setCancelGeneration] = useState<(() => void) | null>(null);
 
+  const [isPreparingGame, setIsPreparingGame] = useState(false);
   // Key pour forcer l'animation - se déclenche IMMÉDIATEMENT
   const [boardAnimationKey, setBoardAnimationKey] = useState(0);
 
   // Fonction pour changer la taille de grille avec animation immédiate
   const handleGridSizeChange = useCallback((newSize: number) => {
+     setIsPreparingGame(true);
     // ✅ ANIMATION IMMÉDIATE : Changer la taille tout de suite
     changeGridSizeOnly(newSize);
     setBoardAnimationKey(prev => prev + 1); // Lance l'animation en spirale

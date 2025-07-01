@@ -126,7 +126,7 @@ class LevelStorage {
         return false;
       }
 
-      const levelsRef = ref(this.db, "generated_levels_v2");
+      const levelsRef = ref(this.db, "generated_levels_v1");
       const newLevelRef = await push(levelsRef, {
         gridSize,
         complexity,
@@ -153,7 +153,7 @@ class LevelStorage {
     }
 
     try {
-      const levelsRef = ref(this.db, "generated_levels_v2");
+      const levelsRef = ref(this.db, "generated_levels_v1");
       const snapshot = await get(levelsRef);
 
       if (!snapshot.exists()) {
@@ -180,16 +180,40 @@ class LevelStorage {
     gridSize: number,
     regions: StoredRegion[]
   ): Promise<string> {
+    // Créer une grille représentant le placement des régions
+    const grid: number[][] = Array(gridSize)
+      .fill(null)
+      .map(() => Array(gridSize).fill(-1));
+
+    // Remplir la grille avec les régions
+    regions.forEach((region, index) => {
+      region.cells.forEach((cell) => {
+        grid[cell.row][cell.col] = index;
+      });
+    });
+
+    // Normaliser les IDs de régions pour que l'ordre n'importe pas
+    const regionMap = new Map<number, number>();
+    let nextNormalizedId = 0;
+
+    for (let row = 0; row < gridSize; row++) {
+      for (let col = 0; col < gridSize; col++) {
+        const regionId = grid[row][col];
+        if (regionId !== -1 && !regionMap.has(regionId)) {
+          regionMap.set(regionId, nextNormalizedId++);
+        }
+      }
+    }
+
+    // Créer la grille normalisée
+    const normalizedGrid = grid.map((row) =>
+      row.map((regionId) => (regionId === -1 ? -1 : regionMap.get(regionId)!))
+    );
+
+    // Hash uniquement basé sur la taille et le placement
     const normalized = {
       gridSize,
-      regions: regions.map((r) => ({
-        id: r.id,
-        // Trie les cellules pour éviter que l'ordre influe sur le hash
-        cells: r.cells
-          .map((c) => ({ row: c.row, col: c.col }))
-          .sort((a, b) => a.row - b.row || a.col - b.col),
-        queenPosition: r.queenPosition,
-      })),
+      grid: normalizedGrid,
     };
 
     const encoder = new TextEncoder();
@@ -213,7 +237,7 @@ class LevelStorage {
     }
 
     try {
-      const levelsRef = ref(this.db, "generated_levels_v2");
+      const levelsRef = ref(this.db, "generated_levels_v1");
       const snapshot = await get(levelsRef);
 
       if (!snapshot.exists()) {
