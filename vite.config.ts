@@ -1,8 +1,8 @@
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import path from "path";
 import { defineConfig } from "vite";
 import svgr from "vite-plugin-svgr";
-import tailwindcss from '@tailwindcss/vite'
-import path from "path";
 
 export default defineConfig({
   plugins: [react(), svgr(), tailwindcss()],
@@ -17,6 +17,14 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
-    sourcemap: true,
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          firebase: ["firebase/app", "firebase/database", "firebase/auth"],
+          react: ["react", "react-dom"],
+        },
+      },
+    },
   },
 });

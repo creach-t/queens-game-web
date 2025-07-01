@@ -1,1054 +1,633 @@
-import { ColoredRegion, GameCell, GameState } from "../types/game";
-import { levelStorage } from "./levelStorage"; // Import du système Firebase
+import { ColoredRegion, GameState } from "../types/game";
+import {
+  QueensGameSolver,
+  testRegionExtension,
+  getValidCandidatesForRegion,
+  isRegionConnected
+} from "./queensSolver";
+import {
+  REGION_COLORS,
+  Position,
+  generateNQueensSolution,
+  findConnectedComponents,
+  initializeBoard,
+  manhattanDistance,
+  areOrthogonallyAdjacent,
+  getOrthogonalNeighbors,
+  positionToKey,
+  formatPositionList
+} from "./gameUtils";
+import { levelStorage } from "./levelStorage";
 
-interface Position {
-  row: number;
-  col: number;
-}
+/**
+ * STRATÉGIES DE GÉNÉRATION - Facilement modifiables
+ */
 
-export interface DifficultySettings {
-  complexity: "simple" | "normal" | "complex";
-}
+/**
+ * Construit des régions avec variété de tailles (2-8 cellules)
+ */
+function buildVariedRegions(
+  queens: Position[],
+  gridSize: number
+): ColoredRegion[] {
+  console.log(`🎨 Building varied regions for ${queens.length} queens`);
 
-const REGION_COLORS = [
-  "#26A69A",
-  "#BA68C8",
-  "#81C784",
-  "#FFB74D",
-  "#F06292",
-  "#D4E157",
-  "#4DD0E1",
-  "#fa6464",
-  "#b0a997",
-  "#615f87",
-  "#995d36",
-  "#02f760"
+  // Initialiser les régions avec chaque reine
+  const regions: ColoredRegion[] = queens.map((queen, index) => ({
+    id: index,
+    color: REGION_COLORS[index % REGION_COLORS.length],
+    cells: [queen],
+    hasQueen: true,
+    queenPosition: queen,
+  }));
 
-];
+  // Grille d'appartenance (-1 = libre)
+  const ownership: number[][] = Array(gridSize)
+    .fill(null)
+    .map(() => Array(gridSize).fill(-1));
 
-class ProceduralLevelGenerator {
-  private gridSize: number;
-  private difficulty: DifficultySettings;
-  private solution: Position[] | null = null;
-  private regions: ColoredRegion[] = [];
-  private board: GameCell[][] = [];
-  private ownership: number[][] = [];
-  levelStorage: any;
+  // Marquer les reines
+  queens.forEach((queen, index) => {
+    ownership[queen.row][queen.col] = index;
+  });
 
-  constructor(gridSize: number, difficulty: DifficultySettings) {
-    this.gridSize = gridSize;
-    this.difficulty = difficulty;
-    this.ownership = Array(gridSize)
-      .fill(null)
-      .map(() => Array(gridSize).fill(-1));
-  }
+  // Définir des tailles cibles variées pour chaque région
+  const targetSizes = generateVariedTargetSizes(gridSize * gridSize, queens.length);
+  console.log(`   🎯 Target sizes: [${targetSizes.join(", ")}]`);
 
-  async generateLevel(): Promise<GameState> {
-    // console.log(
-    //   `🎯 Generating creative level ${this.gridSize}×${this.gridSize}`
-    // );
+  let waveCount = 0;
+  let totalAttempts = 0;
+  let rejectedForUniqueness = 0;
 
-    let attempts = 0;
-    let validLevel = false;
-    const maxAttempts = 100000;
-    const batchSize = 50; // Traiter par batches de 50 tentatives
-    let nextLogPercent = 10;
+  // Croissance avec vérification d'unicité ACTIVE
+  while (waveCount < gridSize * 3) {
+    waveCount++;
+    let cellsAssignedThisWave = 0;
 
-    while (!validLevel && attempts < maxAttempts) {
-      // Traiter un batch de tentatives
-      for (
-        let batchCount = 0;
-        batchCount < batchSize && attempts < maxAttempts && !validLevel;
-        batchCount++
-      ) {
-        attempts++;
+    console.log(`   🌊 Wave ${waveCount}: Varied growth with uniqueness checks...`);
 
-        const currentPercent = Math.floor((attempts / maxAttempts) * 100);
-        if (currentPercent >= nextLogPercent) {
-          //console.log(`${nextLogPercent}%`);
-          nextLogPercent += 10;
-        }
+    const allCandidates: Array<{
+      pos: Position;
+      regionId: number;
+      priority: number;
+    }> = [];
 
-        this.solution = this.generateNQueensSolution();
-        if (!this.solution) continue;
+    for (let regionId = 0; regionId < regions.length; regionId++) {
+      const region = regions[regionId];
+      const targetSize = targetSizes[regionId];
 
-        this.regions = [];
-        this.ownership = Array(this.gridSize)
-          .fill(null)
-          .map(() => Array(this.gridSize).fill(-1));
+      // Arrêter la croissance si la région a atteint sa taille cible
+      if (region.cells.length >= targetSize) continue;
 
-        this.createCreativeRegions();
-        validLevel = this.verifySolutionUniqueness();
+      const validCandidates = getValidCandidatesForRegion(gridSize, regions, regionId, queens);
 
-        if (!validLevel && attempts < 5) {
-          this.adjustRegionsForUniqueness();
-          validLevel = this.verifySolutionUniqueness();
-        }
-      }
+      for (const candidate of validCandidates) {
+        if (ownership[candidate.row][candidate.col] === -1) {
+          const queen = queens[regionId];
+          const distance = manhattanDistance(candidate, queen);
+          const currentSize = region.cells.length;
 
-      // Céder le contrôle au navigateur entre les batches
-      if (!validLevel && attempts < maxAttempts) {
-        await this.yieldToMainThread();
-      }
-    }
+          // Priorité basée sur la proximité et l'urgence de croissance
+          const urgency = Math.max(0, targetSize - currentSize) * 50;
+          const proximity = Math.max(0, 10 - distance) * 10;
+          const randomness = Math.random() * 20;
 
-    if (!validLevel) {
-      /*console.warn(
-        "⚠️ Could not generate unique level after max attempts. Loading from Firebase..."
-      );*/
+          const priority = urgency + proximity + randomness;
 
-      const fallback = await this.levelStorage.getRandomLevel(this.gridSize);
-      if (fallback) {
-        //console.log("📦 Niveau chargé depuis Firebase en secours");
-        return this.levelStorage.convertToGameState(fallback);
-      }
-
-      throw new Error("❌ Impossible de générer ou de charger un niveau.");
-    }
-
-    this.board = this.initializeBoard();
-    //console.log(`✅ Level generated after ${attempts} attempts`);
-
-    return {
-      board: this.board,
-      regions: this.regions,
-      gridSize: this.gridSize,
-      queensPlaced: 0,
-      queensRequired: this.gridSize,
-      isCompleted: false,
-      moveCount: 0,
-      solution: this.solution ?? undefined,
-      startTime: 0,
-      isTimerRunning: false,
-      elapsedTime: 0,
-    };
-  }
-
-  /**
-   * Céder le contrôle au thread principal pour éviter de bloquer l'UI
-   */
-  private async yieldToMainThread(): Promise<void> {
-    return new Promise((resolve) => {
-      setTimeout(resolve, 0);
-    });
-  }
-
-  private generateNQueensSolution(): Position[] | null {
-    const solution: Position[] = [];
-    const usedCols = new Set<number>();
-
-    const isValidPosition = (row: number, col: number): boolean => {
-      if (usedCols.has(col)) return false;
-      for (const queen of solution) {
-        if (this.areAdjacent({ row, col }, queen)) return false;
-      }
-      return true;
-    };
-
-    const backtrack = (row: number): boolean => {
-      if (row >= this.gridSize) return true;
-
-      const cols = Array.from({ length: this.gridSize }, (_, i) => i);
-      this.shuffleArray(cols);
-
-      for (const col of cols) {
-        if (isValidPosition(row, col)) {
-          solution.push({ row, col });
-          usedCols.add(col);
-
-          if (backtrack(row + 1)) return true;
-
-          solution.pop();
-          usedCols.delete(col);
+          allCandidates.push({
+            pos: candidate,
+            regionId,
+            priority
+          });
         }
       }
-      return false;
-    };
-
-    return backtrack(0) ? solution : null;
-  }
-
-  private createCreativeRegions(): void {
-    // Initialiser une région pour chaque reine
-    this.solution!.forEach((queen, index) => {
-      this.ownership[queen.row][queen.col] = index;
-      this.regions.push({
-        id: index,
-        color: REGION_COLORS[index % REGION_COLORS.length],
-        cells: [queen],
-        hasQueen: true,
-        queenPosition: queen,
-      });
-    });
-
-    // Calculer les tailles avec plus de variété
-    const targetSizes = this.calculateCreativeTargetSizes();
-
-    // Assigner des stratégies de forme différentes à chaque région
-    const shapeStrategies = this.assignShapeStrategies();
-
-    // Faire croître avec les nouvelles stratégies
-    this.growCreativeRegions(targetSizes, shapeStrategies);
-    this.assignRemainingCells();
-  }
-
-  private calculateCreativeTargetSizes(): number[] {
-    const totalCells = this.gridSize * this.gridSize;
-    const numRegions = this.gridSize;
-    const sizes: number[] = [];
-    let remainingCells = totalCells;
-
-    // Complexité selon les paramètres
-    const complexity = this.difficulty.complexity;
-
-    // Très rarement des régions de 1 case (5% max)
-    const numSingle = Math.random() < 0.8 ? 0 : Math.floor(numRegions * 0.05);
-    for (let i = 0; i < numSingle; i++) {
-      sizes.push(1);
-      remainingCells -= 1;
     }
 
-    // 30-50% de petites régions (2-3 cellules) selon complexité
-    const smallRatio =
-      this.gridSize >= 9
-        ? 0.55 // 55% au lieu de 50% (léger boost)
-        : complexity === "simple"
-        ? 0.5
-        : complexity === "normal"
-        ? 0.4
-        : 0.3;
-    const numSmall = Math.floor((numRegions - numSingle) * smallRatio);
-    for (let i = 0; i < numSmall; i++) {
-      const rand = Math.random();
-      const size = rand < 0.3 ? 2 : rand < 0.7 ? 3 : 4;
-      sizes.push(size);
-      remainingCells -= size;
-    }
-
-    // Quelques grandes régions pour formes créatives
-    const largeRatio =
-      this.gridSize >= 9
-        ? 0.15 // 15%
-        : complexity === "complex"
-        ? 0.3
-        : 0.2;
-    const numLarge = Math.floor((numRegions - sizes.length) * largeRatio);
-    for (let i = 0; i < numLarge && sizes.length < numRegions - 1; i++) {
-      const maxSize = Math.min(
-        this.gridSize >= 9 ? 6 : 8,
-        Math.floor(remainingCells * 0.3)
-      ); // Limiter à 6 pour 9x9
-      const size = Math.max(5, maxSize);
-      if (size <= remainingCells - (numRegions - sizes.length - 1)) {
-        sizes.push(size);
-        remainingCells -= size;
-      }
-    }
-
-    // Remplir le reste avec tailles moyennes
-    while (sizes.length < numRegions - 1) {
-      const remainingRegions = numRegions - sizes.length;
-      const avgSize = Math.floor(remainingCells / remainingRegions);
-      const variance = this.gridSize >= 9 ? 2 : 3;
-      const size = Math.max(
-        2,
-        avgSize + Math.floor(Math.random() * variance * 2) - variance
-      );
-      sizes.push(size);
-      remainingCells -= size;
-    }
-
-    sizes.push(Math.max(2, remainingCells));
-    this.shuffleArray(sizes);
-    return sizes;
-  }
-
-private assignShapeStrategies(): string[] {
-  const assignments: string[] = [];
-  const complexity = this.difficulty.complexity;
-
-  // Nouvelles stratégies plus créatives
-  const strategies = [
-    "compact",     // Rond autour de la reine
-    "cross",       // Forme en croix
-    "elongated",   // Forme allongée
-    "L_shape",     // Forme en L
-    "spiral",      // Forme spirale
-    "diamond",     // Forme diamant
-    "snake",       // Forme serpentine
-    "cluster",     // Plusieurs petits clusters
-    "corner",      // Forme dans un coin
-    "bridge"       // Forme pont entre zones
-  ];
-
-  // Distribution plus créative selon la complexité
-  const distributions = {
-    simple: ["compact", "cross", "elongated"],
-    normal: ["compact", "cross", "elongated", "L_shape", "diamond"],
-    complex: strategies // Toutes les stratégies
-  };
-
-  const availableStrategies = distributions[complexity];
-
-  // Assurer une bonne variété dans chaque niveau
-  for (let i = 0; i < this.regions.length; i++) {
-    // Forcer au moins une de chaque type principal pour la variété
-    if (i < 3) {
-      assignments.push(["compact", "cross", "elongated"][i]);
-    } else {
-      assignments.push(
-        availableStrategies[Math.floor(Math.random() * availableStrategies.length)]
-      );
-    }
-  }
-
-  this.shuffleArray(assignments);
-  return assignments;
-}
-
-private selectCreativeGrowthCell(
-  candidates: Position[],
-  region: ColoredRegion,
-  strategy: string
-): Position | null {
-  if (candidates.length === 0) return null;
-
-  const queen = region.queenPosition!;
-  const regionCells = region.cells;
-
-  switch (strategy) {
-    case "cross":
-      return this.selectCrossCell(candidates, queen);
-
-    case "elongated":
-      return this.selectElongatedCell(candidates, regionCells);
-
-    case "L_shape":
-      return this.selectLShapeCell(candidates, queen, regionCells);
-
-    case "spiral":
-      return this.selectSpiralCell(candidates, queen, regionCells);
-
-    case "diamond":
-      return this.selectDiamondCell(candidates, queen);
-
-    case "snake":
-      return this.selectSnakeCell(candidates, regionCells);
-
-    case "cluster":
-      return this.selectClusterCell(candidates, regionCells);
-
-    case "corner":
-      return this.selectCornerCell(candidates);
-
-    case "bridge":
-      return this.selectBridgeCell(candidates, regionCells);
-
-    case "compact":
-      candidates.sort((a, b) => {
-        const distA = Math.abs(a.row - queen.row) + Math.abs(a.col - queen.col);
-        const distB = Math.abs(b.row - queen.row) + Math.abs(b.col - queen.col);
-        return distA - distB;
-      });
+    if (allCandidates.length === 0) {
+      console.log(`   🛑 No more candidates available`);
       break;
-
-    case "mixed":
-    default:
-      this.shuffleArray(candidates);
-      break;
-  }
-
-  return candidates[0];
-}
-
-// Nouvelles fonctions pour les formes créatives
-
-private selectLShapeCell(candidates: Position[], queen: Position, regionCells: Position[]): Position {
-  // Privilégier les formes en L depuis la reine
-  candidates.sort((a, b) => {
-    const aScore = this.calculateLShapeScore(a, queen, regionCells);
-    const bScore = this.calculateLShapeScore(b, queen, regionCells);
-    return bScore - aScore;
-  });
-
-  return candidates[0];
-}
-
-private calculateLShapeScore(pos: Position, queen: Position, regionCells: Position[]): number {
-  // Favoriser les positions qui créent des angles droits
-  let score = 0;
-
-  // Bonus si on forme un angle droit avec la reine et une autre cellule
-  for (const cell of regionCells) {
-    if (cell.row === queen.row && cell.col === queen.col) continue;
-
-    // Vérifier si pos forme un angle droit entre queen et cell
-    const vec1 = { x: cell.row - queen.row, y: cell.col - queen.col };
-    const vec2 = { x: pos.row - queen.row, y: pos.col - queen.col };
-
-    // Produit scalaire proche de 0 = angle droit
-    const dotProduct = vec1.x * vec2.x + vec1.y * vec2.y;
-    if (Math.abs(dotProduct) < 0.1) {
-      score += 10;
-    }
-  }
-
-  return score;
-}
-
-private selectSpiralCell(candidates: Position[], queen: Position, regionCells: Position[]): Position {
-  // Créer une spirale autour de la reine
-  candidates.sort((a, b) => {
-    const aAngle = Math.atan2(a.row - queen.row, a.col - queen.col);
-    const bAngle = Math.atan2(b.row - queen.row, b.col - queen.col);
-
-    // Calculer l'angle moyen des cellules existantes
-    let avgAngle = 0;
-    let validCells = 0;
-    for (const cell of regionCells) {
-      if (cell.row === queen.row && cell.col === queen.col) continue;
-      avgAngle += Math.atan2(cell.row - queen.row, cell.col - queen.col);
-      validCells++;
     }
 
-    if (validCells > 0) {
-      avgAngle /= validCells;
-      // Privilégier la cellule qui continue la spirale
-      const aDeviation = Math.abs(aAngle - avgAngle - Math.PI/4);
-      const bDeviation = Math.abs(bAngle - avgAngle - Math.PI/4);
-      return aDeviation - bDeviation;
-    }
+    allCandidates.sort((a, b) => b.priority - a.priority);
 
-    return 0;
-  });
-
-  return candidates[0];
-}
-
-private selectDiamondCell(candidates: Position[], queen: Position): Position {
-  // Créer une forme de diamant (losange)
-  candidates.sort((a, b) => {
-    // Distance Manhattan pour forme diamant
-    const aManhattan = Math.abs(a.row - queen.row) + Math.abs(a.col - queen.col);
-    const bManhattan = Math.abs(b.row - queen.row) + Math.abs(b.col - queen.col);
-
-    // Privilégier distance égale mais éviter les diagonales
-    const aDiagonal = Math.abs(Math.abs(a.row - queen.row) - Math.abs(a.col - queen.col));
-    const bDiagonal = Math.abs(Math.abs(b.row - queen.row) - Math.abs(b.col - queen.col));
-
-    if (aManhattan !== bManhattan) {
-      return aManhattan - bManhattan;
-    }
-
-    return aDiagonal - bDiagonal;
-  });
-
-  return candidates[0];
-}
-
-private selectSnakeCell(candidates: Position[], regionCells: Position[]): Position {
-  // Créer une forme serpentine - éviter les branches
-  candidates.sort((a, b) => {
-    const aNeighbors = this.countRegionNeighbors(a, regionCells);
-    const bNeighbors = this.countRegionNeighbors(b, regionCells);
-
-    // Privilégier les cellules qui ont exactement 1 voisin (continuent la chaîne)
-    const aScore = aNeighbors === 1 ? 10 : (aNeighbors === 2 ? 5 : 0);
-    const bScore = bNeighbors === 1 ? 10 : (bNeighbors === 2 ? 5 : 0);
-
-    return bScore - aScore;
-  });
-
-  return candidates[0];
-}
-
-private selectClusterCell(candidates: Position[], regionCells: Position[]): Position {
-  // Créer des petits clusters denses
-  candidates.sort((a, b) => {
-    const aNeighbors = this.countRegionNeighbors(a, regionCells);
-    const bNeighbors = this.countRegionNeighbors(b, regionCells);
-
-    // Privilégier les cellules avec le plus de voisins (densité)
-    return bNeighbors - aNeighbors;
-  });
-
-  return candidates[0];
-}
-
-private selectCornerCell(candidates: Position[]): Position {
-  // Créer des formes dans les coins de la grille
-  candidates.sort((a, b) => {
-    // Distance aux coins de la grille
-    const corners = [
-      {row: 0, col: 0},
-      {row: 0, col: this.gridSize - 1},
-      {row: this.gridSize - 1, col: 0},
-      {row: this.gridSize - 1, col: this.gridSize - 1}
-    ];
-
-    const aMinCornerDist = Math.min(...corners.map(corner =>
-      Math.abs(a.row - corner.row) + Math.abs(a.col - corner.col)
-    ));
-    const bMinCornerDist = Math.min(...corners.map(corner =>
-      Math.abs(b.row - corner.row) + Math.abs(b.col - corner.col)
-    ));
-
-    return aMinCornerDist - bMinCornerDist;
-  });
-
-  return candidates[0];
-}
-
-private selectBridgeCell(candidates: Position[], regionCells: Position[]): Position {
-  // Créer des formes "pont" qui connectent des zones
-  candidates.sort((a, b) => {
-    const aConnectivity = this.calculateConnectivity(a, regionCells);
-    const bConnectivity = this.calculateConnectivity(b, regionCells);
-
-    return bConnectivity - aConnectivity;
-  });
-
-  return candidates[0];
-}
-
-private countRegionNeighbors(pos: Position, regionCells: Position[]): number {
-  let count = 0;
-  const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-
-  for (const [dr, dc] of directions) {
-    const neighborPos = { row: pos.row + dr, col: pos.col + dc };
-    if (regionCells.some(cell => cell.row === neighborPos.row && cell.col === neighborPos.col)) {
-      count++;
-    }
-  }
-
-  return count;
-}
-
-private calculateConnectivity(pos: Position, regionCells: Position[]): number {
-  // Mesure combien cette position "connecte" des parties séparées
-  const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-  const neighborGroups: Position[][] = [];
-
-  for (const [dr, dc] of directions) {
-    const neighborPos = { row: pos.row + dr, col: pos.col + dc };
-    const existingCell = regionCells.find(cell =>
-      cell.row === neighborPos.row && cell.col === neighborPos.col
+    // Traiter les candidats avec vérification d'unicité
+    const candidatesToProcess = Math.min(
+      allCandidates.length,
+      Math.max(3, Math.floor(allCandidates.length * 0.3))
     );
 
-    if (existingCell) {
-      // Vérifier si ce voisin appartient à un groupe déjà identifié
-      let addedToExisting = false;
-      for (const group of neighborGroups) {
-        if (this.isConnectedToGroup(existingCell, group)) {
-          group.push(existingCell);
-          addedToExisting = true;
+    for (let i = 0; i < candidatesToProcess; i++) {
+      const candidate = allCandidates[i];
+      totalAttempts++;
+
+      if (ownership[candidate.pos.row][candidate.pos.col] !== -1) continue;
+
+      // ✅ VÉRIFICATION D'UNICITÉ À CHAQUE ÉTAPE
+      const preservesUniqueness = testRegionExtension(
+        gridSize,
+        regions,
+        candidate.regionId,
+        candidate.pos
+      );
+
+      if (preservesUniqueness) {
+        ownership[candidate.pos.row][candidate.pos.col] = candidate.regionId;
+        regions[candidate.regionId].cells.push(candidate.pos);
+        cellsAssignedThisWave++;
+
+        console.log(`     ✅ Added ${candidate.pos.row + 1}${String.fromCharCode(65 + candidate.pos.col)} to region ${candidate.regionId} (${regions[candidate.regionId].cells.length}/${targetSizes[candidate.regionId]})`);
+      } else {
+        rejectedForUniqueness++;
+        console.log(`     ❌ Rejected ${candidate.pos.row + 1}${String.fromCharCode(65 + candidate.pos.col)} (would break uniqueness)`);
+      }
+    }
+
+    console.log(`   📊 Wave ${waveCount}: ${cellsAssignedThisWave} cells added, ${rejectedForUniqueness} rejected`);
+
+    if (cellsAssignedThisWave === 0) {
+      console.log(`   🏁 No more valid expansions`);
+      break;
+    }
+
+    // Afficher les tailles actuelles
+    const currentSizes = regions.map(r => r.cells.length);
+    console.log(`   📐 Current sizes: [${currentSizes.join(", ")}]`);
+  }
+
+  // Assigner les cellules restantes intelligemment
+  const remainingCells = assignRemainingCellsVaried(ownership, regions, queens, gridSize, targetSizes);
+
+  // Réparer les problèmes de connectivité si nécessaire
+  repairDisconnectedRegions(regions, queens);
+
+  // Statistiques finales
+  const finalSizes = regions.map(r => r.cells.length);
+  const totalCells = regions.reduce((sum, region) => sum + region.cells.length, 0);
+
+  console.log(`🎨 VARIED regions built:`);
+  console.log(`   📊 Total attempts: ${totalAttempts}, Rejected for uniqueness: ${rejectedForUniqueness}`);
+  console.log(`   📐 Final sizes: [${finalSizes.join(", ")}], Total: ${totalCells}/${gridSize * gridSize}`);
+  console.log(`   🎯 Target vs Actual: ${targetSizes.map((target, i) => `${target}→${finalSizes[i]}`).join(", ")}`);
+  console.log(`   ✨ Remaining cells: ${remainingCells}`);
+
+  return regions;
+}
+
+/**
+ * Génère des tailles cibles variées (2-8 cellules) qui totalisent le bon nombre
+ */
+function generateVariedTargetSizes(totalCells: number, numRegions: number): number[] {
+  const minSize = 2;
+  const maxSize = 8;
+  const targets: number[] = [];
+
+  // Générer des tailles aléatoires dans la plage
+  let remainingCells = totalCells;
+
+  for (let i = 0; i < numRegions - 1; i++) {
+    const remainingRegions = numRegions - i;
+    const avgRemaining = Math.floor(remainingCells / remainingRegions);
+
+    // Taille entre min et max, mais proche de la moyenne
+    const minForThisRegion = Math.max(minSize, avgRemaining - 2);
+    const maxForThisRegion = Math.min(maxSize, avgRemaining + 2);
+
+    const size = Math.floor(Math.random() * (maxForThisRegion - minForThisRegion + 1)) + minForThisRegion;
+    targets.push(size);
+    remainingCells -= size;
+  }
+
+  // La dernière région prend ce qui reste
+  targets.push(Math.max(minSize, remainingCells));
+
+  // Ajuster si nécessaire pour respecter les contraintes
+  for (let i = 0; i < targets.length; i++) {
+    if (targets[i] > maxSize) {
+      const excess = targets[i] - maxSize;
+      targets[i] = maxSize;
+
+      // Redistribuer l'excès
+      for (let j = 0; j < targets.length && excess > 0; j++) {
+        if (j !== i && targets[j] < maxSize) {
+          const canTake = Math.min(excess, maxSize - targets[j]);
+          targets[j] += canTake;
+        }
+      }
+    }
+  }
+
+  return targets;
+}
+
+/**
+ * Assigne les cellules restantes en respectant l'unicité
+ */
+function assignRemainingCellsVaried(
+  ownership: number[][],
+  regions: ColoredRegion[],
+  queens: Position[],
+  gridSize: number,
+  targetSizes: number[]
+): number {
+  console.log(`🔧 Assigning remaining cells with uniqueness checks...`);
+
+  const unassigned: Position[] = [];
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      if (ownership[row][col] === -1) {
+        unassigned.push({ row, col });
+      }
+    }
+  }
+
+  if (unassigned.length === 0) return 0;
+
+  console.log(`   📊 ${unassigned.length} cells to assign with uniqueness checks`);
+
+  let assignedCount = 0;
+  let maxIterations = unassigned.length * 3; // Éviter les boucles infinies
+  let iteration = 0;
+
+  while (unassigned.length > 0 && iteration < maxIterations) {
+    iteration++;
+    let cellAssignedThisIteration = false;
+
+    for (let i = unassigned.length - 1; i >= 0; i--) {
+      const cell = unassigned[i];
+      let bestRegion = -1;
+      let bestScore = -Infinity;
+
+      // Tester chaque région pour cette cellule
+      for (let regionId = 0; regionId < regions.length; regionId++) {
+        const region = regions[regionId];
+        const queen = queens[regionId];
+        const targetSize = targetSizes[regionId];
+
+        // Vérifier la connectivité orthogonale
+        const canConnect = region.cells.some(regionCell =>
+          areOrthogonallyAdjacent(cell, regionCell)
+        );
+
+        if (canConnect) {
+          // 🔧 CRITIQUE: Tester l'unicité avant l'assignation
+          const preservesUniqueness = testRegionExtension(
+            gridSize,
+            regions,
+            regionId,
+            cell
+          );
+
+          if (preservesUniqueness) {
+            const distance = manhattanDistance(cell, queen);
+            const deficit = Math.max(0, targetSize - region.cells.length);
+
+            // Score favorisant les régions sous leur cible
+            const deficitBonus = deficit * 100;
+            const proximityBonus = Math.max(0, 8 - distance) * 5;
+            const score = deficitBonus + proximityBonus + Math.random() * 10;
+
+            if (score > bestScore) {
+              bestScore = score;
+              bestRegion = regionId;
+            }
+          }
+        }
+      }
+
+      if (bestRegion !== -1) {
+        // Assigner la cellule
+        ownership[cell.row][cell.col] = bestRegion;
+        regions[bestRegion].cells.push(cell);
+        unassigned.splice(i, 1); // Retirer de la liste
+        assignedCount++;
+        cellAssignedThisIteration = true;
+
+       // console.log(`     ✅ Assigned ${cell.row + 1}${String.fromCharCode(65 + cell.col)} to region ${bestRegion} (preserves uniqueness)`);
+      }
+    }
+
+    // Si aucune cellule n'a pu être assignée cette itération, arrêter
+    if (!cellAssignedThisIteration) {
+      console.log(`     ⚠️ No more cells can be assigned while preserving uniqueness`);
+      break;
+    }
+  }
+
+  // S'il reste des cellules, les assigner en dernier recours (peut casser l'unicité)
+  if (unassigned.length > 0) {
+    console.log(`   ⚠️ ${unassigned.length} cells cannot preserve uniqueness, force-assigning...`);
+
+    for (const cell of unassigned) {
+      // Trouver la région qui peut connecter cette cellule
+      let bestRegion = -1;
+      let bestScore = -Infinity;
+
+      for (let regionId = 0; regionId < regions.length; regionId++) {
+        const region = regions[regionId];
+        const queen = queens[regionId];
+
+        const canConnect = region.cells.some(regionCell =>
+          areOrthogonallyAdjacent(cell, regionCell)
+        );
+
+        if (canConnect) {
+          const distance = manhattanDistance(cell, queen);
+          const score = 100 - distance + Math.random() * 10;
+
+          if (score > bestScore) {
+            bestScore = score;
+            bestRegion = regionId;
+          }
+        }
+      }
+
+      if (bestRegion !== -1) {
+        ownership[cell.row][cell.col] = bestRegion;
+        regions[bestRegion].cells.push(cell);
+        assignedCount++;
+      } else {
+        // En très dernier recours, assigner à la région la plus proche
+        let closestRegion = 0;
+        let minDistance = Infinity;
+
+        for (let regionId = 0; regionId < queens.length; regionId++) {
+          const distance = manhattanDistance(cell, queens[regionId]);
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestRegion = regionId;
+          }
+        }
+
+        ownership[cell.row][cell.col] = closestRegion;
+        regions[closestRegion].cells.push(cell);
+        assignedCount++;
+        console.log(`     ❌ Force-assigned ${cell.row + 1}${String.fromCharCode(65 + cell.col)} to closest region ${closestRegion} (may break uniqueness)`);
+      }
+    }
+  }
+
+  console.log(`   ✅ Assigned ${assignedCount} cells (${assignedCount - unassigned.length} with uniqueness preservation)`);
+  return assignedCount;
+}
+
+/**
+ * Répare les régions déconnectées (fonction simplifiée)
+ */
+function repairDisconnectedRegions(
+  regions: ColoredRegion[],
+  queens: Position[],
+): void {
+  console.log(`🔧 Checking and repairing disconnected regions...`);
+
+  let repairsMade = 0;
+
+  for (let regionId = 0; regionId < regions.length; regionId++) {
+    const region = regions[regionId];
+
+    if (!isRegionConnected(region.cells)) {
+      console.log(`   🔍 Region ${regionId} is disconnected, repairing...`);
+
+      const components = findConnectedComponents(region.cells);
+      const queen = queens[regionId];
+
+      // Garder la composante avec la reine
+      let mainComponentIndex = -1;
+      for (let i = 0; i < components.length; i++) {
+        if (components[i].cells.some(cell =>
+          cell.row === queen.row && cell.col === queen.col)) {
+          mainComponentIndex = i;
           break;
         }
       }
 
-      if (!addedToExisting) {
-        neighborGroups.push([existingCell]);
-      }
-    }
-  }
+      if (mainComponentIndex !== -1) {
+        region.cells = components[mainComponentIndex].cells;
 
-  // Plus il y a de groupes séparés, plus cette position est "connectrice"
-  return neighborGroups.length;
-}
+        // Redistribuer les cellules orphelines vers les régions voisines
+        for (let i = 0; i < components.length; i++) {
+          if (i === mainComponentIndex) continue;
 
-private isConnectedToGroup(cell: Position, group: Position[]): boolean {
-  // Vérification simplifiée de connectivité
-  return group.some(groupCell => {
-    const distance = Math.abs(cell.row - groupCell.row) + Math.abs(cell.col - groupCell.col);
-    return distance <= 2; // Connexion via maximum 2 cases
-  });
-}
-  private growCreativeRegions(
-    targetSizes: number[],
-    shapeStrategies: string[]
-  ): void {
-    const maxIterations = this.gridSize * this.gridSize * 3;
-    let iteration = 0;
+          for (const orphanCell of components[i].cells) {
+            // Trouver la région voisine la plus proche
+            let bestNeighbor = -1;
+            let minDistance = Infinity;
 
-    while (iteration < maxIterations) {
-      iteration++;
-      let grew = false;
+            for (let targetId = 0; targetId < regions.length; targetId++) {
+              if (targetId === regionId) continue;
 
-      for (let i = 0; i < this.regions.length; i++) {
-        const region = this.regions[i];
-        if (region.cells.length >= targetSizes[i]) continue;
+              const targetQueen = queens[targetId];
+              const distance = manhattanDistance(orphanCell, targetQueen);
+              if (distance < minDistance) {
+                minDistance = distance;
+                bestNeighbor = targetId;
+              }
+            }
 
-        const candidates = this.getGrowthCandidates(region);
-        if (candidates.length === 0) continue;
-
-        const newCell = this.selectCreativeGrowthCell(
-          candidates,
-          region,
-          shapeStrategies[i]
-        );
-
-        if (newCell) {
-          this.ownership[newCell.row][newCell.col] = i;
-          region.cells.push(newCell);
-          grew = true;
-        }
-      }
-
-      if (!grew) break;
-    }
-  }
-
-  private selectCrossCell(candidates: Position[], queen: Position): Position {
-    // Privilégier les cellules alignées horizontalement ou verticalement avec la reine
-    candidates.sort((a, b) => {
-      const alignmentA =
-        (a.row === queen.row ? 0 : 1) + (a.col === queen.col ? 0 : 1);
-      const alignmentB =
-        (b.row === queen.row ? 0 : 1) + (b.col === queen.col ? 0 : 1);
-
-      if (alignmentA !== alignmentB) return alignmentA - alignmentB;
-
-      const distA = Math.abs(a.row - queen.row) + Math.abs(a.col - queen.col);
-      const distB = Math.abs(b.row - queen.row) + Math.abs(b.col - queen.col);
-      return distA - distB;
-    });
-
-    return candidates[0];
-  }
-
-  private selectElongatedCell(
-    candidates: Position[],
-    regionCells: Position[]
-  ): Position {
-    candidates.sort((a, b) => {
-      const compactnessA = this.calculateCompactnessIfAdded(regionCells, a);
-      const compactnessB = this.calculateCompactnessIfAdded(regionCells, b);
-      return compactnessA - compactnessB; // Moins compact = plus allongé
-    });
-
-    return candidates[0];
-  }
-
-  private calculateCompactnessIfAdded(
-    regionCells: Position[],
-    newCell: Position
-  ): number {
-    const allCells = [...regionCells, newCell];
-    const perimeter = this.calculatePerimeter(allCells);
-    return perimeter / allCells.length;
-  }
-
-  private calculatePerimeter(cells: Position[]): number {
-    const cellSet = new Set(cells.map((c) => `${c.row}-${c.col}`));
-    let perimeter = 0;
-
-    for (const cell of cells) {
-      const directions = [
-        [-1, 0],
-        [1, 0],
-        [0, -1],
-        [0, 1],
-      ];
-      for (const [dr, dc] of directions) {
-        const key = `${cell.row + dr}-${cell.col + dc}`;
-        if (!cellSet.has(key)) perimeter++;
-      }
-    }
-
-    return perimeter;
-  }
-
-  private getGrowthCandidates(region: ColoredRegion): Position[] {
-    const candidates: Position[] = [];
-    const visited = new Set<string>();
-
-    for (const cell of region.cells) {
-      const directions = [
-        [-1, 0],
-        [1, 0],
-        [0, -1],
-        [0, 1],
-      ];
-
-      for (const [dr, dc] of directions) {
-        const newRow = cell.row + dr;
-        const newCol = cell.col + dc;
-        const key = `${newRow}-${newCol}`;
-
-        if (
-          newRow >= 0 &&
-          newRow < this.gridSize &&
-          newCol >= 0 &&
-          newCol < this.gridSize &&
-          this.ownership[newRow][newCol] === -1 &&
-          !visited.has(key)
-        ) {
-          candidates.push({ row: newRow, col: newCol });
-          visited.add(key);
-        }
-      }
-    }
-
-    return candidates;
-  }
-
-  private assignRemainingCells(): void {
-    const unassigned: Position[] = [];
-
-    for (let row = 0; row < this.gridSize; row++) {
-      for (let col = 0; col < this.gridSize; col++) {
-        if (this.ownership[row][col] === -1) {
-          unassigned.push({ row, col });
-        }
-      }
-    }
-
-    for (const cell of unassigned) {
-      const adjacentRegions = this.getAdjacentRegions(cell);
-
-      if (adjacentRegions.length > 0) {
-        adjacentRegions.sort(
-          (a, b) => this.regions[a].cells.length - this.regions[b].cells.length
-        );
-        const chosenRegion = adjacentRegions[0];
-        this.ownership[cell.row][cell.col] = chosenRegion;
-        this.regions[chosenRegion].cells.push(cell);
-      } else {
-        let minDist = Infinity;
-        let closestRegion = 0;
-
-        for (let i = 0; i < this.regions.length; i++) {
-          const queen = this.regions[i].queenPosition!;
-          const dist =
-            Math.abs(cell.row - queen.row) + Math.abs(cell.col - queen.col);
-          if (dist < minDist) {
-            minDist = dist;
-            closestRegion = i;
+            if (bestNeighbor !== -1) {
+              regions[bestNeighbor].cells.push(orphanCell);
+            }
           }
         }
 
-        this.ownership[cell.row][cell.col] = closestRegion;
-        this.regions[closestRegion].cells.push(cell);
+        repairsMade++;
       }
     }
   }
 
-  private getAdjacentRegions(cell: Position): number[] {
-    const adjacent = new Set<number>();
-    const directions = [
-      [-1, 0],
-      [1, 0],
-      [0, -1],
-      [0, 1],
-    ];
-
-    for (const [dr, dc] of directions) {
-      const row = cell.row + dr;
-      const col = cell.col + dc;
-
-      if (row >= 0 && row < this.gridSize && col >= 0 && col < this.gridSize) {
-        const regionId = this.ownership[row][col];
-        if (regionId !== -1) {
-          adjacent.add(regionId);
-        }
-      }
-    }
-
-    return Array.from(adjacent);
-  }
-
-private verifySolutionUniqueness(): boolean {
-  const solver = new OptimizedQueensSolver(this.regions);
-  return solver.hasUniqueSolution();
-}
-
-  private adjustRegionsForUniqueness(): void {
-    for (const region of this.regions) {
-      if (region.cells.length > this.gridSize * 1.2) {
-        const peripheralCells = region.cells.filter((cell) => {
-          const isPeripheral = this.getAdjacentRegions(cell).length > 0;
-          const isNotQueen = !(
-            cell.row === region.queenPosition!.row &&
-            cell.col === region.queenPosition!.col
-          );
-          return isPeripheral && isNotQueen;
-        });
-        const toRemove =
-          this.gridSize >= 9
-            ? Math.floor(peripheralCells.length * 0.3) // De 0.2 à 0.3 (léger boost)
-            : Math.floor(peripheralCells.length * 0.2);
-        for (let i = 0; i < toRemove && region.cells.length > 2; i++) {
-          const cell = peripheralCells[i];
-          region.cells = region.cells.filter(
-            (c) => !(c.row === cell.row && c.col === cell.col)
-          );
-          this.ownership[cell.row][cell.col] = -1;
-        }
-      }
-    }
-
-    this.assignRemainingCells();
-  }
-
-  private areAdjacent(pos1: Position, pos2: Position): boolean {
-    const rowDiff = Math.abs(pos1.row - pos2.row);
-    const colDiff = Math.abs(pos1.col - pos2.col);
-    return rowDiff <= 1 && colDiff <= 1 && !(rowDiff === 0 && colDiff === 0);
-  }
-
-  private shuffleArray<T>(array: T[]): void {
-    for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
-    }
-  }
-
-  private initializeBoard(): GameCell[][] {
-    const board: GameCell[][] = Array(this.gridSize)
-      .fill(null)
-      .map(() => Array(this.gridSize).fill(null));
-
-    for (let row = 0; row < this.gridSize; row++) {
-      for (let col = 0; col < this.gridSize; col++) {
-        const regionId = this.ownership[row][col];
-        const region = this.regions[regionId];
-
-        board[row][col] = {
-          row,
-          col,
-          regionId: regionId,
-          regionColor: region.color,
-          state: "empty",
-          isHighlighted: false,
-          isConflict: false,
-        };
-      }
-    }
-
-    return board;
-  }
-}
-class OptimizedQueensSolver {
-  private regions: ColoredRegion[];
-  private domains: Position[][]; // Domaines valides pour chaque région
-  private solutionCount: number = 0;
-
-  constructor(regions: ColoredRegion[]) {
-    this.regions = regions;
-    this.domains = regions.map(region => [...region.cells]);
-  }
-
-  hasUniqueSolution(): boolean {
-    this.solutionCount = 0;
-    const assignment: Position[] = new Array(this.regions.length);
-    const domains = this.domains.map(domain => [...domain]); // Copie des domaines
-
-    this.backtrackWithForwardChecking(assignment, domains, 0);
-    return this.solutionCount === 1;
-  }
-
-  private backtrackWithForwardChecking(
-    assignment: Position[],
-    domains: Position[][],
-    level: number
-  ): boolean {
-    // Arrêt précoce si on a déjà trouvé plus d'une solution
-    if (this.solutionCount > 1) return false;
-
-    if (level === this.regions.length) {
-      this.solutionCount++;
-      return this.solutionCount <= 1; // Continue seulement si <= 1 solution
-    }
-
-    // MCV Heuristic : choisir la variable avec le plus petit domaine
-    const nextVar = this.selectMostConstrainedVariable(domains, assignment, level);
-    if (nextVar === -1) return true; // Aucune variable disponible
-
-    // Échanger avec la position actuelle pour maintenir l'ordre
-    if (nextVar !== level) {
-      [domains[level], domains[nextVar]] = [domains[nextVar], domains[level]];
-      [assignment[level], assignment[nextVar]] = [assignment[nextVar], assignment[level]];
-    }
-
-    const currentDomain = [...domains[level]]; // Copie du domaine
-
-    for (const position of currentDomain) {
-      if (this.solutionCount > 1) break;
-
-      assignment[level] = position;
-
-      // Forward Checking : propager les contraintes
-      const newDomains = this.forwardCheck(domains, assignment, level);
-      if (newDomains !== null) {
-        this.backtrackWithForwardChecking(assignment, newDomains, level + 1);
-      }
-    }
-
-    // Remettre en place si on avait échangé
-    if (nextVar !== level) {
-      [domains[level], domains[nextVar]] = [domains[nextVar], domains[level]];
-      [assignment[level], assignment[nextVar]] = [assignment[nextVar], assignment[level]];
-    }
-
-    return true;
-  }
-
-  /**
-   * MCV (Most Constrained Variable) : technique éprouvée de CSP
-   */
-  private selectMostConstrainedVariable(
-    domains: Position[][],
-    assignment: Position[],
-    startFrom: number
-  ): number {
-    let minDomainSize = Infinity;
-    let bestVar = -1;
-
-    for (let i = startFrom; i < domains.length; i++) {
-      if (assignment[i] !== undefined) continue; // Déjà assignée
-
-      const domainSize = domains[i].length;
-      if (domainSize === 0) return -1; // Domaine vide = échec
-
-      if (domainSize < minDomainSize) {
-        minDomainSize = domainSize;
-        bestVar = i;
-      }
-
-      // Si domaine de taille 1, on peut s'arrêter (optimal)
-      if (domainSize === 1) break;
-    }
-
-    return bestVar;
-  }
-
-  /**
-   * Forward Checking : technique éprouvée pour éliminer les valeurs inconsistantes
-   */
-  private forwardCheck(
-    domains: Position[][],
-    assignment: Position[],
-    lastAssigned: number
-  ): Position[][] | null {
-    const newDomains = domains.map(domain => [...domain]);
-    const assignedPosition = assignment[lastAssigned];
-
-    // Propager les contraintes sur toutes les variables non assignées
-    for (let i = lastAssigned + 1; i < newDomains.length; i++) {
-      if (assignment[i] !== undefined) continue;
-
-      newDomains[i] = newDomains[i].filter(pos =>
-        this.isConsistent(pos, assignedPosition)
-      );
-
-      // Si un domaine devient vide, c'est un échec
-      if (newDomains[i].length === 0) {
-        return null;
-      }
-    }
-
-    return newDomains;
-  }
-
-  /**
-   * Vérification de consistance entre deux positions
-   */
-  private isConsistent(pos1: Position, pos2: Position): boolean {
-    // Même ligne ou colonne
-    if (pos1.row === pos2.row || pos1.col === pos2.col) return false;
-
-    // Adjacence (contrainte spécifique Queens Game)
-    const rowDiff = Math.abs(pos1.row - pos2.row);
-    const colDiff = Math.abs(pos1.col - pos2.col);
-    if (rowDiff <= 1 && colDiff <= 1) return false;
-
-    return true;
-  }
-}
-
-// Interface avec callback de progression
-export interface GenerationProgress {
-  attempts: number;
-  maxAttempts: number;
-  percentage: number;
-  status: string;
-}
-
-export async function generateGameLevel(
-  gridSize: number = 6,
-  complexity: "simple" | "normal" | "complex" = "normal",
-  onProgress?: (progress: GenerationProgress) => void
-): Promise<GameState> {
-  //console.log(`🎯 Génération niveau ${gridSize}x${gridSize}`);
-
-  try {
-    // Essayer de générer normalement
-    const settings: DifficultySettings = { complexity };
-    const generator = new ProceduralLevelGenerator(gridSize, settings);
-
-    // Wrapper pour les callbacks de progression si fournis
-    if (onProgress) {
-      // Vous pouvez modifier la classe pour supporter les callbacks
-      onProgress({
-        attempts: 0,
-        maxAttempts: 2000,
-        percentage: 0,
-        status: "Génération en cours...",
-      });
-    }
-
-    const level = await generator.generateLevel();
-
-    // Sauvegarder en arrière-plan (ignore les erreurs)
-    if (levelStorage) {
-      levelStorage
-        .saveLevel(gridSize, complexity, level.regions)
-        .catch(() => {});
-    }
-
-    return level;
-  } catch (error) {
-    //console.log("⚠️ Échec génération, tentative fallback Firebase...");
-
-    try {
-      // Fallback Firebase
-      if (levelStorage) {
-        const storedLevel = await levelStorage.getRandomLevel(
-          gridSize,
-          complexity
-        );
-
-        if (storedLevel) {
-          //console.log("📦 Niveau récupéré depuis Firebase");
-          return levelStorage.convertToGameState(storedLevel);
-        }
-
-        // Essayer sans contrainte de complexité
-        const anyLevel = await levelStorage.getRandomLevel(gridSize);
-        if (anyLevel) {
-          //console.log("📦 Niveau récupéré (complexité différente)");
-          return levelStorage.convertToGameState(anyLevel);
-        }
-      }
-    } catch (firebaseError) {
-      //console.warn("Firebase fallback échoué:", firebaseError);
-    }
-
-    // Dernier recours: génération basique SYNCHRONE
-    //console.log("🔄 Génération de secours...");
-    return generateBasicLevel(gridSize);
-  }
+  console.log(`   🔧 Made ${repairsMade} connectivity repairs`);
 }
 
 /**
- * Générateur de secours simple (synchrone, sans validation d'unicité)
+ * Validation rapide pour les tests
  */
-function generateBasicLevel(gridSize: number): GameState {
-  // Version simplifiée qui marche toujours
-  const solution = generateSimpleNQueens(gridSize);
-  const regions = createBasicRegions(solution, gridSize);
-  const board = createBoard(regions, gridSize);
+function quickValidation(
+  regions: ColoredRegion[],
+  gridSize: number,
+): boolean {
+  // Vérifier la connectivité
+  for (const region of regions) {
+    if (!isRegionConnected(region.cells)) {
+      console.warn(`   ⚠️ Region ${region.id} not connected`);
+      return false;
+    }
+  }
+
+  // Vérifier l'unicité de la solution
+  const hasUniqueSolution = QueensGameSolver.hasUniqueSolution(gridSize, regions);
+  if (!hasUniqueSolution) {
+    console.warn(`   ⚠️ Solution not unique`);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * GÉNÉRATEUR PRINCIPAL avec régions variées
+ */
+export async function generateGameLevel(gridSize: number = 6): Promise<GameState> {
+  console.log(`🎨 Generating VARIED Queens Game level for ${gridSize}×${gridSize}`);
+
+  const maxAttempts = 50; // Moins d'essais pour aller plus vite
+  let attempt = 0;
+
+  while (attempt < maxAttempts) {
+    attempt++;
+    console.log(`\n🔄 Attempt ${attempt}/${maxAttempts}`);
+
+    try {
+      // ÉTAPE 1: Générer une solution N-Queens valide
+      const solution = generateNQueensSolution(gridSize);
+      if (!solution) {
+        console.warn(`   ⚠️ Failed to generate N-Queens solution, retrying...`);
+        continue;
+      }
+
+      // ÉTAPE 2: Construire les régions variées avec vérification d'unicité
+      const regions = buildVariedRegions(solution, gridSize);
+
+      // ÉTAPE 3: Validation
+      const isValid = quickValidation(regions, gridSize);
+      if (!isValid) {
+        console.warn(`   ⚠️ Validation failed, retrying...`);
+        continue;
+      }
+
+      // ÉTAPE 4: Créer le plateau
+      const board = initializeBoard(gridSize, regions);
+
+      const gameState: GameState = {
+        board,
+        regions,
+        gridSize,
+        queensPlaced: 0,
+        queensRequired: gridSize,
+        isCompleted: false,
+        moveCount: 0,
+        solution,
+        elapsedTime: 0,
+        isTimerRunning: false,
+      };
+
+      const finalSizes = regions.map(r => r.cells.length);
+      console.log(`\n🎉 SUCCESS! Varied level generated on attempt ${attempt}`);
+      console.log(`   🎯 Solution: ${formatPositionList(solution)}`);
+      console.log(`   📐 Region sizes: [${finalSizes.join(", ")}] (range: ${Math.min(...finalSizes)}-${Math.max(...finalSizes)})`);
+      console.log(`   🎨 Varied generation complete`);
+const saveResult = await levelStorage.saveLevel(gridSize, "medium", regions);
+console.log(`🔄 Sauvegarde result: ${saveResult}`);
+
+return gameState;
+
+    } catch (error) {
+      console.error(`   ❌ Attempt ${attempt} failed:`, error);
+      continue;
+    }
+  }
+
+  // Fallback simple
+  console.warn(`⚠️ Using simple fallback generation...`);
+  return await generateFallbackWithFirebase(gridSize);
+}
+
+/**
+ * Fallback intelligent : Firebase d'abord, puis génération simple
+ */
+async function generateFallbackWithFirebase(gridSize: number): Promise<GameState> {
+  console.log(`🔧 Attempting Firebase fallback for ${gridSize}×${gridSize}...`);
+
+  try {
+    // Essayer de récupérer un niveau depuis Firebase
+    const storedLevel = await levelStorage.getRandomLevel(gridSize);
+
+    if (storedLevel) {
+      console.log(`📦 Using stored level from Firebase`);
+      const gameState = levelStorage.convertToGameState(storedLevel);
+
+      // Ajouter les propriétés manquantes pour un GameState complet
+      return {
+        ...gameState,
+        elapsedTime: 0,
+        isTimerRunning: false,
+      };
+    }
+  } catch (error) {
+    console.warn(`⚠️ Firebase fallback failed:`, error);
+  }
+
+  // Si Firebase échoue ou n'a pas de niveau, utiliser la génération simple
+  console.log(`🔧 No Firebase level available, using simple generation...`);
+  return generateSimpleFallback(gridSize);
+}
+
+/**
+ * Générateur de secours simple et fiable
+ */
+function generateSimpleFallback(gridSize: number): GameState {
+  console.log(`🔧 Generating simple fallback level`);
+
+  const solution = generateNQueensSolution(gridSize);
+  if (!solution) {
+    throw new Error("Cannot generate basic N-Queens solution");
+  }
+
+  // Créer des régions simples de 3-4 cellules chacune
+  const regions: ColoredRegion[] = solution.map((queen, index) => ({
+    id: index,
+    color: REGION_COLORS[index % REGION_COLORS.length],
+    cells: [queen],
+    hasQueen: true,
+    queenPosition: queen,
+  }));
+
+  // Expansion simple par couches
+  const cellsPerRegion = Math.floor((gridSize * gridSize) / gridSize);
+
+  for (let regionId = 0; regionId < regions.length; regionId++) {
+    const queen = solution[regionId];
+    const region = regions[regionId];
+
+    // Ajouter des voisins orthogonaux
+    const neighbors = getOrthogonalNeighbors(queen, gridSize);
+    for (const neighbor of neighbors) {
+      if (region.cells.length < cellsPerRegion) {
+        region.cells.push(neighbor);
+      }
+    }
+  }
+
+  // Compléter avec les cellules restantes
+  const usedCells = new Set<string>();
+  regions.forEach(region => {
+    region.cells.forEach(cell => {
+      usedCells.add(positionToKey(cell));
+    });
+  });
+
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      const key = positionToKey({ row, col });
+      if (!usedCells.has(key)) {
+        // Assigner à la région la plus proche
+        let closestRegion = 0;
+        let minDistance = Infinity;
+
+        for (let regionId = 0; regionId < solution.length; regionId++) {
+          const distance = manhattanDistance({ row, col }, solution[regionId]);
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestRegion = regionId;
+          }
+        }
+
+        regions[closestRegion].cells.push({ row, col });
+      }
+    }
+  }
+
+  const board = initializeBoard(gridSize, regions);
+
+  console.log(`✅ Simple fallback generated`);
 
   return {
     board,
@@ -1064,172 +643,5 @@ function generateBasicLevel(gridSize: number): GameState {
   };
 }
 
-/**
- * N-Queens simple qui marche toujours
- */
-function generateSimpleNQueens(gridSize: number): Position[] {
-  const solution: Position[] = [];
-
-  // Placement simple en diagonal décalé (marche pour la plupart des tailles)
-  for (let i = 0; i < gridSize; i++) {
-    const col = (i * 2 + 1) % gridSize;
-    solution.push({ row: i, col });
-  }
-
-  return solution;
-}
-
-/**
- * Régions basiques autour des reines
- */
-function createBasicRegions(
-  solution: Position[],
-  gridSize: number
-): ColoredRegion[] {
-  const regions: ColoredRegion[] = solution.map((queen, index) => ({
-    id: index,
-    color: REGION_COLORS[index % REGION_COLORS.length],
-    cells: [queen],
-    hasQueen: true,
-    queenPosition: queen,
-  }));
-
-  // Ajouter quelques cellules autour de chaque reine
-  const ownership = Array(gridSize)
-    .fill(null)
-    .map(() => Array(gridSize).fill(-1));
-
-  // Marquer les reines
-  solution.forEach((queen, index) => {
-    ownership[queen.row][queen.col] = index;
-  });
-
-  // Ajouter des cellules adjacentes
-  for (let regionIndex = 0; regionIndex < regions.length; regionIndex++) {
-    const region = regions[regionIndex];
-    const queen = region.queenPosition!;
-
-    // Directions autour de la reine
-    const directions = [
-      [-1, 0],
-      [1, 0],
-      [0, -1],
-      [0, 1],
-      [-1, -1],
-      [-1, 1],
-      [1, -1],
-      [1, 1],
-    ];
-
-    for (const [dr, dc] of directions) {
-      const newRow = queen.row + dr;
-      const newCol = queen.col + dc;
-
-      if (
-        newRow >= 0 &&
-        newRow < gridSize &&
-        newCol >= 0 &&
-        newCol < gridSize &&
-        ownership[newRow][newCol] === -1
-      ) {
-        ownership[newRow][newCol] = regionIndex;
-        region.cells.push({ row: newRow, col: newCol });
-      }
-    }
-  }
-
-  // Assigner les cellules restantes
-  for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++) {
-      if (ownership[row][col] === -1) {
-        // Assigner à la région la plus proche
-        let minDist = Infinity;
-        let closestRegion = 0;
-
-        for (let i = 0; i < regions.length; i++) {
-          const queen = regions[i].queenPosition!;
-          const dist = Math.abs(row - queen.row) + Math.abs(col - queen.col);
-          if (dist < minDist) {
-            minDist = dist;
-            closestRegion = i;
-          }
-        }
-
-        ownership[row][col] = closestRegion;
-        regions[closestRegion].cells.push({ row, col });
-      }
-    }
-  }
-
-  return regions;
-}
-
-/**
- * Créer le board depuis les régions
- */
-function createBoard(regions: ColoredRegion[], gridSize: number): GameCell[][] {
-  const board: GameCell[][] = Array(gridSize)
-    .fill(null)
-    .map(() => Array(gridSize).fill(null));
-
-  for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++) {
-      const region = regions.find((r) =>
-        r.cells.some((cell) => cell.row === row && cell.col === col)
-      );
-
-      board[row][col] = {
-        row,
-        col,
-        regionId: region?.id || 0,
-        regionColor: region?.color || "#26A69A",
-        state: "empty",
-        isHighlighted: false,
-        isConflict: false,
-      };
-    }
-  }
-
-  return board;
-}
-
-export async function generateLevelWithDifficulty(
-  gridSize: number,
-  difficulty: "easy" | "medium" | "hard" | "expert",
-  onProgress?: (progress: GenerationProgress) => void
-): Promise<GameState> {
-  const complexityMap = {
-    easy: "simple" as const,
-    medium: "normal" as const,
-    hard: "complex" as const,
-    expert: "complex" as const,
-  };
-
-  return generateGameLevel(gridSize, complexityMap[difficulty], onProgress);
-}
-
-export function resetGameBoard(gameState: GameState): GameState {
-  const newBoard = gameState.board.map((row) =>
-    row.map((cell) => ({
-      ...cell,
-      state: "empty" as const,
-      isHighlighted: false,
-      isConflict: false,
-    }))
-  );
-
-  const newRegions = gameState.regions.map((region) => ({
-    ...region,
-    hasQueen: false,
-    queenPosition: undefined,
-  }));
-
-  return {
-    ...gameState,
-    board: newBoard,
-    regions: newRegions,
-    queensPlaced: 0,
-    isCompleted: false,
-    moveCount: 0,
-  };
-}
+// Réexporter les fonctions stables
+export { resetGameBoard } from "./gameUtils";

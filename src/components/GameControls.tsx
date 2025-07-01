@@ -9,8 +9,9 @@ import {
   Trophy,
   X as XIcon
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { GameCell, GameState } from '../types/game';
+import { levelStorage } from '../utils/levelStorage';
 
 interface GameControlsProps {
   gameState: GameState;
@@ -18,6 +19,7 @@ interface GameControlsProps {
   onResetGame: () => void;
   onNewGame: () => void;
   onGridSizeChange: (size: number) => void;
+  onLevelGenerated?: () => void;
 }
 
 // Instructions dropdown
@@ -80,14 +82,40 @@ export const GameControls: React.FC<GameControlsProps> = ({
   gameTime,
   onResetGame,
   onNewGame,
-  onGridSizeChange
+  onGridSizeChange,
+  onLevelGenerated
 }) => {
+    const [levelCounts, setLevelCounts] = useState<Record<number, number>>({});
   const formatTime = (seconds: number): string => {
     const validSeconds = isNaN(seconds) || seconds < 0 ? 0 : Math.floor(seconds);
     const mins = Math.floor(validSeconds / 60);
     const secs = validSeconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
+
+    const loadLevelCounts = async () => {
+    const counts = await levelStorage.getLevelCounts();
+    setLevelCounts(counts);
+  };
+
+    useEffect(() => {
+    loadLevelCounts();
+  }, []);
+
+    useEffect(() => {
+    if (onLevelGenerated) {
+      loadLevelCounts();
+    }
+  }, [gameState.solution, onLevelGenerated]);
+
+    // Charger les compteurs de niveaux au montage
+  useEffect(() => {
+    const loadLevelCounts = async () => {
+      const counts = await levelStorage.getLevelCounts();
+      setLevelCounts(counts);
+    };
+    loadLevelCounts();
+  }, []);
 
     const generateGridEmojis = (board: GameCell[][], gridSize: number) => {
     const regionEmojis = ['🟦', '🟩', '🟨', '🟧', '🟪', '🟫', '⬜', '🟥', '⬛'];
@@ -138,6 +166,12 @@ https://queens-game.creachtheo.fr
     10: { name: "Maître", color: "bg-purple-100 text-purple-700" },
     11: { name: "Légendaire", color: "bg-pink-100 text-pink-700" },
     12: { name: "Mythique", color: "bg-gray-100 text-gray-700" }
+  };
+
+    // Fonction pour formater le nombre de niveaux
+  const formatLevelCount = (gridSize: number) => {
+    const count = levelCounts[gridSize] || 0;
+    return count > 0 ? ` (${count} niveaux)` : ' (0 niveau)';
   };
 
   return (
@@ -207,14 +241,14 @@ https://queens-game.creachtheo.fr
           onChange={(e) => onGridSizeChange(Number(e.target.value))}
           className="w-full h-12 border border-gray-300 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         >
-          <option value={5}>5×5 — Tutoriel</option>
-          <option value={6}>6×6 — Facile</option>
-          <option value={7}>7×7 — Normal</option>
-          <option value={8}>8×8 — Difficile</option>
-          <option value={9}>9×9 — Expert</option>
-          <option value={10}>10×10 — Maître</option>
-          <option value={11}>11×11 — Légendaire</option>
-          <option value={12}>12×12 — Mythique</option>
+  <option value={5}>5×5 — Tutoriel{formatLevelCount(5)}</option>
+  <option value={6}>6×6 — Facile{formatLevelCount(6)}</option>
+  <option value={7}>7×7 — Normal{formatLevelCount(7)}</option>
+  <option value={8}>8×8 — Difficile{formatLevelCount(8)}</option>
+  <option value={9}>9×9 — Expert{formatLevelCount(9)}</option>
+  <option value={10}>10×10 — Maître{formatLevelCount(10)}</option>
+  <option value={11}>11×11 — Légendaire{formatLevelCount(11)}</option>
+  <option value={12}>12×12 — Mythique{formatLevelCount(12)}</option>
         </select>
       </div>
 

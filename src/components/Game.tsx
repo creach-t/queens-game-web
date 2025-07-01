@@ -1,9 +1,9 @@
-import React, { useState, useCallback } from 'react';
-import { GameBoard } from './GameBoard';
-import { GameControls } from './GameControls';
+import { Crown } from 'lucide-react';
+import React, { useCallback, useState } from 'react';
 import { useGameLogic } from '../hooks/useGameLogic';
 import { generateGameLevel, GenerationProgress } from '../utils/levelGenerator';
-import { Crown } from 'lucide-react';
+import { GameBoard } from './GameBoard';
+import { GameControls } from './GameControls';
 import { Timer } from './Timer';
 
 export const Game: React.FC = () => {
@@ -12,6 +12,7 @@ export const Game: React.FC = () => {
     handleCellClick,
     resetGame,
     newGame: originalNewGame,
+    changeGridSizeOnly,
     gameTime
   } = useGameLogic(6);
 
@@ -26,7 +27,7 @@ export const Game: React.FC = () => {
   // Fonction pour changer la taille de grille avec animation immédiate
   const handleGridSizeChange = useCallback((newSize: number) => {
     // ✅ ANIMATION IMMÉDIATE : Changer la taille tout de suite
-    originalNewGame(newSize);
+    changeGridSizeOnly(newSize);
     setBoardAnimationKey(prev => prev + 1); // Lance l'animation en spirale
 
     // Puis lancer la génération en arrière-plan
@@ -46,16 +47,6 @@ export const Game: React.FC = () => {
     });
 
     try {
-      // Génération en arrière-plan pendant que l'animation tourne
-      await generateGameLevel(
-        gridSize || gameState.gridSize,
-        'normal',
-        (progress) => {
-          if (!isCancelled) {
-            setGenerationProgress(progress);
-          }
-        }
-      );
 
       if (isCancelled) return;
 
@@ -66,7 +57,6 @@ export const Game: React.FC = () => {
     } catch (error) {
       if (!isCancelled) {
         //console.error('Erreur génération:', error);
-        // Le niveau simple est déjà en place, pas besoin de changer
       }
     } finally {
       if (!isCancelled) {
@@ -75,7 +65,7 @@ export const Game: React.FC = () => {
     }
 
     setCancelGeneration(null);
-  }, [gameState.gridSize, originalNewGame]);
+  }, [originalNewGame]);
 
   // Nouveau jeu normal
   const handleNewGame = useCallback(() => {
@@ -120,7 +110,8 @@ export const Game: React.FC = () => {
               gameTime={gameTime}
               onResetGame={handleResetGame}
               onNewGame={handleNewGame}
-              onGridSizeChange={handleGridSizeChange} // Animation immédiate
+              onGridSizeChange={handleGridSizeChange}
+              onLevelGenerated={() => {}}
             />
           </div>
         </div>

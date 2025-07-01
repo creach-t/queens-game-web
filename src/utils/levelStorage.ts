@@ -1,6 +1,7 @@
 // levelStorage.ts
 import { initializeApp } from "firebase/app";
-import { get, getDatabase, push, ref } from "firebase/database";
+import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
+import { get, getDatabase, push, ref, set } from "firebase/database";
 
 interface Position {
   row: number;
@@ -23,7 +24,10 @@ interface StoredLevel {
 
 class LevelStorage {
   private db: any = null;
+  private auth: any = null;
   private isAvailable: boolean = false;
+  private isAuthenticated: boolean = false;
+  private authPromise: Promise<void> | null = null;
 
   constructor(firebaseConfig: any) {
     try {
@@ -35,11 +39,60 @@ class LevelStorage {
 
       const app = initializeApp(firebaseConfig);
       this.db = getDatabase(app);
+      this.auth = getAuth(app);
       this.isAvailable = true;
-      //console.log('✅ Firebase Database initialisé');
+
+      // Authentification automatique
+      this.authPromise = this.initAuth();
+
+      console.log("✅ Firebase Database initialisé");
     } catch (error) {
-      //console.warn('Firebase non disponible:', error);
+      console.warn("Firebase non disponible:", error);
       this.isAvailable = false;
+    }
+  }
+
+  /**
+   * Initialise l'authentification anonyme
+   */
+  private async initAuth(): Promise<void> {
+    if (!this.auth) return;
+
+    return new Promise((resolve) => {
+      // Écouter les changements d'auth
+      onAuthStateChanged(this.auth, async (user) => {
+        if (user) {
+          this.isAuthenticated = true;
+          console.log("✅ Utilisateur authentifié:", user.uid);
+          resolve();
+        } else {
+          // Pas d'utilisateur, s'authentifier anonymement
+          try {
+            await signInAnonymously(this.auth);
+            console.log("✅ Authentification anonyme réussie");
+          } catch (error) {
+            console.warn("Erreur authentification anonyme:", error);
+            resolve(); // Continue même en cas d'erreur
+          }
+        }
+      });
+    });
+  }
+
+  /**
+   * Attend que l'authentification soit prête
+   */
+  private async waitForAuth(): Promise<boolean> {
+    if (!this.isAvailable || !this.authPromise) {
+      return false;
+    }
+
+    try {
+      await this.authPromise;
+      return this.isAuthenticated;
+    } catch (error) {
+      console.warn("Erreur attente auth:", error);
+      return false;
     }
   }
 
@@ -51,7 +104,9 @@ class LevelStorage {
     complexity: string,
     regions: any[]
   ): Promise<boolean> {
-    if (!this.isAvailable || !this.db) {
+    const authReady = await this.waitForAuth();
+    if (!authReady) {
+      console.warn("❌ Authentification non prête, sauvegarde annulée");
       return false;
     }
 
@@ -62,20 +117,87 @@ class LevelStorage {
         queenPosition: region.queenPosition,
       }));
 
-      const levelsRef = ref(this.db, "generated_levels");
-      await push(levelsRef, {
-        gridSize: gridSize,
-        complexity: complexity,
+      const hash = await this.computeLevelHash(gridSize, storedRegions);
+      const indexRef = ref(this.db, "generated_levels_index/" + hash);
+      const existing = await get(indexRef);
+
+      if (existing.exists()) {
+        console.log("⚠️ Niveau déjà existant, sauvegarde ignorée");
+        return false;
+      }
+
+      const levelsRef = ref(this.db, "generated_levels_v2");
+      const newLevelRef = await push(levelsRef, {
+        gridSize,
+        complexity,
         regions: storedRegions,
         createdAt: Date.now(),
+        userId: this.auth?.currentUser?.uid,
       });
 
-      //console.log(`✅ Niveau ${gridSize}x${gridSize} sauvegardé`);
+      await set(indexRef, newLevelRef.key);
+      console.log(`✅ Niveau ${gridSize}x${gridSize} sauvegardé`);
       return true;
     } catch (error) {
-      //console.warn('Erreur sauvegarde (ignorée):', error);
+      console.error("❌ Erreur sauvegarde niveau:", error);
       return false;
     }
+  }
+
+  /**
+   * Récupère le nombre de niveaux disponibles par taille de grille
+   */
+  async getLevelCounts(): Promise<Record<number, number>> {
+    if (!this.isAvailable || !this.db) {
+      return {};
+    }
+
+    try {
+      const levelsRef = ref(this.db, "generated_levels_v2");
+      const snapshot = await get(levelsRef);
+
+      if (!snapshot.exists()) {
+        return {};
+      }
+
+      const allLevels = snapshot.val();
+      const counts: Record<number, number> = {};
+
+      for (const level of Object.values(allLevels)) {
+        const levelData = level as any;
+        const gridSize = levelData.gridSize;
+        counts[gridSize] = (counts[gridSize] || 0) + 1;
+      }
+
+      return counts;
+    } catch (error) {
+      console.warn("Erreur récupération compteurs:", error);
+      return {};
+    }
+  }
+
+  private async computeLevelHash(
+    gridSize: number,
+    regions: StoredRegion[]
+  ): Promise<string> {
+    const normalized = {
+      gridSize,
+      regions: regions.map((r) => ({
+        id: r.id,
+        // Trie les cellules pour éviter que l'ordre influe sur le hash
+        cells: r.cells
+          .map((c) => ({ row: c.row, col: c.col }))
+          .sort((a, b) => a.row - b.row || a.col - b.col),
+        queenPosition: r.queenPosition,
+      })),
+    };
+
+    const encoder = new TextEncoder();
+    const data = encoder.encode(JSON.stringify(normalized));
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
   }
 
   /**
@@ -85,12 +207,13 @@ class LevelStorage {
     gridSize: number,
     complexity?: string
   ): Promise<StoredLevel | null> {
+    // Pas besoin d'auth pour lire (read: true dans les règles)
     if (!this.isAvailable || !this.db) {
       return null;
     }
 
     try {
-      const levelsRef = ref(this.db, "generated_levels");
+      const levelsRef = ref(this.db, "generated_levels_v2");
       const snapshot = await get(levelsRef);
 
       if (!snapshot.exists()) {
@@ -116,7 +239,9 @@ class LevelStorage {
       const randomLevel =
         matchingLevels[Math.floor(Math.random() * matchingLevels.length)];
 
-      //console.log(`📦 Niveau récupéré depuis Firebase (${matchingLevels.length} disponibles)`);
+      console.log(
+        `📦 Niveau récupéré depuis Firebase (${matchingLevels.length} disponibles)`
+      );
 
       return {
         key: randomLevel.key,
@@ -129,6 +254,20 @@ class LevelStorage {
       //console.warn('Erreur récupération (ignorée):', error);
       return null;
     }
+  }
+
+  /**
+   * Vérifie si l'utilisateur est authentifié
+   */
+  isUserAuthenticated(): boolean {
+    return this.isAuthenticated;
+  }
+
+  /**
+   * Obtient l'ID de l'utilisateur actuel
+   */
+  getCurrentUserId(): string | null {
+    return this.auth?.currentUser?.uid || null;
   }
 
   /**

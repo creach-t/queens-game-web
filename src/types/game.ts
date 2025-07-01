@@ -1,3 +1,5 @@
+export * from './core';
+
 export interface GameCell {
   row: number;
   col: number;

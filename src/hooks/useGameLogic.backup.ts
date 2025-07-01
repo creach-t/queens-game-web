@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { validateQueenPlacement } from "../lib/game-engine/rules";
 import { ColoredRegion, GameCell, GameState } from "../types/game";
-import { updateConflicts } from "../utils/gameValidation";
+import {
+  updateConflicts,
+  validateQueenPlacement,
+} from "../utils/gameValidation";
 import { generateGameLevel, resetGameBoard } from "../utils/levelGenerator";
 
 // Interface pour tracker les clics par cellule
@@ -98,32 +100,6 @@ export function useGameLogic(initialGridSize: number = 6) {
       }, 1500);
     }
   }, [gameState.isCompleted, showVictoryAnimation]);
-
-  const changeGridSizeOnly = useCallback((gridSize: number) => {
-    // Nettoyer les timeouts actifs
-    cellClicksRef.current.forEach((clickInfo) => {
-      if (clickInfo.timeout) {
-        clearTimeout(clickInfo.timeout);
-      }
-    });
-    cellClicksRef.current.clear();
-
-    // Créer un état temporaire simple pour l'animation
-    setGameState({
-      board: [],
-      regions: [],
-      gridSize: gridSize,
-      queensPlaced: 0,
-      queensRequired: gridSize,
-      isCompleted: false,
-      moveCount: 0,
-      elapsedTime: 0,
-      isTimerRunning: false,
-    });
-
-    setIsGameBlocked(false);
-    setShowVictoryAnimation(false);
-  }, []);
 
   // Validation corrigée - vérifier si le puzzle est résolu
   const checkPuzzleCompletion = useCallback(
@@ -453,7 +429,6 @@ export function useGameLogic(initialGridSize: number = 6) {
     handleCellClick,
     resetGame,
     newGame,
-    changeGridSizeOnly,
     checkValidPlacement,
     getConflictingCells,
     gameTime,
