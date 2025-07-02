@@ -1,5 +1,5 @@
 import { Game } from './components/Game';
-import { Toaster } from './components/ui/toaster';
+// import { Toaster } from './components/ui/toaster';
 import { Crown, Github, ExternalLink } from 'lucide-react';
 
 function App() {
@@ -86,7 +86,7 @@ function App() {
         </div>
       </footer>
 
-      <Toaster />
+      {/* <Toaster /> */}
     </div>
   );
 }

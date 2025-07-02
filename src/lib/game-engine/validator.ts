@@ -36,7 +36,7 @@ export function updateBoardWithConflicts(
   board: GameCell[][],
   regions: ColoredRegion[]
 ): EnhancedGameCell[][] {
-  const gridSize = board.length;
+
 
   // Create enhanced board with default conflict states
   const enhancedBoard: EnhancedGameCell[][] = board.map(row =>
@@ -66,7 +66,6 @@ export function analyzeConflicts(
   board: GameCell[][],
   regions: ColoredRegion[]
 ): ConflictAnalysis {
-  const queens = getPlacedQueens(board);
 
   const analysis: ConflictAnalysis = {
     hasConflicts: false,

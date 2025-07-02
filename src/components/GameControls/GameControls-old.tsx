@@ -10,8 +10,8 @@ import {
   X as XIcon
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { GameCell, GameState } from '../types/game';
-import { levelStorage } from '../utils/levelStorage';
+import { GameCell, GameState } from '../../types/game';
+import { levelStorage } from '../../utils/levelStorage';
 
 interface GameControlsProps {
   gameState: GameState;

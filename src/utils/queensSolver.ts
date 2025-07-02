@@ -163,7 +163,6 @@ export function testRegionExtension(
  * Valide qu'une région contient au moins une solution valide
  */
 export function validateRegionContainsSolution(
-  gridSize: number,
   regions: ColoredRegion[],
   originalSolution: Position[]
 ): boolean {
