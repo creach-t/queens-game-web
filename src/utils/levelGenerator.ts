@@ -4,7 +4,6 @@ import {
   REGION_COLORS,
   areOrthogonallyAdjacent,
   findConnectedComponents,
-  formatPositionList,
   generateNQueensSolution,
   getOrthogonalNeighbors,
   initializeBoard,
@@ -30,8 +29,6 @@ function buildVariedRegions(
   queens: Position[],
   gridSize: number
 ): ColoredRegion[] {
-  console.log(`🎨 Building varied regions for ${queens.length} queens`);
-
   // Initialiser les régions avec chaque reine
   const regions: ColoredRegion[] = queens.map((queen, index) => ({
     id: index,
@@ -52,11 +49,11 @@ function buildVariedRegions(
   });
 
   // Définir des tailles cibles variées pour chaque région
-  const targetSizes = generateVariedTargetSizes(
-    gridSize * gridSize,
-    queens.length
-  );
-  console.log(`   🎯 Target sizes: [${targetSizes.join(", ")}]`);
+   const targetSizes = generateVariedTargetSizes(
+     gridSize * gridSize,
+     queens.length
+   );
+  // console.log(`   🎯 Target sizes: [${targetSizes.join(", ")}]`);
 
   let waveCount = 0;
   let totalAttempts = 0;
@@ -66,10 +63,6 @@ function buildVariedRegions(
   while (waveCount < gridSize * 3) {
     waveCount++;
     let cellsAssignedThisWave = 0;
-
-    console.log(
-      `   🌊 Wave ${waveCount}: Varied growth with uniqueness checks...`
-    );
 
     const allCandidates: Array<{
       pos: Position;
@@ -114,7 +107,6 @@ function buildVariedRegions(
     }
 
     if (allCandidates.length === 0) {
-      console.log(`   🛑 No more candidates available`);
       break;
     }
 
@@ -132,7 +124,7 @@ function buildVariedRegions(
 
       if (ownership[candidate.pos.row][candidate.pos.col] !== -1) continue;
 
-      // ✅ VÉRIFICATION D'UNICITÉ À CHAQUE ÉTAPE
+      // VÉRIFICATION D'UNICITÉ À CHAQUE ÉTAPE
       const preservesUniqueness = testRegionExtension(
         gridSize,
         regions,
@@ -144,40 +136,22 @@ function buildVariedRegions(
         ownership[candidate.pos.row][candidate.pos.col] = candidate.regionId;
         regions[candidate.regionId].cells.push(candidate.pos);
         cellsAssignedThisWave++;
-
-        console.log(
-          `     ✅ Added ${candidate.pos.row + 1}${String.fromCharCode(
-            65 + candidate.pos.col
-          )} to region ${candidate.regionId} (${
-            regions[candidate.regionId].cells.length
-          }/${targetSizes[candidate.regionId]})`
-        );
       } else {
         rejectedForUniqueness++;
-        console.log(
-          `     ❌ Rejected ${candidate.pos.row + 1}${String.fromCharCode(
-            65 + candidate.pos.col
-          )} (would break uniqueness)`
-        );
       }
     }
 
-    console.log(
-      `   📊 Wave ${waveCount}: ${cellsAssignedThisWave} cells added, ${rejectedForUniqueness} rejected`
-    );
-
     if (cellsAssignedThisWave === 0) {
-      console.log(`   🏁 No more valid expansions`);
       break;
     }
 
     // Afficher les tailles actuelles
-    const currentSizes = regions.map((r) => r.cells.length);
-    console.log(`   📐 Current sizes: [${currentSizes.join(", ")}]`);
+    /*const currentSizes = */regions.map((r) => r.cells.length);
+    //console.log(`   📐 Current sizes: [${currentSizes.join(", ")}]`);
   }
 
   // Assigner les cellules restantes intelligemment
-  const remainingCells = assignRemainingCellsVaried(
+  /*const remainingCells = */assignRemainingCellsVaried(
     ownership,
     regions,
     queens,
@@ -189,27 +163,23 @@ function buildVariedRegions(
   repairDisconnectedRegions(regions, queens);
 
   // Statistiques finales
-  const finalSizes = regions.map((r) => r.cells.length);
-  const totalCells = regions.reduce(
+  /*const finalSizes = */regions.map((r) => r.cells.length);
+  /*const totalCells = */regions.reduce(
     (sum, region) => sum + region.cells.length,
     0
   );
 
-  console.log(`🎨 VARIED regions built:`);
-  console.log(
-    `   📊 Total attempts: ${totalAttempts}, Rejected for uniqueness: ${rejectedForUniqueness}`
-  );
-  console.log(
-    `   📐 Final sizes: [${finalSizes.join(", ")}], Total: ${totalCells}/${
-      gridSize * gridSize
-    }`
-  );
-  console.log(
-    `   🎯 Target vs Actual: ${targetSizes
-      .map((target, i) => `${target}→${finalSizes[i]}`)
-      .join(", ")}`
-  );
-  console.log(`   ✨ Remaining cells: ${remainingCells}`);
+  // console.log(
+  //   `   📐 Final sizes: [${finalSizes.join(", ")}], Total: ${totalCells}/${
+  //     gridSize * gridSize
+  //   }`
+  // );
+  // console.log(
+  //   `   🎯 Target vs Actual: ${targetSizes
+  //     .map((target, i) => `${target}→${finalSizes[i]}`)
+  //     .join(", ")}`
+  // );
+  // console.log(`   ✨ Remaining cells: ${remainingCells}`);
 
   return regions;
 }
@@ -275,7 +245,7 @@ function assignRemainingCellsVaried(
   gridSize: number,
   targetSizes: number[]
 ): number {
-  console.log(`🔧 Assigning remaining cells with uniqueness checks...`);
+  //console.log(`🔧 Assigning remaining cells with uniqueness checks...`);
 
   const unassigned: Position[] = [];
   for (let row = 0; row < gridSize; row++) {
@@ -288,9 +258,9 @@ function assignRemainingCellsVaried(
 
   if (unassigned.length === 0) return 0;
 
-  console.log(
-    `   📊 ${unassigned.length} cells to assign with uniqueness checks`
-  );
+  // console.log(
+  //   `   📊 ${unassigned.length} cells to assign with uniqueness checks`
+  // );
 
   let assignedCount = 0;
   let maxIterations = unassigned.length * 3; // Éviter les boucles infinies
@@ -356,18 +326,18 @@ function assignRemainingCellsVaried(
 
     // Si aucune cellule n'a pu être assignée cette itération, arrêter
     if (!cellAssignedThisIteration) {
-      console.log(
-        `     ⚠️ No more cells can be assigned while preserving uniqueness`
-      );
+      // console.log(
+      //   `     ⚠️ No more cells can be assigned while preserving uniqueness`
+      // );
       break;
     }
   }
 
   // S'il reste des cellules, les assigner en dernier recours (peut casser l'unicité)
   if (unassigned.length > 0) {
-    console.log(
-      `   ⚠️ ${unassigned.length} cells cannot preserve uniqueness, force-assigning...`
-    );
+    // console.log(
+    //   `   ⚠️ ${unassigned.length} cells cannot preserve uniqueness, force-assigning...`
+    // );
 
     for (const cell of unassigned) {
       // Trouver la région qui peut connecter cette cellule
@@ -413,20 +383,20 @@ function assignRemainingCellsVaried(
         ownership[cell.row][cell.col] = closestRegion;
         regions[closestRegion].cells.push(cell);
         assignedCount++;
-        console.log(
-          `     ❌ Force-assigned ${cell.row + 1}${String.fromCharCode(
-            65 + cell.col
-          )} to closest region ${closestRegion} (may break uniqueness)`
-        );
+        // console.log(
+        //   `     ❌ Force-assigned ${cell.row + 1}${String.fromCharCode(
+        //     65 + cell.col
+        //   )} to closest region ${closestRegion} (may break uniqueness)`
+        // );
       }
     }
   }
 
-  console.log(
-    `   ✅ Assigned ${assignedCount} cells (${
-      assignedCount - unassigned.length
-    } with uniqueness preservation)`
-  );
+  // console.log(
+  //   `   ✅ Assigned ${assignedCount} cells (${
+  //     assignedCount - unassigned.length
+  //   } with uniqueness preservation)`
+  // );
   return assignedCount;
 }
 
@@ -437,7 +407,7 @@ function repairDisconnectedRegions(
   regions: ColoredRegion[],
   queens: Position[]
 ): void {
-  console.log(`🔧 Checking and repairing disconnected regions...`);
+  // console.log(`🔧 Checking and repairing disconnected regions...`);
 
   let repairsMade = 0;
 
@@ -445,7 +415,7 @@ function repairDisconnectedRegions(
     const region = regions[regionId];
 
     if (!isRegionConnected(region.cells)) {
-      console.log(`   🔍 Region ${regionId} is disconnected, repairing...`);
+      // console.log(`   🔍 Region ${regionId} is disconnected, repairing...`);
 
       const components = findConnectedComponents(region.cells);
       const queen = queens[regionId];
@@ -497,7 +467,7 @@ function repairDisconnectedRegions(
     }
   }
 
-  console.log(`   🔧 Made ${repairsMade} connectivity repairs`);
+  // console.log(`   🔧 Made ${repairsMade} connectivity repairs`);
 }
 
 /**
@@ -507,7 +477,7 @@ function quickValidation(regions: ColoredRegion[], gridSize: number): boolean {
   // Vérifier la connectivité
   for (const region of regions) {
     if (!isRegionConnected(region.cells)) {
-      console.warn(`   ⚠️ Region ${region.id} not connected`);
+      // console.warn(`   ⚠️ Region ${region.id} not connected`);
       return false;
     }
   }
@@ -518,7 +488,7 @@ function quickValidation(regions: ColoredRegion[], gridSize: number): boolean {
     regions
   );
   if (!hasUniqueSolution) {
-    console.warn(`   ⚠️ Solution not unique`);
+    // console.warn(`   ⚠️ Solution not unique`);
     return false;
   }
 
@@ -531,22 +501,22 @@ function quickValidation(regions: ColoredRegion[], gridSize: number): boolean {
 export async function generateGameLevel(
   gridSize: number = 6
 ): Promise<GameState> {
-  console.log(
-    `🎨 Generating VARIED Queens Game level for ${gridSize}×${gridSize}`
-  );
+  // console.log(
+  //   `🎨 Generating VARIED Queens Game level for ${gridSize}×${gridSize}`
+  // );
 
   const maxAttempts = 500; // Moins d'essais pour aller plus vite
   let attempt = 0;
 
   while (attempt < maxAttempts) {
     attempt++;
-    console.log(`\n🔄 Attempt ${attempt}/${maxAttempts}`);
+    // console.log(`\n🔄 Attempt ${attempt}/${maxAttempts}`);
 
     try {
       // ÉTAPE 1: Générer une solution N-Queens valide
       const solution = generateNQueensSolution(gridSize);
       if (!solution) {
-        console.warn(`   ⚠️ Failed to generate N-Queens solution, retrying...`);
+        //console.warn(`   ⚠️ Failed to generate N-Queens solution, retrying...`);
         continue;
       }
 
@@ -556,7 +526,7 @@ export async function generateGameLevel(
       // ÉTAPE 3: Validation
       const isValid = quickValidation(regions, gridSize);
       if (!isValid) {
-        console.warn(`   ⚠️ Validation failed, retrying...`);
+        //console.warn(`   ⚠️ Validation failed, retrying...`);
         continue;
       }
 
@@ -576,31 +546,31 @@ export async function generateGameLevel(
         isTimerRunning: false,
       };
 
-      const finalSizes = regions.map((r) => r.cells.length);
-      console.log(`\n🎉 SUCCESS! Varied level generated on attempt ${attempt}`);
-      console.log(`   🎯 Solution: ${formatPositionList(solution)}`);
-      console.log(
-        `   📐 Region sizes: [${finalSizes.join(", ")}] (range: ${Math.min(
-          ...finalSizes
-        )}-${Math.max(...finalSizes)})`
-      );
-      console.log(`   🎨 Varied generation complete`);
-      const saveResult = await levelStorage.saveLevel(
+      // const finalSizes = regions.map((r) => r.cells.length);
+      // console.log(`\n🎉 SUCCESS! Varied level generated on attempt ${attempt}`);
+      // console.log(`   🎯 Solution: ${formatPositionList(solution)}`);
+      // console.log(
+      //   `   📐 Region sizes: [${finalSizes.join(", ")}] (range: ${Math.min(
+      //     ...finalSizes
+      //   )}-${Math.max(...finalSizes)})`
+      // );
+      // console.log(`   🎨 Varied generation complete`);
+      await levelStorage.saveLevel(
         gridSize,
         "medium",
         regions
       );
-      console.log(`🔄 Sauvegarde result: ${saveResult}`);
+      // console.log(`🔄 Sauvegarde result: ${saveResult}`);
 
       return gameState;
     } catch (error) {
-      console.error(`   ❌ Attempt ${attempt} failed:`, error);
+      // console.error(`   ❌ Attempt ${attempt} failed:`, error);
       continue;
     }
   }
 
   // Fallback simple
-  console.warn(`⚠️ Using simple fallback generation...`);
+  // console.warn(`⚠️ Using simple fallback generation...`);
   return await generateFallbackWithFirebase(gridSize);
 }
 
@@ -610,14 +580,14 @@ export async function generateGameLevel(
 async function generateFallbackWithFirebase(
   gridSize: number
 ): Promise<GameState> {
-  console.log(`🔧 Attempting Firebase fallback for ${gridSize}×${gridSize}...`);
+   //console.log(`🔧 Attempting Firebase fallback for ${gridSize}×${gridSize}...`);
 
   try {
     // Essayer de récupérer un niveau depuis Firebase
     const storedLevel = await levelStorage.getRandomLevel(gridSize);
 
     if (storedLevel) {
-      console.log(`📦 Using stored level from Firebase`);
+      // console.log(`📦 Using stored level from Firebase`);
       const gameState = levelStorage.convertToGameState(storedLevel);
 
       // Ajouter les propriétés manquantes pour un GameState complet
@@ -628,11 +598,11 @@ async function generateFallbackWithFirebase(
       };
     }
   } catch (error) {
-    console.warn(`⚠️ Firebase fallback failed:`, error);
+    // console.warn(`⚠️ Firebase fallback failed:`, error);
   }
 
   // Si Firebase échoue ou n'a pas de niveau, utiliser la génération simple
-  console.log(`🔧 No Firebase level available, using simple generation...`);
+  // console.log(`🔧 No Firebase level available, using simple generation...`);
   return generateSimpleFallback(gridSize);
 }
 
@@ -640,7 +610,7 @@ async function generateFallbackWithFirebase(
  * Générateur de secours simple et fiable
  */
 function generateSimpleFallback(gridSize: number): GameState {
-  console.log(`🔧 Generating simple fallback level`);
+  // console.log(`🔧 Generating simple fallback level`);
 
   const solution = generateNQueensSolution(gridSize);
   if (!solution) {
@@ -703,7 +673,7 @@ function generateSimpleFallback(gridSize: number): GameState {
 
   const board = initializeBoard(gridSize, regions);
 
-  console.log(`✅ Simple fallback generated`);
+  // console.log(`✅ Simple fallback generated`);
 
   return {
     board,

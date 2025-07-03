@@ -8,7 +8,7 @@ import {
   GameCell,
   Position,
   ValidationResult,
-} from "../../types/core";
+} from "../../types/game";
 
 /**
  * Checks if two positions are adjacent (including diagonally)

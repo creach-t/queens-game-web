@@ -80,11 +80,11 @@ export function generateNQueensSolution(gridSize: number): Position[] | null {
   }
 
   if (backtrack(0)) {
-    console.log(
-      `✅ N-Queens solution: ${solution
-        .map((p) => `${p.row + 1}${String.fromCharCode(65 + p.col)}`)
-        .join(", ")}`
-    );
+    // console.log(
+    //   `✅ N-Queens solution: ${solution
+    //     .map((p) => `${p.row + 1}${String.fromCharCode(65 + p.col)}`)
+    //     .join(", ")}`
+    // );
     return solution;
   }
 

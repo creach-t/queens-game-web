@@ -1,7 +1,5 @@
-import { Crown } from 'lucide-react';
 import React, { useCallback, useState } from 'react';
 import { useGameLogic } from '../hooks/useGameLogic';
-import { isGenerating } from '../utils/levelGenerator';
 import { GameBoard } from './GameBoard';
 import { GameControls } from './GameControls';
 import { Timer } from './Timer';
@@ -13,79 +11,29 @@ export const Game: React.FC = () => {
     resetGame,
     newGame: originalNewGame,
     changeGridSizeOnly,
-    gameTime
+    gameTime,
+    isGenerating,
   } = useGameLogic();
 
-
-  // États de génération
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState<GenerationProgress | null>(null);
-  const [cancelGeneration, setCancelGeneration] = useState<(() => void) | null>(null);
-
-  const [isPreparingGame, setIsPreparingGame] = useState(false);
   // Key pour forcer l'animation - se déclenche IMMÉDIATEMENT
   const [boardAnimationKey, setBoardAnimationKey] = useState(0);
 
-  // Fonction pour changer la taille de grille avec animation immédiate
-  const handleGridSizeChange = useCallback((newSize: number) => {
-     setIsPreparingGame(true);
-    // ✅ ANIMATION IMMÉDIATE : Changer la taille tout de suite
-    changeGridSizeOnly(newSize);
-    setBoardAnimationKey(prev => prev + 1); // Lance l'animation en spirale
+const handleGridSizeChange = useCallback((newSize: number) => {
+  changeGridSizeOnly(newSize);
+  setBoardAnimationKey(prev => prev + 1);
+}, [changeGridSizeOnly]);
 
-    // Puis lancer la génération en arrière-plan
-    generateNewGameAsync(newSize);
-  }, [originalNewGame]);
-
-  // Génération asynchrone qui n'affecte pas l'animation
-  const generateNewGameAsync = useCallback(async (gridSize?: number) => {
-    setIsGenerating(true);
-    setGenerationProgress(null);
-
-    // Contrôle d'annulation
-    let isCancelled = false;
-    setCancelGeneration(() => () => {
-      isCancelled = true;
-      setIsGenerating(false);
-    });
-
-    try {
-
-      if (isCancelled) return;
-
-      // Une fois terminé, remplacer par le niveau généré
-      originalNewGame(gridSize);
-      setBoardAnimationKey(prev => prev + 1); // Nouvelle animation avec le vrai niveau
-
-    } catch (error) {
-      if (!isCancelled) {
-        //console.error('Erreur génération:', error);
-      }
-    } finally {
-      if (!isCancelled) {
-        setIsGenerating(false);
-      }
-    }
-
-    setCancelGeneration(null);
-  }, [originalNewGame]);
-
-  // Nouveau jeu normal
-  const handleNewGame = useCallback(() => {
-    generateNewGameAsync(gameState.gridSize);
-  }, [generateNewGameAsync, gameState.gridSize]);
+const handleNewGame = useCallback(() => {
+  originalNewGame(gameState.gridSize);
+  setBoardAnimationKey(prev => prev + 1);
+}, [originalNewGame, gameState.gridSize]);
 
   // Reset avec annulation si besoin
   const handleResetGame = useCallback(() => {
-    if (isGenerating && cancelGeneration) {
-      cancelGeneration();
-    } else {
       resetGame();
-    }
-  }, [resetGame, isGenerating, cancelGeneration]);
+  }, [resetGame]);
 
   // Déterminer si le jeu est bloqué
-  const isGameBlocked = false; // Ne jamais bloquer l'animation !
   const showVictoryAnimation = !isGenerating && gameState.isCompleted;
 
   return (
@@ -100,7 +48,7 @@ export const Game: React.FC = () => {
               gameState={gameState}
               onCellClick={handleCellClick}
               showVictoryAnimation={showVictoryAnimation}
-              isGameBlocked={isGameBlocked} // Jamais bloqué
+ // Jamais bloqué
               key={boardAnimationKey} // Relance l'animation à chaque changement
             />
 
@@ -119,48 +67,6 @@ export const Game: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Notification discrète pendant la génération (pas d'overlay bloquant) */}
-      {isGenerating && (
-        <div className="fixed top-4 right-4 z-40">
-          <div className="bg-white shadow-lg rounded-lg border border-gray-200 p-4 max-w-sm">
-            <div className="flex items-start gap-3">
-              <Crown className="w-5 h-5 text-blue-600 animate-pulse flex-shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <div className="font-medium text-gray-900 text-sm">
-                  Génération en cours
-                </div>
-                <div className="text-gray-600 text-xs mt-1">
-                  Optimisation du puzzle...
-                </div>
-                {generationProgress && (
-                  <div className="mt-2">
-                    <div className="bg-gray-200 rounded-full h-1.5">
-                      <div
-                        className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
-                        style={{ width: `${generationProgress.percentage}%` }}
-                      />
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {generationProgress.attempts} tentatives
-                    </div>
-                  </div>
-                )}
-              </div>
-              {cancelGeneration && (
-                <button
-                  onClick={cancelGeneration}
-                  className="text-gray-400 hover:text-gray-600 flex-shrink-0"
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };

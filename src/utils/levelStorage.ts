@@ -45,9 +45,9 @@ class LevelStorage {
       // Authentification automatique
       this.authPromise = this.initAuth();
 
-      console.log("✅ Firebase Database initialisé");
+      //console.log("✅ Firebase Database initialisé");
     } catch (error) {
-      console.warn("Firebase non disponible:", error);
+      //console.warn("Firebase non disponible:", error);
       this.isAvailable = false;
     }
   }
@@ -63,15 +63,15 @@ class LevelStorage {
       onAuthStateChanged(this.auth, async (user) => {
         if (user) {
           this.isAuthenticated = true;
-          console.log("✅ Utilisateur authentifié:", user.uid);
+          //console.log("✅ Utilisateur authentifié:", user.uid);
           resolve();
         } else {
           // Pas d'utilisateur, s'authentifier anonymement
           try {
             await signInAnonymously(this.auth);
-            console.log("✅ Authentification anonyme réussie");
+            //console.log("✅ Authentification anonyme réussie");
           } catch (error) {
-            console.warn("Erreur authentification anonyme:", error);
+            //console.warn("Erreur authentification anonyme:", error);
             resolve(); // Continue même en cas d'erreur
           }
         }
@@ -91,7 +91,7 @@ class LevelStorage {
       await this.authPromise;
       return this.isAuthenticated;
     } catch (error) {
-      console.warn("Erreur attente auth:", error);
+      //onsole.warn("Erreur attente auth:", error);
       return false;
     }
   }
@@ -106,7 +106,7 @@ class LevelStorage {
   ): Promise<boolean> {
     const authReady = await this.waitForAuth();
     if (!authReady) {
-      console.warn("❌ Authentification non prête, sauvegarde annulée");
+     //console.warn("❌ Authentification non prête, sauvegarde annulée");
       return false;
     }
 
@@ -122,7 +122,7 @@ class LevelStorage {
       const existing = await get(indexRef);
 
       if (existing.exists()) {
-        console.log("⚠️ Niveau déjà existant, sauvegarde ignorée");
+        //console.log("⚠️ Niveau déjà existant, sauvegarde ignorée");
         return false;
       }
 
@@ -136,10 +136,10 @@ class LevelStorage {
       });
 
       await set(indexRef, newLevelRef.key);
-      console.log(`✅ Niveau ${gridSize}x${gridSize} sauvegardé`);
+      //console.log(`✅ Niveau ${gridSize}x${gridSize} sauvegardé`);
       return true;
     } catch (error) {
-      console.error("❌ Erreur sauvegarde niveau:", error);
+      //console.error("❌ Erreur sauvegarde niveau:", error);
       return false;
     }
   }
@@ -263,9 +263,9 @@ class LevelStorage {
       const randomLevel =
         matchingLevels[Math.floor(Math.random() * matchingLevels.length)];
 
-      console.log(
-        `📦 Niveau récupéré depuis Firebase (${matchingLevels.length} disponibles)`
-      );
+      // console.log(
+      //   `📦 Niveau récupéré depuis Firebase (${matchingLevels.length} disponibles)`
+      // );
 
       return {
         key: randomLevel.key,

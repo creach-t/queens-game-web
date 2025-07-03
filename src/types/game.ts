@@ -5,8 +5,8 @@ export interface GameCell {
   col: number;
   regionId: number;
   regionColor: string;
-  state: 'empty' | 'queen' | 'marker';
-  isHighlighted?: boolean;
+  state: 'empty' | 'queen' | 'marked';
+  isHighlighted: boolean;
   isConflict?: boolean;
   // Nouvelles propriétés pour les types de conflits
   isInConflictLine?: boolean;
@@ -42,10 +42,10 @@ export interface GameMove {
   type: 'place_queen' | 'place_marker' | 'remove';
   row: number;
   col: number;
-  previousState: 'empty' | 'queen' | 'marker';
+  previousState: 'empty' | 'queen' | 'marked';
 }
 
-export type CellState = 'empty' | 'queen' | 'marker';
+export type CellState = 'empty' | 'queen' | 'marked';
 
 export interface GameConfig {
   gridSize: number;

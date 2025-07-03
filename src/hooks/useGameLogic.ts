@@ -23,7 +23,7 @@ export function useGameLogic(initialGridSize: number = 6) {
     isTimerRunning: false,
   }));
 
-  const [timerStarted, setTimerStarted] = useState(false); // ❌ Était true
+  const [timerStarted, setTimerStarted] = useState(false);
   const [gameTime, setGameTime] = useState(0);
   const [showVictoryAnimation, setShowVictoryAnimation] = useState(false);
   const [isGameBlocked, setIsGameBlocked] = useState(false);
@@ -280,10 +280,10 @@ export function useGameLogic(initialGridSize: number = 6) {
       );
       const cell = newBoard[row][col];
 
-      // Cycle: empty -> marker -> empty (ne touche pas aux reines)
+      // Cycle: empty -> marked -> empty (ne touche pas aux reines)
       if (cell.state === "empty") {
-        cell.state = "marker";
-      } else if (cell.state === "marker") {
+        cell.state = "marked";
+      } else if (cell.state === "marked") {
         cell.state = "empty";
       }
       // Ne pas modifier si c'est une reine (réservé au double-click)
@@ -334,7 +334,7 @@ export function useGameLogic(initialGridSize: number = 6) {
           }
         } else {
           // Effacer le marqueur si présent avant de placer la reine
-          if (cell.state === "marker") {
+          if (cell.state === "marked") {
             cell.state = "empty";
           }
 

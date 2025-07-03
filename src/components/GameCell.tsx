@@ -41,7 +41,7 @@ export const GameCell: React.FC<GameCellProps> = ({
           />
         );
 
-      case 'marker':
+      case 'marked':
         return (
           <X
             size={iconSize-8}
@@ -73,44 +73,19 @@ export const GameCell: React.FC<GameCellProps> = ({
     return classes;
   };
 
-  // ✅ Calculer l'épaisseur des bordures selon la taille
-  const getBorderWidth = () => {
-    if (size <= 40) return 1;      // Très petit écran
-    if (size <= 60) return 2;      // Petit écran
-    if (size <= 80) return 3;      // Moyen
-    return 4;                      // Grand écran
-  };
-
-  // ✅ Style dynamique pour les effets visuels
-  const getDynamicStyles = () => {
-    const borderWidth = getBorderWidth();
-    let styles: React.CSSProperties = {
-      backgroundColor: cell.regionColor,
-      width: size,
-      height: size,
-      minWidth: size,
-      minHeight: size
-    };
-
-    // Animation de victoire
-    if (showVictoryAnimation && cell.state === 'queen') {
-      styles.boxShadow = `0 10px 25px rgba(251, 191, 36, 0.5)`;
-      styles.border = `${borderWidth}px solid rgb(251, 191, 36)`;
-    }
-    // Conflits
-    else if (cell.isConflict && !showVictoryAnimation) {
-      styles.backgroundColor = 'rgba(254, 242, 242, 1)';
-      styles.border = `${borderWidth}px solid rgb(248, 113, 113)`;
-    }
-
-    return styles;
-  };
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       onClick();
     }
+  };
+
+  // Couleur de fond unifiée pour les reines (conflit ET victoire)
+  const getBackgroundColor = () => {
+    if (cell.state === 'queen' && (cell.isConflict || showVictoryAnimation)) {
+      return '#fef3c7'; // Couleur jaune claire unifiée
+    }
+    return cell.regionColor;
   };
 
   return (
@@ -120,7 +95,13 @@ export const GameCell: React.FC<GameCellProps> = ({
       role="button"
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      style={getDynamicStyles()}
+      style={{
+        backgroundColor: getBackgroundColor(),
+        width: size,
+        height: size,
+        minWidth: size,
+        minHeight: size
+      }}
       title={`Cellule ${cell.row + 1}-${cell.col + 1} (Région ${cell.regionId})`}
     >
       {/* Animation de chargement - effet de shimmer */}

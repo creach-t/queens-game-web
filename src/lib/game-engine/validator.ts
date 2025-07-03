@@ -3,7 +3,7 @@
  * Handles conflict detection and visual highlighting for React components
  */
 
-import { GameCell, ColoredRegion, Position } from '../../types/core';
+import { GameCell, ColoredRegion, Position } from '../../types/game';
 import { areAdjacent, getPlacedQueens, checkRuleViolation } from './rules';
 
 /**
