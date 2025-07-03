@@ -13,6 +13,9 @@ export interface GameCell {
   isInConflictColumn?: boolean;
   isInConflictRegion?: boolean;
   isAroundConflictQueen?: boolean;
+  // ✅ NOUVEAU: Propriétés pour le drag
+  isDragHovered?: boolean;
+  isDragSelected?: boolean;
 }
 
 export interface ColoredRegion {
@@ -50,4 +53,26 @@ export type CellState = 'empty' | 'queen' | 'marked';
 export interface GameConfig {
   gridSize: number;
   difficulty: 'easy' | 'medium' | 'hard';
+}
+
+// ✅ NOUVEAU: Types pour le système de drag
+export interface DragState {
+  isDragging: boolean;
+  dragStartCell: { row: number; col: number } | null;
+  dragMode: 'mark' | 'unmark' | null;
+  draggedCells: Set<string>;
+  dragPreviewCells: Set<string>;
+}
+
+export interface TouchState {
+  isTouch: boolean;
+  touchStartTime: number;
+  touchStartPosition: { x: number; y: number } | null;
+}
+
+// ✅ NOUVEAU: Type pour les événements de drag unifiant mouse et touch
+export interface DragEventData {
+  clientX: number;
+  clientY: number;
+  type: 'mouse' | 'touch';
 }
