@@ -1,7 +1,7 @@
 import { Crown } from 'lucide-react';
 import React, { useCallback, useState } from 'react';
 import { useGameLogic } from '../hooks/useGameLogic';
-import { GenerationProgress } from '../utils/levelGenerator';
+import { isGenerating } from '../utils/levelGenerator';
 import { GameBoard } from './GameBoard';
 import { GameControls } from './GameControls';
 import { Timer } from './Timer';

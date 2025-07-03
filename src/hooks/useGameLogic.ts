@@ -27,21 +27,56 @@ export function useGameLogic(initialGridSize: number = 6) {
   const [gameTime, setGameTime] = useState(0);
   const [showVictoryAnimation, setShowVictoryAnimation] = useState(false);
   const [isGameBlocked, setIsGameBlocked] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Initialisation du niveau
   useEffect(() => {
     const initLevel = async () => {
+      if (isGenerating) return;
+
+      setIsGenerating(true);
+      setIsGameBlocked(true);
+
       try {
         const newLevel = await generateGameLevel(initialGridSize);
         setGameState(newLevel);
         setTimerStarted(true);
         setGameTime(0);
       } catch (error) {
-        //console.error("Erreur génération niveau:", error);
-        // Générer niveau de base en cas d'erreur
-        setGameState({
-          board: [],
-          regions: [],
+        console.error("Erreur génération niveau:", error);
+        // ✅ FALLBACK: État minimal mais valide au lieu d'état vide
+        const fallbackState: GameState = {
+          board: Array(initialGridSize)
+            .fill(null)
+            .map((_, row) =>
+              Array(initialGridSize)
+                .fill(null)
+                .map((_, col) => ({
+                  row,
+                  col,
+                  regionId: 0,
+                  regionColor: "#64B5F6",
+                  state: "empty" as const,
+                  isConflict: false,
+                  isInConflictLine: false,
+                  isInConflictColumn: false,
+                  isInConflictRegion: false,
+                  isAroundConflictQueen: false,
+                }))
+            ),
+          regions: [
+            {
+              id: 0,
+              color: "#64B5F6",
+              cells: Array(initialGridSize * initialGridSize)
+                .fill(null)
+                .map((_, i) => ({
+                  row: Math.floor(i / initialGridSize),
+                  col: i % initialGridSize,
+                })),
+              hasQueen: false,
+            },
+          ],
           gridSize: initialGridSize,
           queensPlaced: 0,
           queensRequired: initialGridSize,
@@ -49,9 +84,13 @@ export function useGameLogic(initialGridSize: number = 6) {
           moveCount: 0,
           elapsedTime: 0,
           isTimerRunning: false,
-        });
+        };
+        setGameState(fallbackState);
         setTimerStarted(true);
         setGameTime(0);
+      } finally {
+        setIsGenerating(false);
+        setIsGameBlocked(false);
       }
     };
 
@@ -99,31 +138,34 @@ export function useGameLogic(initialGridSize: number = 6) {
     }
   }, [gameState.isCompleted, showVictoryAnimation]);
 
-  const changeGridSizeOnly = useCallback((gridSize: number) => {
-    // Nettoyer les timeouts actifs
-    cellClicksRef.current.forEach((clickInfo) => {
-      if (clickInfo.timeout) {
-        clearTimeout(clickInfo.timeout);
-      }
-    });
-    cellClicksRef.current.clear();
+  const changeGridSizeOnly = useCallback(async (gridSize: number) => {
+  if (isGenerating) return;
 
-    // Créer un état temporaire simple pour l'animation
-    setGameState({
-      board: [],
-      regions: [],
-      gridSize: gridSize,
-      queensPlaced: 0,
-      queensRequired: gridSize,
-      isCompleted: false,
-      moveCount: 0,
-      elapsedTime: 0,
-      isTimerRunning: false,
-    });
+  // Nettoyer les timeouts actifs
+  cellClicksRef.current.forEach((clickInfo) => {
+    if (clickInfo.timeout) {
+      clearTimeout(clickInfo.timeout);
+    }
+  });
+  cellClicksRef.current.clear();
 
-    setIsGameBlocked(false);
+  // ✅ CORRECTION: Générer un nouveau niveau avec la nouvelle taille
+  setIsGenerating(true);
+  setIsGameBlocked(true);
+
+  try {
+    const newLevel = await generateGameLevel(gridSize);
+    setGameState(newLevel);
+    setGameTime(0);
+    setTimerStarted(true);
     setShowVictoryAnimation(false);
-  }, []);
+  } catch (error) {
+    console.error("Erreur génération nouveau niveau:", error);
+  } finally {
+    setIsGenerating(false);
+    setIsGameBlocked(false);
+  }
+}, [])
 
   // Validation corrigée - vérifier si le puzzle est résolu
   const checkPuzzleCompletion = useCallback(
@@ -185,7 +227,8 @@ export function useGameLogic(initialGridSize: number = 6) {
       if (
         isGameBlocked ||
         showVictoryAnimation ||
-        gameState.board.length === 0
+        gameState.board.length === 0 ||
+        isGenerating
       ) {
         return;
       }
@@ -365,9 +408,11 @@ export function useGameLogic(initialGridSize: number = 6) {
     // Le timer continue (pas de reset)
   }, []);
 
-  // Nouveau jeu avec la même taille ou une nouvelle taille (reset complet)
   const newGame = useCallback(
     async (gridSize?: number) => {
+      // Éviter plusieurs générations simultanées
+      if (isGenerating) return;
+
       // Nettoyer tous les timeouts actifs
       cellClicksRef.current.forEach((clickInfo) => {
         if (clickInfo.timeout) {
@@ -378,20 +423,28 @@ export function useGameLogic(initialGridSize: number = 6) {
 
       const size = gridSize || gameState.gridSize;
 
+      // ✅ CRITIQUE: Marquer la génération en cours
+      setIsGenerating(true);
+      setIsGameBlocked(true); // Bloquer les interactions
+
       try {
         const newLevel = await generateGameLevel(size);
-        setGameState(newLevel);
-      } catch (error) {
-        //console.error("Erreur génération nouveau niveau:", error);
-      }
 
-      // Reset complet du timer pour nouveau jeu
-      setGameTime(0);
-      setTimerStarted(true);
-      setIsGameBlocked(false);
-      setShowVictoryAnimation(false);
+        // ✅ ATOMIQUE: Tout changer d'un coup après génération
+        setGameState(newLevel);
+        setGameTime(0);
+        setTimerStarted(true);
+        setShowVictoryAnimation(false);
+      } catch (error) {
+        console.error("Erreur génération nouveau niveau:", error);
+        // ✅ En cas d'erreur, garder l'état actuel au lieu de créer un état vide
+      } finally {
+        // ✅ IMPORTANT: Toujours relâcher les verrous
+        setIsGenerating(false);
+        setIsGameBlocked(false);
+      }
     },
-    [gameState.gridSize]
+    [gameState.gridSize, isGenerating]
   );
 
   // Vérifier la validité d'un placement
@@ -401,7 +454,7 @@ export function useGameLogic(initialGridSize: number = 6) {
       const validation = validateQueenPlacement(
         gameState.board,
         gameState.regions,
-        { row, col },
+        { row, col }
       );
       return validation.isValid;
     },
@@ -458,5 +511,6 @@ export function useGameLogic(initialGridSize: number = 6) {
     gameTime,
     showVictoryAnimation,
     isGameBlocked,
+    isGenerating,
   };
 }
