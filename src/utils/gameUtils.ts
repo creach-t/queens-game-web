@@ -1,35 +1,5 @@
-import { ColoredRegion, GameCell, GameState } from "../types/game";
-
-/**
- * Couleurs pour les régions
- */
-export const REGION_COLORS = [
-  "#26A69A",
-  "#BA68C8",
-  "#81C784",
-  "#FFB74D",
-  "#F06292",
-  "#D4E157",
-  "#4DD0E1",
-  "#fa6464",
-  "#b0a997",
-  "#615f87",
-  "#995d36",
-  "#02f760",
-];
-
-export interface Position {
-  row: number;
-  col: number;
-}
-
-/**
- * Représente une composante connectée de cellules
- */
-export interface ConnectedComponent {
-  cells: Position[];
-  connectedToRegion: number | null;
-}
+import { ColoredRegion, GameCell, GameState, Position, ConnectedComponent } from "../types/game";
+import { REGION_COLORS } from "../constants";
 
 /**
  * Génère une solution N-Queens valide (fonction stable)

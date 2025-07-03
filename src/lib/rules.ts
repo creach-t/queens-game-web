@@ -8,7 +8,7 @@ import {
   GameCell,
   Position,
   ValidationResult,
-} from "../../types/game";
+} from "../types/game";
 
 /**
  * Checks if two positions are adjacent (including diagonally)
@@ -18,6 +18,132 @@ export function areAdjacent(pos1: Position, pos2: Position): boolean {
   const rowDiff = Math.abs(pos1.row - pos2.row);
   const colDiff = Math.abs(pos1.col - pos2.col);
   return rowDiff <= 1 && colDiff <= 1 && !(rowDiff === 0 && colDiff === 0);
+}
+
+export function updateConflicts(
+  board: GameCell[][],
+  regions: ColoredRegion[]
+): GameCell[][] {
+  const gridSize = board.length;
+  const updatedBoard = board.map(row => row.map(cell => ({
+    ...cell,
+    isConflict: false,
+    isInConflictLine: false,
+    isInConflictColumn: false,
+    isInConflictRegion: false,
+    isAroundConflictQueen: false
+  })));
+
+  // Collecter toutes les reines
+  const allQueens: {row: number, col: number}[] = [];
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      if (updatedBoard[row][col].state === 'queen') {
+        allQueens.push({row, col});
+      }
+    }
+  }
+
+  //console.log(`🔍 Vérification des conflits pour ${allQueens.length} reines`);
+
+  // RÈGLE 1: Conflit de ligne - hachurer toute la ligne
+  for (let row = 0; row < gridSize; row++) {
+    const queensInRow = allQueens.filter(q => q.row === row);
+    if (queensInRow.length > 1) {
+      //console.log(`⚠️ Conflit ligne ${row + 1}: ${queensInRow.length} reines`);
+
+      // Marquer toute la ligne
+      for (let col = 0; col < gridSize; col++) {
+        updatedBoard[row][col].isInConflictLine = true;
+      }
+
+      // Marquer les reines en conflit
+      for (const queen of queensInRow) {
+        updatedBoard[queen.row][queen.col].isConflict = true;
+      }
+    }
+  }
+
+  // RÈGLE 2: Conflit de colonne - hachurer toute la colonne
+  for (let col = 0; col < gridSize; col++) {
+    const queensInCol = allQueens.filter(q => q.col === col);
+    if (queensInCol.length > 1) {
+      //console.log(`⚠️ Conflit colonne ${col + 1}: ${queensInCol.length} reines`);
+
+      // Marquer toute la colonne
+      for (let row = 0; row < gridSize; row++) {
+        updatedBoard[row][col].isInConflictColumn = true;
+      }
+
+      // Marquer les reines en conflit
+      for (const queen of queensInCol) {
+        updatedBoard[queen.row][queen.col].isConflict = true;
+      }
+    }
+  }
+
+  // RÈGLE 3: Conflit de région - hachurer toute la région
+  for (const region of regions) {
+    const queensInRegion = allQueens.filter(q =>
+      region.cells.some(cell => cell.row === q.row && cell.col === q.col)
+    );
+
+    if (queensInRegion.length > 1) {
+      //console.log(`⚠️ Conflit région ${region.id + 1}: ${queensInRegion.length} reines`);
+
+      // Marquer toute la région
+      for (const cell of region.cells) {
+        updatedBoard[cell.row][cell.col].isInConflictRegion = true;
+      }
+
+      // Marquer les reines en conflit
+      for (const queen of queensInRegion) {
+        updatedBoard[queen.row][queen.col].isConflict = true;
+      }
+    }
+  }
+
+  // RÈGLE 4: Conflit d'adjacence - hachurer autour de la reine existante
+  for (let i = 0; i < allQueens.length; i++) {
+    for (let j = i + 1; j < allQueens.length; j++) {
+      const queen1 = allQueens[i];
+      const queen2 = allQueens[j];
+
+      if (areAdjacent(queen1, queen2)) {
+        //console.log(`⚠️ Conflit adjacence: ${queen1.row+1}${String.fromCharCode(65+queen1.col)} et ${queen2.row+1}${String.fromCharCode(65+queen2.col)}`);
+
+        // Marquer les deux reines en conflit
+        updatedBoard[queen1.row][queen1.col].isConflict = true;
+        updatedBoard[queen2.row][queen2.col].isConflict = true;
+
+        // Hachurer autour de chaque reine
+        for (const queen of [queen1, queen2]) {
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              const newRow = queen.row + dr;
+              const newCol = queen.col + dc;
+
+              if (newRow >= 0 && newRow < gridSize &&
+                  newCol >= 0 && newCol < gridSize) {
+                updatedBoard[newRow][newCol].isAroundConflictQueen = true;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Compter les conflits
+  const conflictCount = allQueens.filter(queen =>
+    updatedBoard[queen.row][queen.col].isConflict
+  ).length;
+
+  if (conflictCount > 0) {
+    //console.log(`⚠️ Total: ${conflictCount} reines en conflit`);
+  }
+
+  return updatedBoard;
 }
 
 /**
@@ -65,7 +191,7 @@ export function validateQueenPlacement(
     }
   }
 
-  // Rule 1: One queen per row
+  //  Rule 1: One queen per row
   const queensInRow = existingQueens.filter((q) => q.row === row);
   if (queensInRow.length > 0) {
     conflicts.push(`Row ${row + 1} already has a queen`);
@@ -110,34 +236,6 @@ export function validateQueenPlacement(
     conflicts,
     conflictPositions,
   };
-}
-
-/**
- * Checks if the current game state represents a completed puzzle
- */
-export function isGameCompleted(
-  board: GameCell[][],
-  regions: ColoredRegion[]
-): boolean {
-  const gridSize = board.length;
-
-  // Collect all queens
-  const queens: Position[] = [];
-  for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++) {
-      if (board[row][col].state === "queen") {
-        queens.push({ row, col });
-      }
-    }
-  }
-
-  // Must have exactly the right number of queens
-  if (queens.length !== gridSize) {
-    return false;
-  }
-
-  // Validate all rules
-  return validateCompleteGameState(queens, regions, gridSize).isValid;
 }
 
 /**

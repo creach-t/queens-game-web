@@ -1,12 +1,6 @@
 import { Clock, Trophy } from 'lucide-react';
 import React from 'react';
-import { GameCell, GameState } from '../../types/game';
-
-interface SuccessMessageProps {
-  gameState: GameState;
-  gameTime: number;
-  formatTime: (seconds: number) => string;
-}
+import { GameCell, SuccessMessageProps} from '../../types/game';
 
 const difficultyInfo = {
   5: { name: "Tutoriel" },

@@ -1,14 +1,6 @@
 import { Crown, X } from 'lucide-react';
 import React from 'react';
-import { GameCell as GameCellType } from '../types/game';
-
-interface GameCellProps {
-  cell: GameCellType;
-  size: number;
-  onClick: () => void;
-  showVictoryAnimation?: boolean;
-  isLoading?: boolean;
-}
+import { GameCellProps } from '../types/game';
 
 export const GameCell: React.FC<GameCellProps> = ({
   cell,
@@ -17,139 +9,57 @@ export const GameCell: React.FC<GameCellProps> = ({
   showVictoryAnimation = false,
   isLoading = false
 }) => {
-  const getCellContent = () => {
-    const iconSize = Math.max(20, size * 0.5);
+  // Calculs directs - pas de fonctions
+  const iconSize = size * 0.5;
+  const hatchSize = Math.max(3, size * 0.08);
 
-    // Couleur spéciale pour l'animation de victoire
-    const getIconColor = () => {
-      if (showVictoryAnimation && cell.state === 'queen') {
-        return 'text-yellow-400 animate-pulse-subtle animate-bounce ';
-      }
-      if (cell.isConflict) {
-        return 'text-red-600';
-      }
-      return 'text-slate-800';
-    };
+  const hasConflict = cell.isInConflictLine || cell.isInConflictColumn ||
+                     cell.isInConflictRegion || cell.isAroundConflictQueen;
 
-    switch (cell.state) {
-      case 'queen':
-        return (
-          <Crown
-            size={iconSize}
-            className={`transition-all duration-300 ${getIconColor()}`}
-            fill="currentColor"
-          />
-        );
-
-      case 'marked':
-        return (
-          <X
-            size={iconSize-8}
-            className={`transition-all duration-200 text-slate-700`}
-            strokeWidth={2}
-          />
-        );
-
-      default:
-        return null;
-    }
+  // Style unifié - pas de recalculs
+  const cellStyle = {
+    backgroundColor: cell.state === 'queen' && (cell.isConflict || showVictoryAnimation)
+      ? '#fef3c7'
+      : cell.regionColor,
+    width: size,
+    height: size,
+    backgroundImage: hasConflict && !showVictoryAnimation
+      ? `repeating-linear-gradient(45deg, transparent, transparent ${hatchSize}px, rgba(239, 68, 68, 0.25) ${hatchSize}px, rgba(239, 68, 68, 0.25) ${hatchSize * 2}px)`
+      : undefined
   };
 
-  const getCellClasses = () => {
-    let classes = `
-      w-full h-full flex items-center justify-center
-      cursor-pointer transition-all duration-300
-      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset
-      relative overflow-hidden
-    `;
-
-    // Animation de chargement
-    if (isLoading) {
-      classes += ' animate-pulse';
-    } else {
-      classes += ' hover:scale-105 hover:shadow-lg active:scale-95';
-    }
-
-    return classes;
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      onClick();
-    }
-  };
-
-  // Couleur de fond unifiée pour les reines (conflit ET victoire)
-  const getBackgroundColor = () => {
-    if (cell.state === 'queen' && (cell.isConflict || showVictoryAnimation)) {
-      return '#fef3c7'; // Couleur jaune claire unifiée
-    }
-    return cell.regionColor;
-  };
+  // Classes statiques - pas de concaténation
+  const baseClasses = isLoading
+    ? "relative flex items-center justify-center border border-slate-300/50 cursor-wait select-none"
+    : "relative flex items-center justify-center border border-slate-300/50 cursor-pointer select-none hover:scale-105 active:scale-95";
 
   return (
     <div
-      className={getCellClasses()}
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
-      style={{
-        backgroundColor: getBackgroundColor(),
-        width: size,
-        height: size,
-        minWidth: size,
-        minHeight: size
-      }}
-      title={`Cellule ${cell.row + 1}-${cell.col + 1} (Région ${cell.regionId})`}
+      className={baseClasses}
+      onClick={isLoading ? undefined : onClick}
+      style={cellStyle}
     >
-      {/* Animation de chargement - effet de shimmer */}
-      {isLoading && (
-        <div
-          className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent"
-          style={{
-            animation: 'shimmer 2s infinite'
-          }}
+      {cell.state === 'queen' && (
+        <Crown
+          size={iconSize}
+          className={
+            showVictoryAnimation ? 'text-yellow-500 animate-bounce' :
+            cell.isConflict ? 'text-red-600' : 'text-slate-800'
+          }
+          fill="currentColor"
         />
       )}
 
-      {getCellContent()}
-
-      {/* Overlay pour les hachures de conflit - SEULEMENT s'il y a des conflits réels */}
-      {(cell.isInConflictLine || cell.isInConflictColumn ||
-        cell.isInConflictRegion || cell.isAroundConflictQueen) &&
-        !showVictoryAnimation && (
-        <div
-          className="absolute inset-0 pointer-events-none opacity-60"
-          style={{
-            backgroundImage: `repeating-linear-gradient(
-              45deg,
-              transparent,
-              transparent 8px,
-              rgba(247,0,0,0.9) 8px,
-              rgba(247,0,0,0.4) 16px
-            )`
-          }}
+      {cell.state === 'marked' && (
+        <X
+          size={iconSize * 0.8}
+          className="text-slate-600"
+          strokeWidth={1.5}
         />
       )}
 
-      {/* Effet de particules pour l'animation de victoire */}
       {showVictoryAnimation && cell.state === 'queen' && (
-        <div className="absolute inset-0 pointer-events-none">
-          {[...Array(6)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-1 h-1 bg-yellow-400 rounded-full animate-ping"
-              style={{
-                top: `${20 + Math.random() * 60}%`,
-                left: `${20 + Math.random() * 60}%`,
-                animationDelay: `${i * 200}ms`,
-                animationDuration: '1s'
-              }}
-            />
-          ))}
-        </div>
+        <div className="absolute inset-0 bg-yellow-200/20 animate-pulse pointer-events-none" />
       )}
     </div>
   );

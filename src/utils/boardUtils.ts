@@ -1,5 +1,5 @@
 import React from 'react';
-import { GameState } from '../types/game';
+import { GameState, Position } from '../types/game';
 
 /**
  * Calcule le style des bordures pour une cellule
@@ -7,9 +7,11 @@ import { GameState } from '../types/game';
  */
 export const getCellBorderStyle = (
   gameState: GameState,
-  row: number,
-  col: number
+  position: Position
 ): React.CSSProperties => {
+
+  const { row, col } = position;
+
   if (!gameState.board || !gameState.board[row] || !gameState.board[row][col]) {
     return {};
   }
@@ -70,9 +72,9 @@ export const getCellBorderStyle = (
  */
 export const getCellCornerRadius = (
   gridSize: number,
-  row: number,
-  col: number
+  position: Position
 ): string => {
+  const { row, col } = position;
   if (row === 0 && col === 0) return 'rounded-tl-md';
   if (row === 0 && col === gridSize - 1) return 'rounded-tr-md';
   if (row === gridSize - 1 && col === 0) return 'rounded-bl-md';

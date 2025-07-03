@@ -1,18 +1,8 @@
 import React from 'react';
-import { GameState } from '../../types/game';
+import { BoardGridProps } from '../../types/game';
 import { getCellBorderStyle, getCellCornerRadius } from '../../utils/boardUtils';
 import { GameCell } from '../GameCell';
 import { AnimationOverlay } from './AnimationOverlay';
-
-interface BoardGridProps {
-  gameState: GameState;
-  cellSize: number;
-  loadedCells: Set<string>;
-  isDestroying: boolean;
-  isLoading: boolean;
-  showVictoryAnimation: boolean;
-  onCellClick: (row: number, col: number) => void;
-}
 
 export const BoardGrid: React.FC<BoardGridProps> = ({
   gameState,
@@ -37,10 +27,11 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
       {/* Cellules du plateau */}
       {gameState.board.map((row, rowIndex) =>
         row.map((cell, colIndex) => {
+          const position = { row: rowIndex, col: colIndex };
           const cellKey = `${rowIndex}-${colIndex}`;
           const isLoaded = loadedCells.has(cellKey);
-          const borderStyle = getCellBorderStyle(gameState, rowIndex, colIndex);
-          const cornerRadius = getCellCornerRadius(gameState.gridSize, rowIndex, colIndex);
+          const borderStyle = getCellBorderStyle(gameState, position);
+          const cornerRadius = getCellCornerRadius(gameState.gridSize, position);
 
           return (
             <div

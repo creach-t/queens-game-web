@@ -1,11 +1,6 @@
 import { RotateCcw, Sparkles } from 'lucide-react';
 import React from 'react';
-
-interface MainControlsProps {
-  onResetGame: () => void;
-  onNewGame: () => void;
-  isCompleted: boolean;
-}
+import { MainControlsProps } from '../../types/game';
 
 export const MainControls: React.FC<MainControlsProps> = ({
   onResetGame,

@@ -1,10 +1,6 @@
 import React from 'react';
 import { Clock, CheckCircle } from 'lucide-react';
-
-interface TimerProps {
-  gameTime: number;
-  isCompleted: boolean;
-}
+import { TimerProps } from '../types/game';
 
 export const Timer: React.FC<TimerProps> = ({
   gameTime = 0, // Valeur par défaut

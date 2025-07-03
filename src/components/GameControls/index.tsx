@@ -1,19 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { GameState } from '../../types/game';
+import { GameControlsProps } from '../../types/game';
 import { levelStorage } from '../../utils/levelStorage';
 import { MainControls } from './MainControls';
 import { Rules } from './Rules';
 import { SizeGridSelector } from './SizeGridSelector';
 import { SuccessMessage } from './SuccessMessage';
-
-interface GameControlsProps {
-  gameState: GameState;
-  gameTime: number;
-  onResetGame: () => void;
-  onNewGame: () => void;
-  onGridSizeChange: (size: number) => void;
-  onLevelGenerated?: () => void;
-}
 
 export const GameControls: React.FC<GameControlsProps> = ({
   gameState,

@@ -1,17 +1,8 @@
 import React, { useMemo } from 'react';
-import { GameState } from '../../types/game';
+import { GameBoardProps } from '../../types/game';
 import { useAnimations } from '../../hooks/useAnimations';
 import { BoardGrid } from './BoardGrid';
 import { LoadingState } from './LoadingState';
-
-interface GameBoardProps {
-  gameState: GameState;
-  onCellClick: (row: number, col: number) => void;
-  showVictoryAnimation?: boolean;
-  isGameBlocked?: boolean;
-  animationMode?: 'construction' | 'destruction' | 'none';
-  onAnimationComplete?: () => void;
-}
 
 export const GameBoard: React.FC<GameBoardProps> = ({
   gameState,
@@ -19,7 +10,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   showVictoryAnimation = false,
   isGameBlocked = false,
   animationMode = 'none',
-  onAnimationComplete
+  onAnimationComplete,
+
 }) => {
   // Calcul de la taille des cellules
   const cellSize = useMemo(() => {

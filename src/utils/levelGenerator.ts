@@ -1,7 +1,5 @@
-import { ColoredRegion, GameState } from "../types/game";
+import { ColoredRegion, GameState, Position } from "../types/game";
 import {
-  Position,
-  REGION_COLORS,
   areOrthogonallyAdjacent,
   findConnectedComponents,
   generateNQueensSolution,
@@ -10,6 +8,7 @@ import {
   manhattanDistance,
   positionToKey,
 } from "./gameUtils";
+import { REGION_COLORS } from ".././constants";
 import { levelStorage } from "./levelStorage";
 import {
   QueensGameSolver,
@@ -53,13 +52,12 @@ function buildVariedRegions(
      gridSize * gridSize,
      queens.length
    );
-  // console.log(`   🎯 Target sizes: [${targetSizes.join(", ")}]`);
 
   let waveCount = 0;
   let totalAttempts = 0;
   let rejectedForUniqueness = 0;
 
-  // Croissance avec vérification d'unicité ACTIVE
+  // Croissance avec vérification d'unicité
   while (waveCount < gridSize * 3) {
     waveCount++;
     let cellsAssignedThisWave = 0;
@@ -124,7 +122,7 @@ function buildVariedRegions(
 
       if (ownership[candidate.pos.row][candidate.pos.col] !== -1) continue;
 
-      // VÉRIFICATION D'UNICITÉ À CHAQUE ÉTAPE
+      // Vérifier si l'extension de la région préserve l'unicité
       const preservesUniqueness = testRegionExtension(
         gridSize,
         regions,
@@ -244,8 +242,7 @@ function assignRemainingCellsVaried(
   queens: Position[],
   gridSize: number,
   targetSizes: number[]
-): number {
-  //console.log(`🔧 Assigning remaining cells with uniqueness checks...`);
+): number {;
 
   const unassigned: Position[] = [];
   for (let row = 0; row < gridSize; row++) {
@@ -258,12 +255,8 @@ function assignRemainingCellsVaried(
 
   if (unassigned.length === 0) return 0;
 
-  // console.log(
-  //   `   📊 ${unassigned.length} cells to assign with uniqueness checks`
-  // );
-
   let assignedCount = 0;
-  let maxIterations = unassigned.length * 3; // Éviter les boucles infinies
+  let maxIterations = unassigned.length * 2;
   let iteration = 0;
 
   while (unassigned.length > 0 && iteration < maxIterations) {
@@ -287,7 +280,7 @@ function assignRemainingCellsVaried(
         );
 
         if (canConnect) {
-          // 🔧 CRITIQUE: Tester l'unicité avant l'assignation
+          // Tester l'unicité avant l'assignation
           const preservesUniqueness = testRegionExtension(
             gridSize,
             regions,
@@ -407,15 +400,12 @@ function repairDisconnectedRegions(
   regions: ColoredRegion[],
   queens: Position[]
 ): void {
-  // console.log(`🔧 Checking and repairing disconnected regions...`);
-
   let repairsMade = 0;
 
   for (let regionId = 0; regionId < regions.length; regionId++) {
     const region = regions[regionId];
 
     if (!isRegionConnected(region.cells)) {
-      // console.log(`   🔍 Region ${regionId} is disconnected, repairing...`);
 
       const components = findConnectedComponents(region.cells);
       const queen = queens[regionId];
@@ -466,8 +456,6 @@ function repairDisconnectedRegions(
       }
     }
   }
-
-  // console.log(`   🔧 Made ${repairsMade} connectivity repairs`);
 }
 
 /**
@@ -501,11 +489,7 @@ function quickValidation(regions: ColoredRegion[], gridSize: number): boolean {
 export async function generateGameLevel(
   gridSize: number = 6
 ): Promise<GameState> {
-  // console.log(
-  //   `🎨 Generating VARIED Queens Game level for ${gridSize}×${gridSize}`
-  // );
-
-  const maxAttempts = 500; // Moins d'essais pour aller plus vite
+  const maxAttempts = 1;
   let attempt = 0;
 
   while (attempt < maxAttempts) {
@@ -513,24 +497,24 @@ export async function generateGameLevel(
     // console.log(`\n🔄 Attempt ${attempt}/${maxAttempts}`);
 
     try {
-      // ÉTAPE 1: Générer une solution N-Queens valide
+      // Générer une solution N-Queens valide
       const solution = generateNQueensSolution(gridSize);
       if (!solution) {
         //console.warn(`   ⚠️ Failed to generate N-Queens solution, retrying...`);
         continue;
       }
 
-      // ÉTAPE 2: Construire les régions variées avec vérification d'unicité
+      // Construire les régions variées avec vérification d'unicité
       const regions = buildVariedRegions(solution, gridSize);
 
-      // ÉTAPE 3: Validation
+      // Validation
       const isValid = quickValidation(regions, gridSize);
       if (!isValid) {
         //console.warn(`   ⚠️ Validation failed, retrying...`);
         continue;
       }
 
-      // ÉTAPE 4: Créer le plateau
+      // Créer le plateau
       const board = initializeBoard(gridSize, regions);
 
       const gameState: GameState = {
@@ -560,17 +544,14 @@ export async function generateGameLevel(
         "medium",
         regions
       );
-      // console.log(`🔄 Sauvegarde result: ${saveResult}`);
 
       return gameState;
     } catch (error) {
-      // console.error(`   ❌ Attempt ${attempt} failed:`, error);
+      //console.error(`   ❌ Attempt ${attempt} failed:`, error);
       continue;
     }
   }
 
-  // Fallback simple
-  // console.warn(`⚠️ Using simple fallback generation...`);
   return await generateFallbackWithFirebase(gridSize);
 }
 
@@ -580,17 +561,12 @@ export async function generateGameLevel(
 async function generateFallbackWithFirebase(
   gridSize: number
 ): Promise<GameState> {
-   //console.log(`🔧 Attempting Firebase fallback for ${gridSize}×${gridSize}...`);
-
   try {
-    // Essayer de récupérer un niveau depuis Firebase
     const storedLevel = await levelStorage.getRandomLevel(gridSize);
 
     if (storedLevel) {
-      // console.log(`📦 Using stored level from Firebase`);
       const gameState = levelStorage.convertToGameState(storedLevel);
 
-      // Ajouter les propriétés manquantes pour un GameState complet
       return {
         ...gameState,
         elapsedTime: 0,
@@ -598,11 +574,8 @@ async function generateFallbackWithFirebase(
       };
     }
   } catch (error) {
-    // console.warn(`⚠️ Firebase fallback failed:`, error);
+    console.warn(`⚠️ Firebase fallback failed:`, error);
   }
-
-  // Si Firebase échoue ou n'a pas de niveau, utiliser la génération simple
-  // console.log(`🔧 No Firebase level available, using simple generation...`);
   return generateSimpleFallback(gridSize);
 }
 
@@ -610,14 +583,12 @@ async function generateFallbackWithFirebase(
  * Générateur de secours simple et fiable
  */
 function generateSimpleFallback(gridSize: number): GameState {
-  // console.log(`🔧 Generating simple fallback level`);
 
   const solution = generateNQueensSolution(gridSize);
   if (!solution) {
     throw new Error("Cannot generate basic N-Queens solution");
   }
 
-  // Créer des régions simples de 3-4 cellules chacune
   const regions: ColoredRegion[] = solution.map((queen, index) => ({
     id: index,
     color: REGION_COLORS[index % REGION_COLORS.length],
@@ -626,14 +597,12 @@ function generateSimpleFallback(gridSize: number): GameState {
     queenPosition: queen,
   }));
 
-  // Expansion simple par couches
   const cellsPerRegion = Math.floor((gridSize * gridSize) / gridSize);
 
   for (let regionId = 0; regionId < regions.length; regionId++) {
     const queen = solution[regionId];
     const region = regions[regionId];
 
-    // Ajouter des voisins orthogonaux
     const neighbors = getOrthogonalNeighbors(queen, gridSize);
     for (const neighbor of neighbors) {
       if (region.cells.length < cellsPerRegion) {
@@ -642,7 +611,6 @@ function generateSimpleFallback(gridSize: number): GameState {
     }
   }
 
-  // Compléter avec les cellules restantes
   const usedCells = new Set<string>();
   regions.forEach((region) => {
     region.cells.forEach((cell) => {
@@ -654,7 +622,6 @@ function generateSimpleFallback(gridSize: number): GameState {
     for (let col = 0; col < gridSize; col++) {
       const key = positionToKey({ row, col });
       if (!usedCells.has(key)) {
-        // Assigner à la région la plus proche
         let closestRegion = 0;
         let minDistance = Infinity;
 
@@ -673,8 +640,6 @@ function generateSimpleFallback(gridSize: number): GameState {
 
   const board = initializeBoard(gridSize, regions);
 
-  // console.log(`✅ Simple fallback generated`);
-
   return {
     board,
     regions,
@@ -689,5 +654,4 @@ function generateSimpleFallback(gridSize: number): GameState {
   };
 }
 
-// Réexporter les fonctions stables
 export { resetGameBoard } from "./gameUtils";

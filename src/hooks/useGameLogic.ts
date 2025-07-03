@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { validateQueenPlacement } from "../lib/game-engine/rules";
-import { ColoredRegion, GameCell, GameState } from "../types/game";
-import { updateConflicts } from "../utils/gameValidation";
+import { validateQueenPlacement } from "../lib/rules";
+import {
+  CellClickInfo,
+  ColoredRegion,
+  GameCell,
+  GameState,
+} from "../types/game";
+import { updateConflicts } from "../lib/rules";
 import { generateGameLevel, resetGameBoard } from "../utils/levelGenerator";
 
-// Interface pour tracker les clics par cellule
-interface CellClickInfo {
-  lastClickTime: number;
-  timeout: ReturnType<typeof setTimeout> | null;
-}
-
-export function useGameLogic(initialGridSize: number = 6) {
+export function useGameLogic(initialGridSize: number = 7) {
   const [gameState, setGameState] = useState<GameState>(() => ({
     board: [],
     regions: [],
@@ -21,6 +20,7 @@ export function useGameLogic(initialGridSize: number = 6) {
     moveCount: 0,
     elapsedTime: 0,
     isTimerRunning: false,
+    isHighlighted: false,
   }));
 
   const [timerStarted, setTimerStarted] = useState(false);
@@ -29,7 +29,6 @@ export function useGameLogic(initialGridSize: number = 6) {
   const [isGameBlocked, setIsGameBlocked] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Initialisation du niveau
   useEffect(() => {
     const initLevel = async () => {
       if (isGenerating) return;
@@ -44,7 +43,7 @@ export function useGameLogic(initialGridSize: number = 6) {
         setGameTime(0);
       } catch (error) {
         console.error("Erreur génération niveau:", error);
-        // ✅ FALLBACK: État minimal mais valide au lieu d'état vide
+        // État minimal
         const fallbackState: GameState = {
           board: Array(initialGridSize)
             .fill(null)
@@ -57,6 +56,7 @@ export function useGameLogic(initialGridSize: number = 6) {
                   regionId: 0,
                   regionColor: "#64B5F6",
                   state: "empty" as const,
+                  isHighlighted: false,
                   isConflict: false,
                   isInConflictLine: false,
                   isInConflictColumn: false,
@@ -139,40 +139,40 @@ export function useGameLogic(initialGridSize: number = 6) {
   }, [gameState.isCompleted, showVictoryAnimation]);
 
   const changeGridSizeOnly = useCallback(async (gridSize: number) => {
-  if (isGenerating) return;
+    if (isGenerating) return;
 
-  // Nettoyer les timeouts actifs
-  cellClicksRef.current.forEach((clickInfo) => {
-    if (clickInfo.timeout) {
-      clearTimeout(clickInfo.timeout);
+    // Nettoyer les timeouts actifs
+    cellClicksRef.current.forEach((clickInfo) => {
+      if (clickInfo.timeout) {
+        clearTimeout(clickInfo.timeout);
+      }
+    });
+    cellClicksRef.current.clear();
+
+    setIsGenerating(true);
+    setIsGameBlocked(true);
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    try {
+      const newLevel = await generateGameLevel(gridSize);
+      setGameState(newLevel);
+      setGameTime(0);
+      setTimerStarted(true);
+      setShowVictoryAnimation(false);
+    } catch (error) {
+      console.error("Erreur génération nouveau niveau:", error);
+    } finally {
+      setIsGenerating(false);
+      setIsGameBlocked(false);
     }
-  });
-  cellClicksRef.current.clear();
+  }, []);
 
-  // ✅ CORRECTION: Générer un nouveau niveau avec la nouvelle taille
-  setIsGenerating(true);
-  setIsGameBlocked(true);
-
-  try {
-    const newLevel = await generateGameLevel(gridSize);
-    setGameState(newLevel);
-    setGameTime(0);
-    setTimerStarted(true);
-    setShowVictoryAnimation(false);
-  } catch (error) {
-    console.error("Erreur génération nouveau niveau:", error);
-  } finally {
-    setIsGenerating(false);
-    setIsGameBlocked(false);
-  }
-}, [])
-
-  // Validation corrigée - vérifier si le puzzle est résolu
+  // Vérifier si le puzzle est résolu
   const checkPuzzleCompletion = useCallback(
     (board: GameCell[][], regions: ColoredRegion[]) => {
       const gridSize = board.length;
 
-      // Compter les reines placées
       const queensCount = board
         .flat()
         .filter((cell) => cell.state === "queen").length;
@@ -210,7 +210,7 @@ export function useGameLogic(initialGridSize: number = 6) {
           const rowDiff = Math.abs(queens[i].row - queens[j].row);
           const colDiff = Math.abs(queens[i].col - queens[j].col);
           if (rowDiff <= 1 && colDiff <= 1) {
-            return false; // Les reines se touchent
+            return false;
           }
         }
       }
@@ -220,10 +220,8 @@ export function useGameLogic(initialGridSize: number = 6) {
     []
   );
 
-  // Gérer le clic sur une cellule avec logique corrigée
   const handleCellClick = useCallback(
     (row: number, col: number) => {
-      // Bloquer les clics si le jeu est terminé ou en animation
       if (
         isGameBlocked ||
         showVictoryAnimation ||
@@ -237,40 +235,37 @@ export function useGameLogic(initialGridSize: number = 6) {
       const cellKey = `${row}-${col}`;
       const cellClickInfo = cellClicksRef.current.get(cellKey);
 
-      // Nettoyer l'ancien timeout si il existe
       if (cellClickInfo?.timeout) {
         clearTimeout(cellClickInfo.timeout);
       }
 
-      // Vérifier le double-clic POUR CETTE CELLULE SPÉCIFIQUE
-      if (cellClickInfo && now - cellClickInfo.lastClickTime < 300) {
-        // Double-click détecté sur la MÊME cellule
+      if (cellClickInfo && now - cellClickInfo.lastClickTime < 250) {
+        // Double-clic détecté - annuler l'action précédente et faire le double-clic
         handleDoubleClick(row, col);
-        cellClicksRef.current.delete(cellKey); // Nettoyer l'entrée
+        cellClicksRef.current.delete(cellKey);
       } else {
-        // Premier clic ou clic trop tardif - programmer le single click
-        const timeout = setTimeout(() => {
-          handleSingleClick(row, col);
-          cellClicksRef.current.delete(cellKey);
-        }, 320); // Délai légèrement plus long pour la sécurité
+        // ✅ NOUVEAU: Exécution immédiate du clic simple
+        handleSingleClick(row, col);
 
-        // Enregistrer ce clic pour cette cellule
+        // Enregistrer le clic pour détecter un éventuel double-clic
+        const timeout = setTimeout(() => {
+          cellClicksRef.current.delete(cellKey);
+        }, 250);
+
         cellClicksRef.current.set(cellKey, {
           lastClickTime: now,
           timeout: timeout,
         });
       }
     },
-    [isGameBlocked, showVictoryAnimation, gameState.board.length]
+    [isGameBlocked, showVictoryAnimation, gameState.board.length, isGenerating]
   );
 
-  // Gérer le simple clic (marqueur)
   const handleSingleClick = useCallback((row: number, col: number) => {
     setGameState((prevState) => {
       const newBoard = prevState.board.map((boardRow) =>
         boardRow.map((cell) => ({
           ...cell,
-          // Réinitialiser tous les conflits visuels
           isConflict: false,
           isInConflictLine: false,
           isInConflictColumn: false,
@@ -280,15 +275,12 @@ export function useGameLogic(initialGridSize: number = 6) {
       );
       const cell = newBoard[row][col];
 
-      // Cycle: empty -> marked -> empty (ne touche pas aux reines)
       if (cell.state === "empty") {
         cell.state = "marked";
       } else if (cell.state === "marked") {
         cell.state = "empty";
       }
-      // Ne pas modifier si c'est une reine (réservé au double-click)
 
-      // Recalculer les conflits
       const boardWithConflicts = updateConflicts(newBoard, prevState.regions);
 
       return {
@@ -306,7 +298,6 @@ export function useGameLogic(initialGridSize: number = 6) {
         const newBoard = prevState.board.map((boardRow) =>
           boardRow.map((cell) => ({
             ...cell,
-            // Réinitialiser tous les conflits visuels
             isConflict: false,
             isInConflictLine: false,
             isInConflictColumn: false,
@@ -320,7 +311,6 @@ export function useGameLogic(initialGridSize: number = 6) {
         let queensPlaced = prevState.queensPlaced;
 
         if (cell.state === "queen") {
-          // Enlever la reine
           cell.state = "empty";
           queensPlaced--;
 
@@ -333,12 +323,10 @@ export function useGameLogic(initialGridSize: number = 6) {
               queensInRegion.length > 0 ? queensInRegion[0] : undefined;
           }
         } else {
-          // Effacer le marqueur si présent avant de placer la reine
           if (cell.state === "marked") {
             cell.state = "empty";
           }
 
-          // Placer une reine
           cell.state = "queen";
           queensPlaced++;
 
@@ -352,10 +340,8 @@ export function useGameLogic(initialGridSize: number = 6) {
           }
         }
 
-        // Mettre à jour les conflits
         const boardWithConflicts = updateConflicts(newBoard, newRegions);
 
-        // Vérifier si le puzzle est complété avec la nouvelle validation
         const isCompleted = checkPuzzleCompletion(
           boardWithConflicts,
           newRegions
@@ -374,9 +360,7 @@ export function useGameLogic(initialGridSize: number = 6) {
     [checkPuzzleCompletion]
   );
 
-  // Réinitialiser le jeu avec nettoyage des timeouts (le timer continue)
   const resetGame = useCallback(() => {
-    // Nettoyer tous les timeouts actifs
     cellClicksRef.current.forEach((clickInfo) => {
       if (clickInfo.timeout) {
         clearTimeout(clickInfo.timeout);
@@ -386,7 +370,6 @@ export function useGameLogic(initialGridSize: number = 6) {
 
     setGameState((prevState) => {
       const resetState = resetGameBoard(prevState);
-      // Nettoyer tous les conflits visuels
       const cleanBoard = resetState.board.map((row) =>
         row.map((cell) => ({
           ...cell,
@@ -405,15 +388,12 @@ export function useGameLogic(initialGridSize: number = 6) {
 
     setIsGameBlocked(false);
     setShowVictoryAnimation(false);
-    // Le timer continue (pas de reset)
   }, []);
 
   const newGame = useCallback(
     async (gridSize?: number) => {
-      // Éviter plusieurs générations simultanées
       if (isGenerating) return;
 
-      // Nettoyer tous les timeouts actifs
       cellClicksRef.current.forEach((clickInfo) => {
         if (clickInfo.timeout) {
           clearTimeout(clickInfo.timeout);
@@ -423,23 +403,21 @@ export function useGameLogic(initialGridSize: number = 6) {
 
       const size = gridSize || gameState.gridSize;
 
-      // ✅ CRITIQUE: Marquer la génération en cours
       setIsGenerating(true);
-      setIsGameBlocked(true); // Bloquer les interactions
+      setIsGameBlocked(true);
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       try {
         const newLevel = await generateGameLevel(size);
 
-        // ✅ ATOMIQUE: Tout changer d'un coup après génération
         setGameState(newLevel);
         setGameTime(0);
         setTimerStarted(true);
         setShowVictoryAnimation(false);
       } catch (error) {
         console.error("Erreur génération nouveau niveau:", error);
-        // ✅ En cas d'erreur, garder l'état actuel au lieu de créer un état vide
       } finally {
-        // ✅ IMPORTANT: Toujours relâcher les verrous
         setIsGenerating(false);
         setIsGameBlocked(false);
       }
@@ -447,7 +425,6 @@ export function useGameLogic(initialGridSize: number = 6) {
     [gameState.gridSize, isGenerating]
   );
 
-  // Vérifier la validité d'un placement
   const checkValidPlacement = useCallback(
     (row: number, col: number): boolean => {
       if (gameState.board.length === 0) return false;
@@ -461,7 +438,6 @@ export function useGameLogic(initialGridSize: number = 6) {
     [gameState.board, gameState.regions]
   );
 
-  // Obtenir les cellules en conflit
   const getConflictingCells = useCallback(
     (row: number, col: number): { row: number; col: number }[] => {
       const conflicts: { row: number; col: number }[] = [];
@@ -488,7 +464,6 @@ export function useGameLogic(initialGridSize: number = 6) {
     [gameState.board, gameState.gridSize]
   );
 
-  // Nettoyer les timeouts à la désactivation
   useEffect(() => {
     return () => {
       cellClicksRef.current.forEach((clickInfo) => {

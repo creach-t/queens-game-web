@@ -1,26 +1,13 @@
-// levelStorage.ts
+
 import { initializeApp } from "firebase/app";
 import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import { get, getDatabase, push, ref, set } from "firebase/database";
+import { REGION_COLORS } from "../constants";
+import { StoredRegion, StoredLevel } from "../types/game";
 
-interface Position {
-  row: number;
-  col: number;
-}
 
-interface StoredRegion {
-  id: number;
-  cells: Position[];
-  queenPosition: Position;
-}
 
-interface StoredLevel {
-  key?: string;
-  gridSize: number;
-  complexity: string;
-  regions: StoredRegion[];
-  createdAt: number;
-}
+
 
 class LevelStorage {
   private db: any = null;
@@ -33,8 +20,7 @@ class LevelStorage {
     try {
       // Vérifier que la config contient databaseURL
       if (!firebaseConfig.databaseURL) {
-        //console.warn('Firebase: databaseURL manquante, stockage désactivé');
-        return;
+        throw new Error("Configuration Firebase invalide : databaseURL manquant");
       }
 
       const app = initializeApp(firebaseConfig);
@@ -42,12 +28,10 @@ class LevelStorage {
       this.auth = getAuth(app);
       this.isAvailable = true;
 
-      // Authentification automatique
       this.authPromise = this.initAuth();
 
-      //console.log("✅ Firebase Database initialisé");
-    } catch (error) {
-      //console.warn("Firebase non disponible:", error);
+    } catch (error) {;
+      console.error("❌ Erreur initialisation Firebase:", error);
       this.isAvailable = false;
     }
   }
@@ -63,16 +47,14 @@ class LevelStorage {
       onAuthStateChanged(this.auth, async (user) => {
         if (user) {
           this.isAuthenticated = true;
-          //console.log("✅ Utilisateur authentifié:", user.uid);
           resolve();
         } else {
           // Pas d'utilisateur, s'authentifier anonymement
           try {
             await signInAnonymously(this.auth);
-            //console.log("✅ Authentification anonyme réussie");
           } catch (error) {
-            //console.warn("Erreur authentification anonyme:", error);
-            resolve(); // Continue même en cas d'erreur
+            console.error("❌ Erreur authentification anonyme:", error);
+            resolve();
           }
         }
       });
@@ -91,7 +73,7 @@ class LevelStorage {
       await this.authPromise;
       return this.isAuthenticated;
     } catch (error) {
-      //onsole.warn("Erreur attente auth:", error);
+      console.error("❌ Erreur attente authentification:", error);
       return false;
     }
   }
@@ -106,7 +88,7 @@ class LevelStorage {
   ): Promise<boolean> {
     const authReady = await this.waitForAuth();
     if (!authReady) {
-     //console.warn("❌ Authentification non prête, sauvegarde annulée");
+     console.warn("❌ Authentification non prête, sauvegarde annulée");
       return false;
     }
 
@@ -139,7 +121,7 @@ class LevelStorage {
       //console.log(`✅ Niveau ${gridSize}x${gridSize} sauvegardé`);
       return true;
     } catch (error) {
-      //console.error("❌ Erreur sauvegarde niveau:", error);
+      console.error("❌ Erreur sauvegarde niveau:", error);
       return false;
     }
   }
@@ -298,20 +280,6 @@ class LevelStorage {
    * Convertit un niveau stocké en GameState
    */
   convertToGameState(storedLevel: StoredLevel): any {
-    const REGION_COLORS = [
-      "#26A69A",
-      "#BA68C8",
-      "#81C784",
-      "#FFB74D",
-      "#F06292",
-      "#D4E157",
-      "#4DD0E1",
-      "#fa6464",
-      "#b0a997",
-      "#615f87",
-      "#995d36",
-      "#02f760",
-    ];
 
     const regions = storedLevel.regions.map((storedRegion) => ({
       id: storedRegion.id,
@@ -356,7 +324,6 @@ class LevelStorage {
   }
 }
 
-// Configuration Firebase - remplace par tes vraies valeurs
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -367,5 +334,4 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// Instance exportée (safe)
 export const levelStorage = new LevelStorage(firebaseConfig);

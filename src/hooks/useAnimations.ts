@@ -1,17 +1,5 @@
 import { useEffect, useState } from 'react';
-import { GameState } from '../types/game';
-
-interface UseAnimationsProps {
-  gameState: GameState;
-  animationMode: 'construction' | 'destruction' | 'none';
-  onAnimationComplete?: () => void;
-}
-
-interface UseAnimationsReturn {
-  isLoading: boolean;
-  loadedCells: Set<string>;
-  isDestroying: boolean;
-}
+import { UseAnimationsProps, UseAnimationsReturn } from '../types/game';
 
 export const useAnimations = ({
   gameState,

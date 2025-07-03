@@ -1,10 +1,5 @@
 import React from 'react';
-
-interface SizeGridSelectorProps {
-  currentGridSize: number;
-  onGridSizeChange: (size: number) => void;
-  levelCounts: Record<number, number>;
-}
+import { SizeGridSelectorProps } from '../../types/game';
 
 const difficultyInfo = {
   5: { name: "Tutoriel", color: "bg-green-100 text-green-700" },

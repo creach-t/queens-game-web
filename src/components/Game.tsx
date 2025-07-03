@@ -15,7 +15,6 @@ export const Game: React.FC = () => {
     isGenerating,
   } = useGameLogic();
 
-  // Key pour forcer l'animation - se déclenche IMMÉDIATEMENT
   const [boardAnimationKey, setBoardAnimationKey] = useState(0);
 
 const handleGridSizeChange = useCallback((newSize: number) => {
@@ -28,12 +27,10 @@ const handleNewGame = useCallback(() => {
   setBoardAnimationKey(prev => prev + 1);
 }, [originalNewGame, gameState.gridSize]);
 
-  // Reset avec annulation si besoin
   const handleResetGame = useCallback(() => {
       resetGame();
   }, [resetGame]);
 
-  // Déterminer si le jeu est bloqué
   const showVictoryAnimation = !isGenerating && gameState.isCompleted;
 
   return (
@@ -42,18 +39,18 @@ const handleNewGame = useCallback(() => {
         <div className="game-container">
           {/* Timer */}
           <Timer gameTime={gameTime} isCompleted={gameState.isCompleted}/>
-          {/* Plateau - animation TOUJOURS active */}
+          {/* Plateau*/}
           <div className="game-board-section">
             <GameBoard
               gameState={gameState}
               onCellClick={handleCellClick}
               showVictoryAnimation={showVictoryAnimation}
- // Jamais bloqué
-              key={boardAnimationKey} // Relance l'animation à chaque changement
+              key={boardAnimationKey}
+              isGameBlocked={isGenerating}
+              animationMode="none"
             />
 
           </div>
-
           {/* Contrôles */}
           <div className="game-controls-section">
             <GameControls

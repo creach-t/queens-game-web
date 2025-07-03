@@ -1,15 +1,4 @@
-import { GameCell, ColoredRegion } from '../types/game';
-
-interface Position {
-  row: number;
-  col: number;
-}
-
-interface SolverResult {
-  solutionCount: number;
-  solutions: Position[][];
-  isUnique: boolean;
-}
+import { GameCell, ColoredRegion, Position, SolverResult  } from '../types/game';
 
 /**
  * Solver efficace pour vérifier l'unicité des solutions Queens Game
@@ -23,7 +12,7 @@ export class QueensGameSolver {
   constructor(gridSize: number, regions: ColoredRegion[], maxSolutions: number = 2) {
     this.gridSize = gridSize;
     this.regions = regions;
-    this.maxSolutions = maxSolutions; // Arrêter dès qu'on trouve plus d'une solution
+    this.maxSolutions = maxSolutions;
   }
 
   /**

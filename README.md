@@ -5,7 +5,7 @@
 [![Made with React](https://img.shields.io/badge/Made%20with-React-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-5.1-646CFF?style=for-the-badge&logo=vite)](https://vitejs.dev/)
-[![Responsive](https://img.shields.io/badge/Design-Responsive-green?style=for-the-badge)](https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 
 ## 🎮 À propos du jeu
 
@@ -23,31 +23,35 @@ Le Queens Game est un puzzle logique addictif où vous devez placer des reines s
 ## ✨ Fonctionnalités
 
 ### 🎨 Interface utilisateur
-- ✅ Design moderne inspiré de LinkedIn
-- ✅ Animations fluides et feedback visuel
+- ✅ Design moderne avec **Tailwind CSS**
+- ✅ **Animations fluides** avec overlays et transitions
+- ✅ **Loading avec blur** pendant génération des grilles complexes
 - ✅ Responsive design (mobile, tablette, desktop)
-- ✅ Thème cohérent avec dégradés élégants
+- ✅ **Architecture modulaire** avec composants décomposés
 - ✅ Accessibilité (contraste, focus visible, support clavier)
 
 ### 🎮 Gameplay
+- ✅ **Chronomètre intégré** avec formatage MM:SS
+- ✅ **Partage LinkedIn** avec grille en émojis et score
 - ✅ Génération automatique de niveaux avec régions colorées
 - ✅ Validation en temps réel des règles
 - ✅ Détection automatique des conflits avec feedback visuel
-- ✅ Système de progression et comptage des coups
-- ✅ Multiple tailles de grille (4x4 à 8x8)
-- ✅ Boutons Reset et Nouveau jeu
+- ✅ **Grilles étendues** de **5×5 à 12×12** (vs 4×4 à 8×8 avant)
+- ✅ Animations de construction/destruction du plateau
 
 ### 🔧 Technique
-- ✅ TypeScript pour la robustesse du code
-- ✅ Architecture modulaire avec hooks React
-- ✅ CSS Grid responsive pour le plateau
+- ✅ **TypeScript** pour la robustesse du code
+- ✅ **Architecture modulaire** avec séparation des responsabilités
+- ✅ **Logique métier pure** extraite dans `lib/game-engine/`
+- ✅ **Hooks spécialisés** (useGameLogic, useAnimations)
+- ✅ **Tailwind CSS** pour un design system cohérent
+- ✅ **Lucide React** pour les icônes modernes
 - ✅ PWA ready avec manifest.json
-- ✅ Optimisé pour les performances
 
 ## 🚀 Installation et lancement
 
 ### Prérequis
-- **Node.js** 18+ 
+- **Node.js** 18+
 - **npm** ou **yarn**
 
 ### Installation rapide
@@ -75,33 +79,54 @@ npm run preview
 Après `npm run dev`, l'application sera disponible sur :
 - **Local** : http://localhost:3000
 - **Réseau** : Accessible depuis d'autres appareils sur le même réseau
+- **Demo** : [https://queens-game.creachtheo.fr](https://queens-game.creachtheo.fr)
 
-## 🏗️ Architecture du projet
+## 🏗️ Architecture du projet (Nouvelle structure modulaire)
 
 ```
 src/
-├── components/           # Composants React réutilisables
-│   ├── GameBoard.tsx     # Plateau de jeu avec grille responsive
-│   ├── GameCell.tsx      # Cellule individuelle avec états
-│   ├── GameControls.tsx  # Contrôles et statistiques
-│   ├── Game.tsx          # Composant principal du jeu
-│   └── *.css            # Styles modulaires
-├── hooks/               # Logique métier React
-│   └── useGameLogic.ts  # Hook principal de gestion d'état
-├── types/               # Types TypeScript
-│   └── game.ts          # Interfaces du jeu
-├── utils/               # Utilitaires et algorithmes
-│   ├── gameValidation.ts # Validation des règles
-│   └── levelGenerator.ts # Génération de niveaux
-├── App.tsx              # Composant racine
-├── main.tsx             # Point d'entrée
-└── index.css            # Styles globaux et variables CSS
+├── 📁 components/           # Composants React modulaires
+│   ├── 📁 GameBoard/        # Plateau de jeu décomposé
+│   │   ├── AnimationOverlay.tsx    # Overlays de transition avec blur
+│   │   ├── BoardGrid.tsx           # Grille de cellules
+│   │   ├── LoadingState.tsx        # État de chargement
+│   │   └── index.tsx               # Point d'entrée du plateau
+│   ├── 📁 GameControls/     # Contrôles décomposés
+│   │   ├── MainControls.tsx        # Boutons reset/nouveau
+│   │   ├── Rules.tsx               # Affichage des règles
+│   │   ├── SizeGridSelector.tsx    # Sélecteur de taille
+│   │   ├── SuccessMessage.tsx      # Message victoire + partage LinkedIn
+│   │   └── index.tsx               # Point d'entrée contrôles
+│   ├── Game.tsx             # Composant principal orchestrateur
+│   ├── GameCell.tsx         # Cellule individuelle avec états
+│   └── Timer.tsx            # Chronomètre avec formatage
+├── 📁 hooks/               # Logique métier React
+│   ├── useAnimations.ts    # Gestion des animations et transitions
+│   └── useGameLogic.ts     # Hook principal de gestion d'état
+├── 📁 lib/                 # Logique métier pure
+│   └── 📁 game-engine/     # Moteur de jeu extrait
+│       ├── rules.ts        # Règles de validation pure
+│       └── validator.ts    # Validateur de puzzle
+├── 📁 types/               # Types TypeScript
+│   ├── core.ts             # Types fondamentaux
+│   └── game.ts             # Interfaces du jeu
+├── 📁 utils/               # Utilitaires et algorithmes
+│   ├── boardUtils.ts       # Utilities plateau
+│   ├── gameUtils.ts        # Utilities générales
+│   ├── gameValidation.ts   # Validation des règles
+│   ├── levelGenerator.ts   # Génération de niveaux
+│   ├── levelStorage.ts     # Persistence locale
+│   └── queensSolver.ts     # Solveur de puzzles
+├── App.tsx                 # Composant racine
+├── main.tsx                # Point d'entrée
+└── index.css               # Styles globaux Tailwind
 ```
 
 ## 🎨 Design System
 
-### 🎨 Palette de couleurs
-- **LinkedIn Blue** : `#0077b5` (couleur principale)
+### 🎨 Stack technique moderne
+- **Tailwind CSS** : Framework CSS utility-first
+- **Lucide React** : Icônes modernes et cohérentes
 - **Gradients** : Dégradés modernes pour les backgrounds
 - **Regions** : 15+ couleurs distinctes pour les régions
 - **States** : Rouge pour les conflits, vert pour la victoire
@@ -125,18 +150,21 @@ src/
 | **React** | 18.2+ | Framework UI |
 | **TypeScript** | 5.0+ | Typage statique |
 | **Vite** | 5.1+ | Build tool moderne |
-| **CSS Grid** | Native | Layout responsive |
-| **CSS Custom Properties** | Native | Théming |
+| **Tailwind CSS** | 3.0+ | Framework CSS utility-first |
+| **Lucide React** | Latest | Bibliothèque d'icônes |
 
-## 🎯 Niveaux de difficulté
+## 🎯 Niveaux de difficulté (Étendus)
 
-| Taille | Difficulté | Régions | Recommandé pour |
-|--------|------------|---------|-----------------|
-| 4×4 | 🟢 Facile | ~8 | Débutants |
-| 5×5 | 🟡 Moyen | ~10 | Intermédiaires |
-| 6×6 | 🟠 Difficile | ~12 | Avancés |
-| 7×7 | 🔴 Expert | ~14 | Experts |
-| 8×8 | ⚫ Maître | ~16 | Maîtres |
+| Taille | Difficulté |
+|--------|------------|---------|-----------------|-------------|
+| 5×5 | Tutoriel | ~5 | Découverte | 2-5 min |
+| 6×6 | Facile | ~10 | Débutants | 5-10 min |
+| 7×7 | Normal | ~12 | Intermédiaires | 10-15 min |
+| 8×8 | Difficile | ~14 | Avancés | 15-25 min |
+| 9×9 | Expert | ~16 | Experts | 25-40 min |
+| 10×10 | Maître | ~18 | Maîtres | 40-60 min |
+| 11×11 | 🔥 Légendaire | ~20 | Légendaires | 60+ min |
+| 12×12 | 💎 Mythique | ~22 | Mythiques | 90+ min |
 
 ## 🎮 Comment jouer
 
@@ -144,13 +172,23 @@ src/
 2. **Placement** : Double-cliquez pour placer une reine ♛
 3. **Marquage** : Clic simple pour placer un marqueur ✗ (aide-mémoire)
 4. **Validation** : Les conflits apparaissent en rouge automatiquement
-5. **Victoire** : Toutes les reines placées = puzzle résolu ! 🎉
+5. **Chronomètre** : Votre temps est affiché en temps réel
+6. **Victoire** : Puzzle résolu → **Partagez sur LinkedIn !** 📱
 
 ### 💡 Conseils stratégiques
 - Commencez par les régions les plus contraintes
 - Utilisez les marqueurs pour éliminer les cases impossibles
 - Observez les intersections de lignes/colonnes
 - Les reines ne peuvent jamais être adjacentes !
+- Pour les grilles 9+, prenez votre temps et soyez méthodique
+
+## 📱 Partage LinkedIn
+
+Nouvelle fonctionnalité ! Partagez vos victoires directement sur LinkedIn avec :
+- 🏆 Votre score et temps de résolution
+- 👑 Grille en émojis showing votre solution
+- 🔗 Lien vers le jeu pour défier vos contacts
+- 📈 Boost votre personal branding tech !
 
 ## 🚀 Déploiement
 
@@ -198,27 +236,31 @@ Cette application est PWA-ready :
 | Plateform | Mobile (app) | Web responsive |
 | Langages | Native | React/TypeScript |
 | Offline | ✅ | ✅ (PWA) |
-| Personnalisation | Limitée | Tailles variables |
+| Grilles | 6×6 à 8×8 | **5×5 à 12×12** |
+| Chronomètre | ❌ | ✅ |
+| Partage | ❌ | ✅ LinkedIn |
+| Animations | Basic | ✅ Avancées |
 | Open Source | ❌ | ✅ |
-| Responsive | Mobile only | Tous devices |
 
-## 📈 Roadmap
+## 📈 Nouvelles fonctionnalités 2024
 
-### 🔄 Améliorations futures
+### ✅ Implémentées
+- ✅ **Chronomètre** en temps réel avec formatage
+- ✅ **Partage LinkedIn** avec grille en émojis
+- ✅ **Architecture modulaire** avec composants spécialisés
+- ✅ **Animations avancées** avec blur pendant génération
+- ✅ **Grilles étendues** jusqu'à 12×12
+- ✅ **Design system Tailwind** cohérent
+- ✅ **Loading states** optimisés
+
+### 🔄 Roadmap à venir
 - [ ] Solveur automatique avec hints
 - [ ] Système de sauvegarde local
 - [ ] Mode sombre/clair
-- [ ] Chronomètre et meilleurs scores
-- [ ] Animations de victoire avancées
-- [ ] Mode multijoueur
-- [ ] Générateur de niveaux plus sophistiqué
+- [ ] Meilleurs scores et statistiques
+- [ ] Mode multijoueur en temps réel
 - [ ] Export/import de puzzles
-
-### 🎯 Optimisations
-- [ ] Lazy loading des composants
-- [ ] Service Worker pour cache avancé
-- [ ] Bundle splitting
-- [ ] Tests unitaires et E2E
+- [ ] Générateur de défis quotidiens
 
 ## 📄 Licence
 
@@ -228,12 +270,14 @@ Ce projet est sous licence **MIT** - voir le fichier [LICENSE](LICENSE) pour plu
 
 **CREACH-T**
 - GitHub: [@creach-t](https://github.com/creach-t)
+- Site: [https://queens-game.creachtheo.fr](https://queens-game.creachtheo.fr)
 - Projet inspiré du Queens Game de LinkedIn
 
 ## 🙏 Remerciements
 
 - **LinkedIn** pour le concept original du Queens Game
 - **Communauté React** pour les outils fantastiques
+- **Tailwind Labs** pour le framework CSS moderne
 - **Contributeurs** qui améliorent ce projet
 
 ---
@@ -242,6 +286,8 @@ Ce projet est sous licence **MIT** - voir le fichier [LICENSE](LICENSE) pour plu
 
 **Développé avec ❤️ pour la communauté des puzzle games**
 
-[🎮 Jouer maintenant](https://queens-game-web.netlify.app) • [📖 Documentation](https://github.com/creach-t/queens-game-web/wiki) • [🐛 Signaler un bug](https://github.com/creach-t/queens-game-web/issues)
+[🎮 Jouer maintenant](https://queens-game.creachtheo.fr) • [📖 Documentation](https://github.com/creach-t/queens-game-web/wiki) • [🐛 Signaler un bug](https://github.com/creach-t/queens-game-web/issues)
+
+**⭐ N'oubliez pas de starrer le repo si vous aimez le projet ! ⭐**
 
 </div>
