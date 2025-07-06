@@ -5,6 +5,9 @@ interface CanvasGameBoardProps {
   gameState: GameState;
   onCellClick: (row: number, col: number) => void;
   onCellDrag?: (row: number, col: number, dragMode: 'mark' | 'unmark') => void;
+  showVictoryAnimation?: boolean;
+  isGameBlocked?: boolean;
+  animationMode?: string;
 }
 
 interface DragState {
@@ -29,7 +32,9 @@ const DRAG_THRESHOLD = 2; // pixels
 export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
   gameState,
   onCellClick,
-  onCellDrag
+  onCellDrag,
+  showVictoryAnimation = false,
+  isGameBlocked = false
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
@@ -129,7 +134,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     const { x, y, size } = position;
     
     // Background avec couleur de région
-    ctx.fillStyle = cell.regionColor;
+    ctx.fillStyle = showVictoryAnimation && cell.state === 'queen' ? '#FFD700' : cell.regionColor;
     ctx.fillRect(x, y, size, size);
     
     // Animation de conflit avec hachures diagonales
@@ -182,12 +187,12 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     
     if (cell.state === 'queen') {
       ctx.font = `bold ${Math.floor(size * 0.4)}px serif`;
-      ctx.fillStyle = '#0077b5';
+      ctx.fillStyle = showVictoryAnimation ? '#000' : '#0077b5';
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.lineWidth = 2;
       ctx.strokeText('♛', centerX, centerY);
       ctx.fillText('♛', centerX, centerY);
-    } else if (cell.state === 'marker') {
+    } else if (cell.state === 'marked') {
       ctx.font = `bold ${Math.floor(size * 0.3)}px sans-serif`;
       ctx.fillStyle = '#e74c3c';
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
@@ -195,7 +200,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       ctx.strokeText('✗', centerX, centerY);
       ctx.fillText('✗', centerX, centerY);
     }
-  }, []);
+  }, [showVictoryAnimation]);
 
   // Fonction de rendu principal
   const draw = useCallback(() => {
@@ -241,6 +246,8 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
   }, []);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (isGameBlocked) return;
+    
     e.preventDefault();
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -257,10 +264,10 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       dragMode: null,
       lastDraggedCell: null
     });
-  }, [getPointerPosition, getCellAtPosition]);
+  }, [isGameBlocked, getPointerPosition, getCellAtPosition]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!dragState.startPos) return;
+    if (!dragState.startPos || isGameBlocked) return;
     
     const pos = getPointerPosition(e);
     const deltaX = pos.x - dragState.startPos.x;
@@ -281,7 +288,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       }
       
       // Déterminer le mode de drag
-      const newDragMode = cell.state === 'marker' ? 'unmark' : 'mark';
+      const newDragMode = cell.state === 'marked' ? 'unmark' : 'mark';
       
       setDragState(prev => ({
         ...prev,
@@ -312,9 +319,11 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
         }
       }
     }
-  }, [dragState, getPointerPosition, getCellAtPosition, gameState.board, onCellDrag]);
+  }, [dragState, isGameBlocked, getPointerPosition, getCellAtPosition, gameState.board, onCellDrag]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (isGameBlocked) return;
+    
     const canvas = canvasRef.current;
     if (!canvas) return;
     
@@ -335,7 +344,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       dragMode: null,
       lastDraggedCell: null
     });
-  }, [dragState, getPointerPosition, getCellAtPosition, onCellClick]);
+  }, [dragState, isGameBlocked, getPointerPosition, getCellAtPosition, onCellClick]);
 
   // Redessiner quand l'état change
   useEffect(() => {
