@@ -27,9 +27,9 @@ interface CellPosition {
 
 const BORDER_WIDTH = 3;
 const BORDER_COLOR = '#2c3e50';
-const CELL_BORDER_WIDTH = 1; // Bordures fines entre cellules
+const CELL_BORDER_WIDTH = 1;
 const CELL_BORDER_COLOR = 'rgba(44, 62, 80, 0.3)';
-const DRAG_THRESHOLD = 1; // ✅ CORRECTIF: Seuil plus sensible
+const DRAG_THRESHOLD = 0.5; // ✅ SUPER SENSIBLE maintenant
 
 export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
   gameState,
@@ -71,11 +71,11 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     }).catch(console.error);
   }, []);
 
-  // ✅ CORRECTIF: Vérifier si le board est initialisé
+  // Vérifier si le board est initialisé
   const isBoardReady = gameState.board && gameState.board.length > 0 && 
                        gameState.board[0] && gameState.board[0].length > 0;
 
-  // Calculer la taille des cellules (même logique que GameBoard.tsx)
+  // Calculer la taille des cellules
   const getCellSize = useCallback(() => {
     const viewportWidth = Math.min(window.innerWidth * 0.9, 600);
     const viewportHeight = Math.min(window.innerHeight * 0.7, 600);
@@ -106,7 +106,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     return positions;
   }, [gameState.gridSize, getCellSize, isBoardReady]);
 
-  // Reproduire la logique getCellBorderStyle de GameBoard.tsx
+  // Bordures de régions
   const getCellBorders = useCallback((row: number, col: number) => {
     if (!isBoardReady) return { top: false, right: false, bottom: false, left: false };
     
@@ -118,81 +118,21 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       left: false
     };
     
-    // Bordure top
     if (row === 0 || gameState.board[row - 1][col].regionId !== cell.regionId) {
       borders.top = true;
     }
-    
-    // Bordure right  
     if (col === gameState.gridSize - 1 || gameState.board[row][col + 1].regionId !== cell.regionId) {
       borders.right = true;
     }
-    
-    // Bordure bottom
     if (row === gameState.gridSize - 1 || gameState.board[row + 1][col].regionId !== cell.regionId) {
       borders.bottom = true;
     }
-    
-    // Bordure left
     if (col === 0 || gameState.board[row][col - 1].regionId !== cell.regionId) {
       borders.left = true;
     }
     
     return borders;
   }, [gameState.board, gameState.gridSize, isBoardReady]);
-
-  // ✅ CORRECTIF: Déterminer les conflits pour hachures complètes
-  const getConflictInfo = useCallback((row: number, col: number) => {
-    if (!isBoardReady) return { 
-      isInConflictRow: false, 
-      isInConflictCol: false, 
-      isInConflictRegion: false,
-      isConflictQueen: false
-    };
-
-    const cell = gameState.board[row][col];
-    let isInConflictRow = false;
-    let isInConflictCol = false;
-    let isInConflictRegion = false;
-    let isConflictQueen = false;
-
-    // Si c'est une reine en conflit
-    if (cell.state === 'queen' && cell.isConflict) {
-      isConflictQueen = true;
-    }
-
-    // Vérifier conflits de rangée (si il y a des reines en conflit dans cette rangée)
-    for (let c = 0; c < gameState.gridSize; c++) {
-      const otherCell = gameState.board[row][c];
-      if (otherCell.state === 'queen' && otherCell.isConflict) {
-        isInConflictRow = true;
-        break;
-      }
-    }
-
-    // Vérifier conflits de colonne
-    for (let r = 0; r < gameState.gridSize; r++) {
-      const otherCell = gameState.board[r][col];
-      if (otherCell.state === 'queen' && otherCell.isConflict) {
-        isInConflictCol = true;
-        break;
-      }
-    }
-
-    // Vérifier conflits de région
-    const region = gameState.regions.find(reg => reg.id === cell.regionId);
-    if (region) {
-      for (const regionCell of region.cells) {
-        const otherCell = gameState.board[regionCell.row][regionCell.col];
-        if (otherCell.state === 'queen' && otherCell.isConflict) {
-          isInConflictRegion = true;
-          break;
-        }
-      }
-    }
-
-    return { isInConflictRow, isInConflictCol, isInConflictRegion, isConflictQueen };
-  }, [gameState.board, gameState.regions, gameState.gridSize, isBoardReady]);
 
   // Trouver la cellule à une position donnée
   const getCellAtPosition = useCallback((x: number, y: number): { row: number; col: number } | null => {
@@ -221,23 +161,23 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     borders: any
   ) => {
     const { x, y, size } = position;
-    const conflictInfo = getConflictInfo(cell.row, cell.col);
     
-    // ✅ CORRECTIF: Background avec gestion des conflits et victoire
+    // Background avec couleur de région ou victoire
     let backgroundColor = cell.regionColor;
     if (showVictoryAnimation && cell.state === 'queen') {
-      backgroundColor = '#FFD700'; // Or pour victoire
+      backgroundColor = '#FFD700';
     }
     
     ctx.fillStyle = backgroundColor;
     ctx.fillRect(x, y, size, size);
 
-    // ✅ CORRECTIF: Hachures pour conflits (ligne/colonne/région entière)
-    if (conflictInfo.isInConflictRow || conflictInfo.isInConflictCol || conflictInfo.isInConflictRegion) {
+    // ✅ CORRECTIF: Utiliser les propriétés existantes du système
+    // Hachures pour conflits de ligne/colonne/région/adjacence
+    if (cell.isInConflictLine || cell.isInConflictColumn || cell.isInConflictRegion || cell.isAroundConflictQueen) {
       ctx.save();
       
-      // Overlay rouge semi-transparent
-      ctx.fillStyle = 'rgba(231, 76, 60, 0.2)';
+      // Overlay rouge léger
+      ctx.fillStyle = 'rgba(231, 76, 60, 0.15)';
       ctx.fillRect(x, y, size, size);
       
       // Hachures diagonales
@@ -252,13 +192,13 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       ctx.restore();
     }
 
-    // Reine en conflit direct (plus marqué)
-    if (conflictInfo.isConflictQueen) {
+    // Reine directement en conflit (overlay renforcé)
+    if (cell.isConflict && cell.state === 'queen') {
       ctx.save();
       ctx.fillStyle = 'rgba(231, 76, 60, 0.4)';
       ctx.fillRect(x, y, size, size);
       
-      // Hachures plus denses pour la reine en conflit
+      // Hachures plus denses
       ctx.strokeStyle = 'rgba(231, 76, 60, 0.7)';
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -270,12 +210,12 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       ctx.restore();
     }
 
-    // ✅ CORRECTIF: Bordures fines entre cellules (grille)
+    // Bordures fines entre cellules
     ctx.strokeStyle = CELL_BORDER_COLOR;
     ctx.lineWidth = CELL_BORDER_WIDTH;
     ctx.strokeRect(x, y, size, size);
     
-    // ✅ CORRECTIF: Bordures épaisses de régions par-dessus
+    // Bordures épaisses de régions
     ctx.strokeStyle = BORDER_COLOR;
     ctx.lineWidth = BORDER_WIDTH;
     ctx.beginPath();
@@ -298,7 +238,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     }
     ctx.stroke();
     
-    // ✅ CORRECTIF: Contenu avec SVG et couleurs d'état
+    // Contenu avec SVG
     const centerX = x + size / 2;
     const centerY = y + size / 2;
     const iconSize = Math.floor(size * 0.6);
@@ -306,10 +246,10 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     if (cell.state === 'queen' && crownImage) {
       ctx.save();
       
-      // Couleur selon l'état
+      // Couleurs selon l'état
       if (showVictoryAnimation) {
-        ctx.filter = 'hue-rotate(45deg) saturate(1.5)'; // Or brillant
-      } else if (conflictInfo.isConflictQueen) {
+        ctx.filter = 'hue-rotate(45deg) saturate(1.5) brightness(1.2)'; // Or brillant
+      } else if (cell.isConflict) {
         ctx.filter = 'hue-rotate(-10deg) saturate(1.8) brightness(0.8)'; // Rouge foncé
       } else {
         ctx.filter = 'hue-rotate(200deg) saturate(1.2) brightness(1.1)'; // Bleu LinkedIn
@@ -325,8 +265,6 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       ctx.restore();
     } else if (cell.state === 'marked' && crossImage) {
       ctx.save();
-      
-      // Couleur rouge pour les marqueurs
       ctx.filter = 'hue-rotate(0deg) saturate(1.5)';
       
       ctx.drawImage(
@@ -338,7 +276,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       );
       ctx.restore();
     }
-  }, [showVictoryAnimation, getConflictInfo, crownImage, crossImage]);
+  }, [showVictoryAnimation, crownImage, crossImage]);
 
   // Fonction de rendu principal
   const draw = useCallback(() => {
@@ -351,17 +289,17 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     const cellPositions = getCellPositions();
     const cellSize = getCellSize();
     
-    // Configurer le canvas
+    // Configurer le canvas avec bordure extérieure
     const totalSize = cellSize * gameState.gridSize;
     const padding = BORDER_WIDTH;
     canvas.width = totalSize + padding * 2;
     canvas.height = totalSize + padding * 2;
     
-    // ✅ CORRECTIF: Background avec bordure extérieure épaisse
+    // Background avec bordure extérieure
     ctx.fillStyle = BORDER_COLOR;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Décaler le contenu pour la bordure
+    // Décaler pour la bordure
     ctx.save();
     ctx.translate(padding, padding);
     
@@ -383,7 +321,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     ctx.restore();
   }, [gameState, getCellPositions, getCellSize, getCellBorders, drawCell, isBoardReady]);
 
-  // Gestion des événements de pointeur (unifie mouse et touch)
+  // Gestion des événements de pointeur
   const getPointerPosition = useCallback((e: React.PointerEvent): { x: number; y: number } => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -417,7 +355,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     });
   }, [isGameBlocked, isBoardReady, getPointerPosition, getCellAtPosition]);
 
-  // ✅ CORRECTIF: Drag plus fluide et sensible
+  // ✅ DRAG ULTRA RAPIDE ET FLUIDE
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragState.startPos || isGameBlocked || !isBoardReady) return;
     
@@ -426,21 +364,17 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     const deltaY = pos.y - dragState.startPos.y;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
     
-    // Démarrer le drag si le seuil est dépassé
+    // ✅ DÉMARRAGE INSTANTANÉ du drag
     if (!dragState.isDragging && distance > DRAG_THRESHOLD) {
       const startCell = getCellAtPosition(dragState.startPos.x, dragState.startPos.y);
       if (!startCell) return;
       
       const cell = gameState.board[startCell.row]?.[startCell.col];
-      if (!cell) return;
-      
-      // Ne pas permettre le drag sur les reines
-      if (cell.state === 'queen') {
+      if (!cell || cell.state === 'queen') {
         setDragState(prev => ({ ...prev, startPos: null }));
         return;
       }
       
-      // Déterminer le mode de drag
       const newDragMode = cell.state === 'marked' ? 'unmark' : 'mark';
       
       setDragState(prev => ({
@@ -450,25 +384,21 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
         lastDraggedCell: startCell
       }));
       
-      // Appliquer l'action sur la cellule de départ
+      // Action immédiate sur cellule de départ
       if (onCellDrag) {
         onCellDrag(startCell.row, startCell.col, newDragMode);
       }
     }
     
-    // ✅ CORRECTIF: Continuer le drag de manière plus fluide
+    // ✅ CONTINUATION FLUIDE du drag
     if (dragState.isDragging && dragState.dragMode && onCellDrag) {
       const currentCell = getCellAtPosition(pos.x, pos.y);
-      if (currentCell && 
-          (!dragState.lastDraggedCell || 
-           currentCell.row !== dragState.lastDraggedCell.row || 
-           currentCell.col !== dragState.lastDraggedCell.col)) {
-        
+      
+      // Action sur CHAQUE cellule survolée (pas seulement les nouvelles)
+      if (currentCell) {
         const cell = gameState.board[currentCell.row]?.[currentCell.col];
-        if (!cell) return;
-        
-        // Ne pas permettre le drag sur les reines
-        if (cell.state !== 'queen') {
+        if (cell && cell.state !== 'queen') {
+          // Appliquer l'action même si on repasse sur la même cellule
           onCellDrag(currentCell.row, currentCell.col, dragState.dragMode);
           setDragState(prev => ({ ...prev, lastDraggedCell: currentCell }));
         }
@@ -484,7 +414,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     
     canvas.releasePointerCapture(e.pointerId);
     
-    // Si ce n'était pas un drag, traiter comme un clic
+    // Clic si pas de drag
     if (!dragState.isDragging && dragState.startPos) {
       const pos = getPointerPosition(e);
       const cell = getCellAtPosition(pos.x, pos.y);
@@ -508,7 +438,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     }
   }, [draw, isBoardReady]);
 
-  // Redessiner en continu pour les animations
+  // Animation continue
   useEffect(() => {
     if (!isBoardReady) return;
     
@@ -526,7 +456,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     };
   }, [draw, isBoardReady]);
 
-  // Message de chargement si le board n'est pas prêt
+  // Message de chargement
   if (!isBoardReady) {
     return (
       <div className="game-board">
@@ -558,8 +488,8 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
           borderRadius: '8px',
           boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.3)',
           cursor: dragState.isDragging ? 'grabbing' : 'grab',
-          touchAction: 'none', // Empêche le scroll sur mobile
-          margin: '0 auto' // ✅ CORRECTIF: Centrage horizontal
+          touchAction: 'none',
+          margin: '0 auto' // Centrage horizontal
         }}
       />
     </div>
