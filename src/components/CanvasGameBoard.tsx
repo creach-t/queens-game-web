@@ -14,7 +14,7 @@ interface DragState {
   isDragging: boolean;
   startPos: { x: number; y: number } | null;
   dragMode: 'mark' | 'unmark' | null;
-  lastDraggedCell: { row: number; col: number } | null;
+  draggedCells: Set<string>; // ✅ Tracker les cellules déjà draggées
 }
 
 interface CellPosition {
@@ -29,7 +29,8 @@ const BORDER_WIDTH = 3;
 const BORDER_COLOR = '#2c3e50';
 const CELL_BORDER_WIDTH = 1;
 const CELL_BORDER_COLOR = 'rgba(44, 62, 80, 0.3)';
-const DRAG_THRESHOLD = 0.5; // ✅ SUPER SENSIBLE maintenant
+const DRAG_THRESHOLD = 0.1; // ✅ ULTRA SENSIBLE
+const CLICK_TIMEOUT = 180; // ✅ Délai réduit pour les clics
 
 export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
   gameState,
@@ -40,11 +41,12 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [dragState, setDragState] = useState<DragState>({
     isDragging: false,
     startPos: null,
     dragMode: null,
-    lastDraggedCell: null
+    draggedCells: new Set()
   });
 
   // Images SVG
@@ -153,6 +155,47 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     return null;
   }, [getCellPositions, getCellSize, isBoardReady]);
 
+  // ✅ HACHURES AMÉLIORÉES - Plus voyantes et précises
+  const drawConflictPattern = useCallback((
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    size: number,
+    intensity: 'light' | 'heavy'
+  ) => {
+    ctx.save();
+    
+    if (intensity === 'light') {
+      // Hachures légères pour zones en conflit
+      ctx.fillStyle = 'rgba(231, 76, 60, 0.2)';
+      ctx.fillRect(x, y, size, size);
+      
+      ctx.strokeStyle = 'rgba(231, 76, 60, 0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = -size; i < size * 2; i += 8) {
+        ctx.moveTo(x + i, y);
+        ctx.lineTo(x + i + size, y + size);
+      }
+      ctx.stroke();
+    } else {
+      // Hachures lourdes pour reines en conflit
+      ctx.fillStyle = 'rgba(231, 76, 60, 0.4)';
+      ctx.fillRect(x, y, size, size);
+      
+      ctx.strokeStyle = 'rgba(231, 76, 60, 0.8)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for (let i = -size; i < size * 2; i += 5) {
+        ctx.moveTo(x + i, y);
+        ctx.lineTo(x + i + size, y + size);
+      }
+      ctx.stroke();
+    }
+    
+    ctx.restore();
+  }, []);
+
   // Dessiner une cellule
   const drawCell = useCallback((
     ctx: CanvasRenderingContext2D,
@@ -171,43 +214,17 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     ctx.fillStyle = backgroundColor;
     ctx.fillRect(x, y, size, size);
 
-    // ✅ CORRECTIF: Utiliser les propriétés existantes du système
-    // Hachures pour conflits de ligne/colonne/région/adjacence
-    if (cell.isInConflictLine || cell.isInConflictColumn || cell.isInConflictRegion || cell.isAroundConflictQueen) {
-      ctx.save();
-      
-      // Overlay rouge léger
-      ctx.fillStyle = 'rgba(231, 76, 60, 0.15)';
-      ctx.fillRect(x, y, size, size);
-      
-      // Hachures diagonales
-      ctx.strokeStyle = 'rgba(231, 76, 60, 0.4)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      for (let i = -size; i < size * 2; i += 6) {
-        ctx.moveTo(x + i, y);
-        ctx.lineTo(x + i + size, y + size);
-      }
-      ctx.stroke();
-      ctx.restore();
+    // ✅ HACHURES AMÉLIORÉES - Seulement si la cellule est vraiment concernée
+    const hasConflict = cell.isInConflictLine || cell.isInConflictColumn || 
+                       cell.isInConflictRegion || cell.isAroundConflictQueen;
+    
+    if (hasConflict) {
+      drawConflictPattern(ctx, x, y, size, 'light');
     }
 
     // Reine directement en conflit (overlay renforcé)
     if (cell.isConflict && cell.state === 'queen') {
-      ctx.save();
-      ctx.fillStyle = 'rgba(231, 76, 60, 0.4)';
-      ctx.fillRect(x, y, size, size);
-      
-      // Hachures plus denses
-      ctx.strokeStyle = 'rgba(231, 76, 60, 0.7)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      for (let i = -size; i < size * 2; i += 4) {
-        ctx.moveTo(x + i, y);
-        ctx.lineTo(x + i + size, y + size);
-      }
-      ctx.stroke();
-      ctx.restore();
+      drawConflictPattern(ctx, x, y, size, 'heavy');
     }
 
     // Bordures fines entre cellules
@@ -246,11 +263,11 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     if (cell.state === 'queen' && crownImage) {
       ctx.save();
       
-      // Couleurs selon l'état
+      // ✅ COULEUR REINE : Rouge franc quand en conflit
       if (showVictoryAnimation) {
         ctx.filter = 'hue-rotate(45deg) saturate(1.5) brightness(1.2)'; // Or brillant
       } else if (cell.isConflict) {
-        ctx.filter = 'hue-rotate(-10deg) saturate(1.8) brightness(0.8)'; // Rouge foncé
+        ctx.filter = 'hue-rotate(0deg) saturate(1.0) brightness(0.9)'; // Rouge franc #e74c3c
       } else {
         ctx.filter = 'hue-rotate(200deg) saturate(1.2) brightness(1.1)'; // Bleu LinkedIn
       }
@@ -276,7 +293,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       );
       ctx.restore();
     }
-  }, [showVictoryAnimation, crownImage, crossImage]);
+  }, [showVictoryAnimation, crownImage, crossImage, drawConflictPattern]);
 
   // Fonction de rendu principal
   const draw = useCallback(() => {
@@ -334,6 +351,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     };
   }, []);
 
+  // ✅ CLIC RAPIDE AMÉLIORÉ
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (isGameBlocked || !isBoardReady) return;
     
@@ -351,11 +369,30 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       isDragging: false,
       startPos: pos,
       dragMode: null,
-      lastDraggedCell: null
+      draggedCells: new Set()
     });
-  }, [isGameBlocked, isBoardReady, getPointerPosition, getCellAtPosition]);
 
-  // ✅ DRAG ULTRA RAPIDE ET FLUIDE
+    // ✅ CLIC IMMÉDIAT si pas de mouvement dans un délai court
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+    }
+    
+    clickTimeoutRef.current = setTimeout(() => {
+      // Si on n'a pas commencé de drag, c'est un clic
+      if (!dragState.isDragging && dragState.startPos) {
+        onCellClick(cell.row, cell.col);
+        setDragState({
+          isDragging: false,
+          startPos: null,
+          dragMode: null,
+          draggedCells: new Set()
+        });
+      }
+    }, CLICK_TIMEOUT);
+    
+  }, [isGameBlocked, isBoardReady, getPointerPosition, getCellAtPosition, onCellClick, dragState]);
+
+  // ✅ DRAG ULTRA FLUIDE
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragState.startPos || isGameBlocked || !isBoardReady) return;
     
@@ -364,8 +401,14 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     const deltaY = pos.y - dragState.startPos.y;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
     
-    // ✅ DÉMARRAGE INSTANTANÉ du drag
+    // ✅ DÉMARRAGE DRAG ULTRA RAPIDE
     if (!dragState.isDragging && distance > DRAG_THRESHOLD) {
+      // Annuler le timeout de clic
+      if (clickTimeoutRef.current) {
+        clearTimeout(clickTimeoutRef.current);
+        clickTimeoutRef.current = null;
+      }
+      
       const startCell = getCellAtPosition(dragState.startPos.x, dragState.startPos.y);
       if (!startCell) return;
       
@@ -376,12 +419,13 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       }
       
       const newDragMode = cell.state === 'marked' ? 'unmark' : 'mark';
+      const cellKey = `${startCell.row}-${startCell.col}`;
       
       setDragState(prev => ({
         ...prev,
         isDragging: true,
         dragMode: newDragMode,
-        lastDraggedCell: startCell
+        draggedCells: new Set([cellKey])
       }));
       
       // Action immédiate sur cellule de départ
@@ -390,17 +434,21 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       }
     }
     
-    // ✅ CONTINUATION FLUIDE du drag
+    // ✅ CONTINUATION DRAG ULTRA FLUIDE
     if (dragState.isDragging && dragState.dragMode && onCellDrag) {
       const currentCell = getCellAtPosition(pos.x, pos.y);
       
-      // Action sur CHAQUE cellule survolée (pas seulement les nouvelles)
       if (currentCell) {
+        const cellKey = `${currentCell.row}-${currentCell.col}`;
         const cell = gameState.board[currentCell.row]?.[currentCell.col];
-        if (cell && cell.state !== 'queen') {
-          // Appliquer l'action même si on repasse sur la même cellule
+        
+        // Action sur chaque nouvelle cellule survolée
+        if (cell && cell.state !== 'queen' && !dragState.draggedCells.has(cellKey)) {
           onCellDrag(currentCell.row, currentCell.col, dragState.dragMode);
-          setDragState(prev => ({ ...prev, lastDraggedCell: currentCell }));
+          setDragState(prev => ({
+            ...prev,
+            draggedCells: new Set([...prev.draggedCells, cellKey])
+          }));
         }
       }
     }
@@ -414,22 +462,28 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     
     canvas.releasePointerCapture(e.pointerId);
     
-    // Clic si pas de drag
-    if (!dragState.isDragging && dragState.startPos) {
-      const pos = getPointerPosition(e);
-      const cell = getCellAtPosition(pos.x, pos.y);
-      if (cell) {
-        onCellClick(cell.row, cell.col);
-      }
+    // Nettoyage du timeout
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
     }
     
     setDragState({
       isDragging: false,
       startPos: null,
       dragMode: null,
-      lastDraggedCell: null
+      draggedCells: new Set()
     });
-  }, [dragState, isGameBlocked, isBoardReady, getPointerPosition, getCellAtPosition, onCellClick]);
+  }, [isGameBlocked, isBoardReady]);
+
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      if (clickTimeoutRef.current) {
+        clearTimeout(clickTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Redessiner quand l'état change
   useEffect(() => {
@@ -489,7 +543,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
           boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.3)',
           cursor: dragState.isDragging ? 'grabbing' : 'grab',
           touchAction: 'none',
-          margin: '0 auto' // Centrage horizontal
+          margin: '0 auto'
         }}
       />
     </div>
