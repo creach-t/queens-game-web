@@ -27,7 +27,9 @@ interface CellPosition {
 
 const BORDER_WIDTH = 3;
 const BORDER_COLOR = '#2c3e50';
-const DRAG_THRESHOLD = 2; // pixels
+const CELL_BORDER_WIDTH = 1; // Bordures fines entre cellules
+const CELL_BORDER_COLOR = 'rgba(44, 62, 80, 0.3)';
+const DRAG_THRESHOLD = 1; // ✅ CORRECTIF: Seuil plus sensible
 
 export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
   gameState,
@@ -44,6 +46,30 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     dragMode: null,
     lastDraggedCell: null
   });
+
+  // Images SVG
+  const [crownImage, setCrownImage] = useState<HTMLImageElement | null>(null);
+  const [crossImage, setCrossImage] = useState<HTMLImageElement | null>(null);
+
+  // Charger les images SVG
+  useEffect(() => {
+    const loadImage = (src: string): Promise<HTMLImageElement> => {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    };
+
+    Promise.all([
+      loadImage('/crown.svg'),
+      loadImage('/cross.svg')
+    ]).then(([crown, cross]) => {
+      setCrownImage(crown);
+      setCrossImage(cross);
+    }).catch(console.error);
+  }, []);
 
   // ✅ CORRECTIF: Vérifier si le board est initialisé
   const isBoardReady = gameState.board && gameState.board.length > 0 && 
@@ -115,6 +141,59 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     return borders;
   }, [gameState.board, gameState.gridSize, isBoardReady]);
 
+  // ✅ CORRECTIF: Déterminer les conflits pour hachures complètes
+  const getConflictInfo = useCallback((row: number, col: number) => {
+    if (!isBoardReady) return { 
+      isInConflictRow: false, 
+      isInConflictCol: false, 
+      isInConflictRegion: false,
+      isConflictQueen: false
+    };
+
+    const cell = gameState.board[row][col];
+    let isInConflictRow = false;
+    let isInConflictCol = false;
+    let isInConflictRegion = false;
+    let isConflictQueen = false;
+
+    // Si c'est une reine en conflit
+    if (cell.state === 'queen' && cell.isConflict) {
+      isConflictQueen = true;
+    }
+
+    // Vérifier conflits de rangée (si il y a des reines en conflit dans cette rangée)
+    for (let c = 0; c < gameState.gridSize; c++) {
+      const otherCell = gameState.board[row][c];
+      if (otherCell.state === 'queen' && otherCell.isConflict) {
+        isInConflictRow = true;
+        break;
+      }
+    }
+
+    // Vérifier conflits de colonne
+    for (let r = 0; r < gameState.gridSize; r++) {
+      const otherCell = gameState.board[r][col];
+      if (otherCell.state === 'queen' && otherCell.isConflict) {
+        isInConflictCol = true;
+        break;
+      }
+    }
+
+    // Vérifier conflits de région
+    const region = gameState.regions.find(reg => reg.id === cell.regionId);
+    if (region) {
+      for (const regionCell of region.cells) {
+        const otherCell = gameState.board[regionCell.row][regionCell.col];
+        if (otherCell.state === 'queen' && otherCell.isConflict) {
+          isInConflictRegion = true;
+          break;
+        }
+      }
+    }
+
+    return { isInConflictRow, isInConflictCol, isInConflictRegion, isConflictQueen };
+  }, [gameState.board, gameState.regions, gameState.gridSize, isBoardReady]);
+
   // Trouver la cellule à une position donnée
   const getCellAtPosition = useCallback((x: number, y: number): { row: number; col: number } | null => {
     if (!isBoardReady) return null;
@@ -142,30 +221,61 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     borders: any
   ) => {
     const { x, y, size } = position;
+    const conflictInfo = getConflictInfo(cell.row, cell.col);
     
-    // Background avec couleur de région
-    ctx.fillStyle = showVictoryAnimation && cell.state === 'queen' ? '#FFD700' : cell.regionColor;
+    // ✅ CORRECTIF: Background avec gestion des conflits et victoire
+    let backgroundColor = cell.regionColor;
+    if (showVictoryAnimation && cell.state === 'queen') {
+      backgroundColor = '#FFD700'; // Or pour victoire
+    }
+    
+    ctx.fillStyle = backgroundColor;
     ctx.fillRect(x, y, size, size);
-    
-    // Animation de conflit avec hachures diagonales
-    if (cell.isConflict) {
+
+    // ✅ CORRECTIF: Hachures pour conflits (ligne/colonne/région entière)
+    if (conflictInfo.isInConflictRow || conflictInfo.isInConflictCol || conflictInfo.isInConflictRegion) {
       ctx.save();
-      ctx.fillStyle = 'rgba(231, 76, 60, 0.3)';
+      
+      // Overlay rouge semi-transparent
+      ctx.fillStyle = 'rgba(231, 76, 60, 0.2)';
       ctx.fillRect(x, y, size, size);
       
-      // Hachures diagonales pour les conflits
-      ctx.strokeStyle = 'rgba(231, 76, 60, 0.6)';
-      ctx.lineWidth = 2;
+      // Hachures diagonales
+      ctx.strokeStyle = 'rgba(231, 76, 60, 0.4)';
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      for (let i = -size; i < size * 2; i += 8) {
+      for (let i = -size; i < size * 2; i += 6) {
         ctx.moveTo(x + i, y);
         ctx.lineTo(x + i + size, y + size);
       }
       ctx.stroke();
       ctx.restore();
     }
+
+    // Reine en conflit direct (plus marqué)
+    if (conflictInfo.isConflictQueen) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(231, 76, 60, 0.4)';
+      ctx.fillRect(x, y, size, size);
+      
+      // Hachures plus denses pour la reine en conflit
+      ctx.strokeStyle = 'rgba(231, 76, 60, 0.7)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = -size; i < size * 2; i += 4) {
+        ctx.moveTo(x + i, y);
+        ctx.lineTo(x + i + size, y + size);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // ✅ CORRECTIF: Bordures fines entre cellules (grille)
+    ctx.strokeStyle = CELL_BORDER_COLOR;
+    ctx.lineWidth = CELL_BORDER_WIDTH;
+    ctx.strokeRect(x, y, size, size);
     
-    // Bordures de régions
+    // ✅ CORRECTIF: Bordures épaisses de régions par-dessus
     ctx.strokeStyle = BORDER_COLOR;
     ctx.lineWidth = BORDER_WIDTH;
     ctx.beginPath();
@@ -188,29 +298,47 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     }
     ctx.stroke();
     
-    // Contenu de la cellule
+    // ✅ CORRECTIF: Contenu avec SVG et couleurs d'état
     const centerX = x + size / 2;
     const centerY = y + size / 2;
+    const iconSize = Math.floor(size * 0.6);
     
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    
-    if (cell.state === 'queen') {
-      ctx.font = `bold ${Math.floor(size * 0.4)}px serif`;
-      ctx.fillStyle = showVictoryAnimation ? '#000' : '#0077b5';
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-      ctx.lineWidth = 2;
-      ctx.strokeText('♛', centerX, centerY);
-      ctx.fillText('♛', centerX, centerY);
-    } else if (cell.state === 'marked') {
-      ctx.font = `bold ${Math.floor(size * 0.3)}px sans-serif`;
-      ctx.fillStyle = '#e74c3c';
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-      ctx.lineWidth = 1;
-      ctx.strokeText('✗', centerX, centerY);
-      ctx.fillText('✗', centerX, centerY);
+    if (cell.state === 'queen' && crownImage) {
+      ctx.save();
+      
+      // Couleur selon l'état
+      if (showVictoryAnimation) {
+        ctx.filter = 'hue-rotate(45deg) saturate(1.5)'; // Or brillant
+      } else if (conflictInfo.isConflictQueen) {
+        ctx.filter = 'hue-rotate(-10deg) saturate(1.8) brightness(0.8)'; // Rouge foncé
+      } else {
+        ctx.filter = 'hue-rotate(200deg) saturate(1.2) brightness(1.1)'; // Bleu LinkedIn
+      }
+      
+      ctx.drawImage(
+        crownImage,
+        centerX - iconSize / 2,
+        centerY - iconSize / 2,
+        iconSize,
+        iconSize
+      );
+      ctx.restore();
+    } else if (cell.state === 'marked' && crossImage) {
+      ctx.save();
+      
+      // Couleur rouge pour les marqueurs
+      ctx.filter = 'hue-rotate(0deg) saturate(1.5)';
+      
+      ctx.drawImage(
+        crossImage,
+        centerX - iconSize / 2,
+        centerY - iconSize / 2,
+        iconSize,
+        iconSize
+      );
+      ctx.restore();
     }
-  }, [showVictoryAnimation]);
+  }, [showVictoryAnimation, getConflictInfo, crownImage, crossImage]);
 
   // Fonction de rendu principal
   const draw = useCallback(() => {
@@ -225,28 +353,34 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     
     // Configurer le canvas
     const totalSize = cellSize * gameState.gridSize;
-    canvas.width = totalSize;
-    canvas.height = totalSize;
+    const padding = BORDER_WIDTH;
+    canvas.width = totalSize + padding * 2;
+    canvas.height = totalSize + padding * 2;
     
-    // Effacer le canvas
-    ctx.clearRect(0, 0, totalSize, totalSize);
+    // ✅ CORRECTIF: Background avec bordure extérieure épaisse
+    ctx.fillStyle = BORDER_COLOR;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // ✅ CORRECTIF: Vérifier avant de dessiner
-    if (cellPositions.length === 0) return;
+    // Décaler le contenu pour la bordure
+    ctx.save();
+    ctx.translate(padding, padding);
     
     // Dessiner toutes les cellules
-    for (let row = 0; row < gameState.gridSize; row++) {
-      for (let col = 0; col < gameState.gridSize; col++) {
-        // ✅ CORRECTIF: Vérifier que la cellule existe
-        if (!gameState.board[row] || !gameState.board[row][col]) continue;
-        
-        const cell = gameState.board[row][col];
-        const position = cellPositions[row][col];
-        const borders = getCellBorders(row, col);
-        
-        drawCell(ctx, cell, position, borders);
+    if (cellPositions.length > 0) {
+      for (let row = 0; row < gameState.gridSize; row++) {
+        for (let col = 0; col < gameState.gridSize; col++) {
+          if (!gameState.board[row] || !gameState.board[row][col]) continue;
+          
+          const cell = gameState.board[row][col];
+          const position = cellPositions[row][col];
+          const borders = getCellBorders(row, col);
+          
+          drawCell(ctx, cell, position, borders);
+        }
       }
     }
+    
+    ctx.restore();
   }, [gameState, getCellPositions, getCellSize, getCellBorders, drawCell, isBoardReady]);
 
   // Gestion des événements de pointeur (unifie mouse et touch)
@@ -255,9 +389,10 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     if (!canvas) return { x: 0, y: 0 };
     
     const rect = canvas.getBoundingClientRect();
+    const padding = BORDER_WIDTH;
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      x: e.clientX - rect.left - padding,
+      y: e.clientY - rect.top - padding
     };
   }, []);
 
@@ -282,6 +417,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     });
   }, [isGameBlocked, isBoardReady, getPointerPosition, getCellAtPosition]);
 
+  // ✅ CORRECTIF: Drag plus fluide et sensible
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragState.startPos || isGameBlocked || !isBoardReady) return;
     
@@ -310,7 +446,8 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       setDragState(prev => ({
         ...prev,
         isDragging: true,
-        dragMode: newDragMode
+        dragMode: newDragMode,
+        lastDraggedCell: startCell
       }));
       
       // Appliquer l'action sur la cellule de départ
@@ -319,7 +456,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       }
     }
     
-    // Continuer le drag si actif
+    // ✅ CORRECTIF: Continuer le drag de manière plus fluide
     if (dragState.isDragging && dragState.dragMode && onCellDrag) {
       const currentCell = getCellAtPosition(pos.x, pos.y);
       if (currentCell && 
@@ -389,7 +526,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     };
   }, [draw, isBoardReady]);
 
-  // ✅ CORRECTIF: Afficher un message de chargement si le board n'est pas prêt
+  // Message de chargement si le board n'est pas prêt
   if (!isBoardReady) {
     return (
       <div className="game-board">
@@ -421,7 +558,8 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
           borderRadius: '8px',
           boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.3)',
           cursor: dragState.isDragging ? 'grabbing' : 'grab',
-          touchAction: 'none' // Empêche le scroll sur mobile
+          touchAction: 'none', // Empêche le scroll sur mobile
+          margin: '0 auto' // ✅ CORRECTIF: Centrage horizontal
         }}
       />
     </div>
