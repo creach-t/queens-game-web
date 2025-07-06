@@ -45,6 +45,10 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     lastDraggedCell: null
   });
 
+  // ✅ CORRECTIF: Vérifier si le board est initialisé
+  const isBoardReady = gameState.board && gameState.board.length > 0 && 
+                       gameState.board[0] && gameState.board[0].length > 0;
+
   // Calculer la taille des cellules (même logique que GameBoard.tsx)
   const getCellSize = useCallback(() => {
     const viewportWidth = Math.min(window.innerWidth * 0.9, 600);
@@ -55,6 +59,8 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
 
   // Calculer les positions des cellules
   const getCellPositions = useCallback((): CellPosition[][] => {
+    if (!isBoardReady) return [];
+    
     const cellSize = getCellSize();
     const positions: CellPosition[][] = [];
     
@@ -72,10 +78,12 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       positions.push(rowPositions);
     }
     return positions;
-  }, [gameState.gridSize, getCellSize]);
+  }, [gameState.gridSize, getCellSize, isBoardReady]);
 
   // Reproduire la logique getCellBorderStyle de GameBoard.tsx
   const getCellBorders = useCallback((row: number, col: number) => {
+    if (!isBoardReady) return { top: false, right: false, bottom: false, left: false };
+    
     const cell = gameState.board[row][col];
     const borders = {
       top: false,
@@ -105,10 +113,12 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     }
     
     return borders;
-  }, [gameState.board, gameState.gridSize]);
+  }, [gameState.board, gameState.gridSize, isBoardReady]);
 
   // Trouver la cellule à une position donnée
   const getCellAtPosition = useCallback((x: number, y: number): { row: number; col: number } | null => {
+    if (!isBoardReady) return null;
+    
     const cellPositions = getCellPositions();
     const cellSize = getCellSize();
     
@@ -122,7 +132,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       }
     }
     return null;
-  }, [getCellPositions, getCellSize]);
+  }, [getCellPositions, getCellSize, isBoardReady]);
 
   // Dessiner une cellule
   const drawCell = useCallback((
@@ -205,7 +215,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
   // Fonction de rendu principal
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !isBoardReady) return;
     
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -221,9 +231,15 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
     // Effacer le canvas
     ctx.clearRect(0, 0, totalSize, totalSize);
     
+    // ✅ CORRECTIF: Vérifier avant de dessiner
+    if (cellPositions.length === 0) return;
+    
     // Dessiner toutes les cellules
     for (let row = 0; row < gameState.gridSize; row++) {
       for (let col = 0; col < gameState.gridSize; col++) {
+        // ✅ CORRECTIF: Vérifier que la cellule existe
+        if (!gameState.board[row] || !gameState.board[row][col]) continue;
+        
         const cell = gameState.board[row][col];
         const position = cellPositions[row][col];
         const borders = getCellBorders(row, col);
@@ -231,7 +247,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
         drawCell(ctx, cell, position, borders);
       }
     }
-  }, [gameState, getCellPositions, getCellSize, getCellBorders, drawCell]);
+  }, [gameState, getCellPositions, getCellSize, getCellBorders, drawCell, isBoardReady]);
 
   // Gestion des événements de pointeur (unifie mouse et touch)
   const getPointerPosition = useCallback((e: React.PointerEvent): { x: number; y: number } => {
@@ -246,7 +262,7 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
   }, []);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if (isGameBlocked) return;
+    if (isGameBlocked || !isBoardReady) return;
     
     e.preventDefault();
     const canvas = canvasRef.current;
@@ -264,10 +280,10 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       dragMode: null,
       lastDraggedCell: null
     });
-  }, [isGameBlocked, getPointerPosition, getCellAtPosition]);
+  }, [isGameBlocked, isBoardReady, getPointerPosition, getCellAtPosition]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!dragState.startPos || isGameBlocked) return;
+    if (!dragState.startPos || isGameBlocked || !isBoardReady) return;
     
     const pos = getPointerPosition(e);
     const deltaX = pos.x - dragState.startPos.x;
@@ -279,7 +295,8 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       const startCell = getCellAtPosition(dragState.startPos.x, dragState.startPos.y);
       if (!startCell) return;
       
-      const cell = gameState.board[startCell.row][startCell.col];
+      const cell = gameState.board[startCell.row]?.[startCell.col];
+      if (!cell) return;
       
       // Ne pas permettre le drag sur les reines
       if (cell.state === 'queen') {
@@ -310,7 +327,8 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
            currentCell.row !== dragState.lastDraggedCell.row || 
            currentCell.col !== dragState.lastDraggedCell.col)) {
         
-        const cell = gameState.board[currentCell.row][currentCell.col];
+        const cell = gameState.board[currentCell.row]?.[currentCell.col];
+        if (!cell) return;
         
         // Ne pas permettre le drag sur les reines
         if (cell.state !== 'queen') {
@@ -319,10 +337,10 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
         }
       }
     }
-  }, [dragState, isGameBlocked, getPointerPosition, getCellAtPosition, gameState.board, onCellDrag]);
+  }, [dragState, isGameBlocked, isBoardReady, getPointerPosition, getCellAtPosition, gameState.board, onCellDrag]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    if (isGameBlocked) return;
+    if (isGameBlocked || !isBoardReady) return;
     
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -344,15 +362,19 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
       dragMode: null,
       lastDraggedCell: null
     });
-  }, [dragState, isGameBlocked, getPointerPosition, getCellAtPosition, onCellClick]);
+  }, [dragState, isGameBlocked, isBoardReady, getPointerPosition, getCellAtPosition, onCellClick]);
 
   // Redessiner quand l'état change
   useEffect(() => {
-    draw();
-  }, [draw]);
+    if (isBoardReady) {
+      draw();
+    }
+  }, [draw, isBoardReady]);
 
   // Redessiner en continu pour les animations
   useEffect(() => {
+    if (!isBoardReady) return;
+    
     const animate = () => {
       draw();
       animationFrameRef.current = requestAnimationFrame(animate);
@@ -365,7 +387,27 @@ export const CanvasGameBoard: React.FC<CanvasGameBoardProps> = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [draw]);
+  }, [draw, isBoardReady]);
+
+  // ✅ CORRECTIF: Afficher un message de chargement si le board n'est pas prêt
+  if (!isBoardReady) {
+    return (
+      <div className="game-board">
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '300px',
+          background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+          borderRadius: '15px',
+          color: '#666',
+          fontSize: '1.1rem'
+        }}>
+          🎲 Génération du niveau...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="game-board">
