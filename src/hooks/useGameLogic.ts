@@ -360,6 +360,53 @@ export function useGameLogic(initialGridSize: number = 7) {
     [checkPuzzleCompletion]
   );
 
+  // ✨ NOUVEAU: Gérer le drag pour marqueurs uniquement
+  const handleCellDrag = useCallback((row: number, col: number, dragMode: 'mark' | 'unmark') => {
+    if (
+      isGameBlocked ||
+      showVictoryAnimation ||
+      gameState.board.length === 0 ||
+      isGenerating
+    ) {
+      return;
+    }
+
+    setGameState(prevState => {
+      const newBoard = prevState.board.map(boardRow => 
+        boardRow.map(cell => ({
+          ...cell,
+          isConflict: false,
+          isInConflictLine: false,
+          isInConflictColumn: false,
+          isInConflictRegion: false,
+          isAroundConflictQueen: false,
+        }))
+      );
+      const cell = newBoard[row][col];
+      
+      // Ne pas permettre le drag sur les reines
+      if (cell.state === 'queen') {
+        return prevState;
+      }
+      
+      // Appliquer le drag selon le mode
+      if (dragMode === 'mark' && cell.state === 'empty') {
+        cell.state = 'marked';
+      } else if (dragMode === 'unmark' && cell.state === 'marked') {
+        cell.state = 'empty';
+      }
+      // Sinon, ne rien faire (cellule déjà dans l'état voulu)
+      
+      const boardWithConflicts = updateConflicts(newBoard, prevState.regions);
+      
+      return {
+        ...prevState,
+        board: boardWithConflicts,
+        moveCount: prevState.moveCount + 1
+      };
+    });
+  }, [isGameBlocked, showVictoryAnimation, gameState.board.length, isGenerating]);
+
   const resetGame = useCallback(() => {
     cellClicksRef.current.forEach((clickInfo) => {
       if (clickInfo.timeout) {
@@ -478,6 +525,7 @@ export function useGameLogic(initialGridSize: number = 7) {
   return {
     gameState,
     handleCellClick,
+    handleCellDrag, // ✨ NOUVEAU: Fonction pour le drag
     resetGame,
     newGame,
     changeGridSizeOnly,
