@@ -117,11 +117,14 @@ jobs:
             # Login GHCR avec le PAT
             echo ${{ secrets.GHCR_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            # Pull la nouvelle image (force pull sans cache)
-            docker compose -f docker-compose.prod.yml pull --ignore-pull-failures || true
-
             # Arrêter les anciens conteneurs
             docker compose -f docker-compose.prod.yml down
+
+            # CRITICAL: Supprimer l'ancienne image locale pour forcer un pull frais
+            docker rmi ghcr.io/creach-t/queens-game-web:latest || true
+
+            # Pull la nouvelle image (maintenant garanti d'être fraîche)
+            docker compose -f docker-compose.prod.yml pull
 
             # Redémarrer avec zero-downtime :
             # - up -d recrée tous les conteneurs avec la nouvelle image
