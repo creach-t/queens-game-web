@@ -62,6 +62,14 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
     loadLeaderboard();
   }, [loadLeaderboard]);
 
+  // Réinitialiser les états lors du changement de taille de grille
+  useEffect(() => {
+    setSavedSuccessfully(false);
+    setCanEnter(false);
+    setPlayerName('');
+    // Note: on garde savedPlayerName pour permettre l'auto-save sur toutes les tailles
+  }, [gridSize]);
+
   // Vérifier si le score peut entrer dans le top 3 et sauvegarder automatiquement si nom déjà connu
   useEffect(() => {
     if (!isCompleted || !currentTime || savedSuccessfully) {
