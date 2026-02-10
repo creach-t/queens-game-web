@@ -30,12 +30,12 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
   const loadingRef = useRef(false);
   const lastLoadedGridSize = useRef<number | null>(null);
 
-  const loadLeaderboard = useCallback(async () => {
+  const loadLeaderboard = useCallback(async (forceRefresh = false) => {
     // Éviter les chargements en parallèle
     if (loadingRef.current) return;
 
-    // Éviter de recharger si déjà chargé pour cette taille
-    if (lastLoadedGridSize.current === gridSize && leaderboardData.entries.length > 0) {
+    // Éviter de recharger si déjà chargé pour cette taille (sauf si forceRefresh)
+    if (!forceRefresh && lastLoadedGridSize.current === gridSize && leaderboardData.entries.length > 0) {
       return;
     }
 
@@ -43,6 +43,10 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
     setIsLoading(true);
 
     try {
+      // Si forceRefresh, invalider le cache d'abord
+      if (forceRefresh) {
+        levelStorage.invalidateLeaderboardCache(gridSize);
+      }
       const data = await levelStorage.getLeaderboard(gridSize);
       setLeaderboardData(data);
       lastLoadedGridSize.current = gridSize;
@@ -78,9 +82,9 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
         setIsSaving(false);
         if (success) {
           setSavedSuccessfully(true);
-          // Recharger le leaderboard après 500ms
+          // Recharger le leaderboard après 500ms avec forceRefresh
           setTimeout(() => {
-            loadLeaderboard();
+            loadLeaderboard(true);
           }, 500);
         }
       }
@@ -101,9 +105,9 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
       setSavedSuccessfully(true);
       setSavedPlayerName(trimmedName); // Mémoriser le nom pour les prochaines victoires
       setPlayerName('');
-      // Recharger le leaderboard après 500ms
+      // Recharger le leaderboard après 500ms avec forceRefresh
       setTimeout(() => {
-        loadLeaderboard();
+        loadLeaderboard(true);
       }, 500);
     }
   };
