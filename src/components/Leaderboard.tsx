@@ -70,7 +70,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
     // Note: on garde savedPlayerName pour permettre l'auto-save sur toutes les tailles
   }, [gridSize]);
 
-  // Vérifier si le score peut entrer dans le top 3 et sauvegarder automatiquement si nom déjà connu
+  // Vérifier si le score peut entrer dans le top 3
   useEffect(() => {
     if (!isCompleted || !currentTime || savedSuccessfully) {
       setCanEnter(false);
@@ -82,36 +82,23 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
       const nameToCheck = savedPlayerName || playerName || '___temp___';
       const eligible = await levelStorage.canEnterLeaderboard(gridSize, currentTime, nameToCheck);
       setCanEnter(eligible);
-
-      // Si le joueur a déjà un nom sauvegardé et qu'il est éligible, sauvegarder automatiquement
-      if (eligible && savedPlayerName && onSaveScore) {
-        setIsSaving(true);
-        const success = await onSaveScore(savedPlayerName);
-        setIsSaving(false);
-        if (success) {
-          setSavedSuccessfully(true);
-          // Recharger le leaderboard après 500ms avec forceRefresh
-          setTimeout(() => {
-            loadLeaderboard(true);
-          }, 500);
-        }
-      }
     };
 
     checkEligibility();
-  }, [isCompleted, currentTime, gridSize, savedSuccessfully, playerName, savedPlayerName, onSaveScore, loadLeaderboard]);
+  }, [isCompleted, currentTime, gridSize, savedSuccessfully, playerName, savedPlayerName]);
 
   const handleSaveScore = async () => {
-    if (!playerName.trim() || !onSaveScore || !currentTime) return;
+    // Utiliser le nom saisi ou le nom sauvegardé comme fallback
+    const nameToSave = playerName.trim() || savedPlayerName;
+    if (!nameToSave || !onSaveScore || !currentTime) return;
 
     setIsSaving(true);
-    const trimmedName = playerName.trim();
-    const success = await onSaveScore(trimmedName);
+    const success = await onSaveScore(nameToSave);
     setIsSaving(false);
 
     if (success) {
       setSavedSuccessfully(true);
-      setSavedPlayerName(trimmedName); // Mémoriser le nom pour les prochaines victoires
+      setSavedPlayerName(nameToSave); // Mémoriser le nom pour les prochaines victoires
       setPlayerName('');
       // Recharger le leaderboard après 500ms avec forceRefresh
       setTimeout(() => {
@@ -151,18 +138,18 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
               type="text"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
-              placeholder="Votre nom"
+              placeholder={savedPlayerName || "Votre nom"}
               maxLength={20}
               className="flex-1 px-3 py-2 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && playerName.trim()) {
+                if (e.key === 'Enter' && (playerName.trim() || savedPlayerName)) {
                   handleSaveScore();
                 }
               }}
             />
             <button
               onClick={handleSaveScore}
-              disabled={!playerName.trim() || isSaving}
+              disabled={(!playerName.trim() && !savedPlayerName) || isSaving}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
             >
               <Save className="w-4 h-4" />
