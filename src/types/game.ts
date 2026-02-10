@@ -65,7 +65,6 @@ export interface SuccessMessageProps {
   gameState: GameState;
   gameTime: number;
   formatTime: (seconds: number) => string;
-  onScoreSaved?: (playerName: string) => Promise<boolean>;
 }
 
 export interface SizeGridSelectorProps {

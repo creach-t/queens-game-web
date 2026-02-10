@@ -5,6 +5,7 @@ import { MainControls } from './MainControls';
 import { Rules } from './Rules';
 import { SizeGridSelector } from './SizeGridSelector';
 import { SuccessMessage } from './SuccessMessage';
+import { Leaderboard } from '../Leaderboard';
 
 export const GameControls: React.FC<GameControlsProps> = ({
   gameState,
@@ -42,9 +43,17 @@ export const GameControls: React.FC<GameControlsProps> = ({
           gameState={gameState}
           gameTime={gameTime}
           formatTime={formatTime}
-          onScoreSaved={onSaveScore}
         />
       )}
+
+      {/* Leaderboard toujours visible */}
+      <Leaderboard
+        gridSize={gameState.gridSize}
+        currentTime={gameState.isCompleted ? gameTime : undefined}
+        isCompleted={gameState.isCompleted}
+        onSaveScore={onSaveScore}
+        formatTime={formatTime}
+      />
 
       {/* Controles principaux */}
       <MainControls
