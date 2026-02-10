@@ -213,13 +213,11 @@ export function useGameLogic(initialGridSize: number = 6) {
     });
   }, [isLoading]);
 
-  // Reset du jeu (même niveau)
+  // Reset du jeu (même niveau) - le timer continue
   const resetGame = useCallback(() => {
-    resetTimer();
     setGameState(prevState => resetGameBoard(prevState));
-    // Relancer le timer immédiatement (la grille est toujours visible)
-    startTimer();
-  }, [resetTimer, startTimer]);
+    // Le timer continue de tourner, on ne le reset pas
+  }, []);
 
   // Nouveau jeu (charge un nouveau niveau)
   const newGame = useCallback(async (gridSize?: number) => {
