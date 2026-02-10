@@ -11,6 +11,10 @@ class LevelStorage {
   private isAuthenticated: boolean = false;
   private authPromise: Promise<void> | null = null;
 
+  // Cache pour éviter les requêtes répétées
+  private leaderboardCache: Map<number, { data: LeaderboardData; timestamp: number }> = new Map();
+  private readonly CACHE_DURATION = 30000; // 30 secondes
+
   constructor(firebaseConfig: any) {
     try {
       if (!firebaseConfig.databaseURL) {
@@ -171,6 +175,10 @@ class LevelStorage {
       };
 
       await push(leaderboardRef, entry);
+
+      // Invalider le cache après sauvegarde
+      this.invalidateLeaderboardCache(gridSize);
+
       return true;
     } catch (error) {
       console.error("Erreur sauvegarde score:", error);
@@ -179,20 +187,31 @@ class LevelStorage {
   }
 
   /**
-   * Récupère le top 10 des scores pour une taille de grille
+   * Récupère le top 10 des scores pour une taille de grille (avec cache)
    */
   async getLeaderboard(gridSize: number): Promise<LeaderboardData> {
     if (!this.isAvailable || !this.db) {
       return { entries: [] };
     }
 
+    // Vérifier le cache
+    const cached = this.leaderboardCache.get(gridSize);
+    const now = Date.now();
+    if (cached && (now - cached.timestamp) < this.CACHE_DURATION) {
+      console.log(`[Cache] Leaderboard ${gridSize}x${gridSize} depuis cache`);
+      return cached.data;
+    }
+
     try {
+      console.log(`[Firebase] Chargement leaderboard ${gridSize}x${gridSize}`);
       const leaderboardRef = ref(this.db, `leaderboards/grid_${gridSize}`);
       const topQuery = query(leaderboardRef, orderByChild("time"), limitToFirst(10));
       const snapshot = await get(topQuery);
 
       if (!snapshot.exists()) {
-        return { entries: [] };
+        const emptyData = { entries: [] };
+        this.leaderboardCache.set(gridSize, { data: emptyData, timestamp: now });
+        return emptyData;
       }
 
       const entries: LeaderboardEntry[] = [];
@@ -210,11 +229,24 @@ class LevelStorage {
         userBest = entries.find((e) => e.userId === userId);
       }
 
-      return { entries: entries.slice(0, 10), userBest };
+      const result = { entries: entries.slice(0, 10), userBest };
+
+      // Mettre en cache
+      this.leaderboardCache.set(gridSize, { data: result, timestamp: now });
+
+      return result;
     } catch (error) {
       console.error("Erreur récupération leaderboard:", error);
       return { entries: [] };
     }
+  }
+
+  /**
+   * Invalide le cache du leaderboard pour une taille de grille
+   */
+  invalidateLeaderboardCache(gridSize: number): void {
+    this.leaderboardCache.delete(gridSize);
+    console.log(`[Cache] Invalidé pour ${gridSize}x${gridSize}`);
   }
 
   /**

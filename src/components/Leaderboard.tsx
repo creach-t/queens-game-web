@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Trophy, Clock, Medal, Save } from 'lucide-react';
 import { LeaderboardData } from '../types/game';
 import { levelStorage } from '../utils/levelStorage';
@@ -24,16 +24,37 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccessfully, setSavedSuccessfully] = useState(false);
 
-  const loadLeaderboard = async () => {
+  // Empêcher les chargements multiples
+  const loadingRef = useRef(false);
+  const lastLoadedGridSize = useRef<number | null>(null);
+
+  const loadLeaderboard = useCallback(async () => {
+    // Éviter les chargements en parallèle
+    if (loadingRef.current) return;
+
+    // Éviter de recharger si déjà chargé pour cette taille
+    if (lastLoadedGridSize.current === gridSize && leaderboardData.entries.length > 0) {
+      return;
+    }
+
+    loadingRef.current = true;
     setIsLoading(true);
-    const data = await levelStorage.getLeaderboard(gridSize);
-    setLeaderboardData(data);
-    setIsLoading(false);
-  };
+
+    try {
+      const data = await levelStorage.getLeaderboard(gridSize);
+      setLeaderboardData(data);
+      lastLoadedGridSize.current = gridSize;
+    } catch (error) {
+      console.error('Erreur chargement leaderboard:', error);
+    } finally {
+      setIsLoading(false);
+      loadingRef.current = false;
+    }
+  }, [gridSize, leaderboardData.entries.length]);
 
   useEffect(() => {
     loadLeaderboard();
-  }, [gridSize]);
+  }, [loadLeaderboard]);
 
   const handleSaveScore = async () => {
     if (!playerName.trim() || !onSaveScore || !currentTime) return;
