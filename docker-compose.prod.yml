@@ -1,6 +1,6 @@
 services:
   queens-game:
-    image: ghcr.io/creach-t/queens-game-web:latest
+    image: ghcr.io/creach-t/queens-game-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
     labels:
       - "traefik.enable=true"

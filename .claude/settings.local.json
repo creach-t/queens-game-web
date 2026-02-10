@@ -12,7 +12,13 @@
       "Bash(git merge:*)",
       "Bash(git push:*)",
       "Bash(git commit:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(git branch:*)",
+      "Bash(curl:*)",
+      "Bash(ssh:*)",
+      "Bash(gh run list:*)",
+      "Bash(python:*)",
+      "Bash(wget:*)"
     ]
   }
 }
