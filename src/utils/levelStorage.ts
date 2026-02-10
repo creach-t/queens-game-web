@@ -1,8 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
-import { get, getDatabase, ref } from "firebase/database";
+import { get, getDatabase, ref, push, query, orderByChild, limitToFirst } from "firebase/database";
 import { REGION_COLORS } from "../constants";
-import { StoredLevel, GameState } from "../types/game";
+import { StoredLevel, GameState, LeaderboardEntry, LeaderboardData } from "../types/game";
 
 class LevelStorage {
   private db: any = null;
@@ -10,6 +10,10 @@ class LevelStorage {
   private isAvailable: boolean = false;
   private isAuthenticated: boolean = false;
   private authPromise: Promise<void> | null = null;
+
+  // Cache pour éviter les requêtes répétées
+  private leaderboardCache: Map<number, { data: LeaderboardData; timestamp: number }> = new Map();
+  private readonly CACHE_DURATION = 30000; // 30 secondes
 
   constructor(firebaseConfig: any) {
     try {
@@ -147,6 +151,193 @@ class LevelStorage {
   }
 
   /**
+   * Sauvegarde un score dans le leaderboard (par taille de grille)
+   * Si le nom existe déjà, met à jour uniquement si le nouveau temps est meilleur
+   */
+  async saveScore(
+    gridSize: number,
+    time: number,
+    playerName: string
+  ): Promise<boolean> {
+    if (!this.isAvailable || !this.db || !this.auth?.currentUser) {
+      return false;
+    }
+
+    try {
+      const userId = this.auth.currentUser.uid;
+      const leaderboardRef = ref(this.db, `leaderboards/grid_${gridSize}`);
+
+      // Récupérer tous les scores existants pour ce nom
+      const snapshot = await get(leaderboardRef);
+
+      let existingEntryKey: string | null = null;
+      let existingBestTime: number | null = null;
+
+      if (snapshot.exists()) {
+        snapshot.forEach((child) => {
+          const entry = child.val() as LeaderboardEntry;
+          if (entry.playerName.toLowerCase() === playerName.toLowerCase()) {
+            if (existingBestTime === null || entry.time < existingBestTime) {
+              existingBestTime = entry.time;
+              existingEntryKey = child.key;
+            }
+          }
+        });
+      }
+
+      // Si le joueur existe et que le nouveau temps est moins bon, on ne sauvegarde pas
+      if (existingBestTime !== null && time >= existingBestTime) {
+        return false;
+      }
+
+      const entry: LeaderboardEntry = {
+        userId,
+        playerName,
+        time,
+        timestamp: Date.now(),
+        gridSize,
+      };
+
+      // Si le joueur existe avec un moins bon temps, on met à jour
+      if (existingEntryKey) {
+        const { set } = await import("firebase/database");
+        const entryRef = ref(this.db, `leaderboards/grid_${gridSize}/${existingEntryKey}`);
+        await set(entryRef, entry);
+        console.log(`[Leaderboard] Score mis à jour pour ${playerName}: ${existingBestTime}s → ${time}s`);
+      } else {
+        // Sinon on crée une nouvelle entrée
+        await push(leaderboardRef, entry);
+        console.log(`[Leaderboard] Nouveau score pour ${playerName}: ${time}s`);
+      }
+
+      // Invalider le cache après sauvegarde
+      this.invalidateLeaderboardCache(gridSize);
+
+      return true;
+    } catch (error) {
+      console.error("Erreur sauvegarde score:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Récupère le top 10 des scores pour une taille de grille (avec cache)
+   */
+  async getLeaderboard(gridSize: number): Promise<LeaderboardData> {
+    if (!this.isAvailable || !this.db) {
+      return { entries: [] };
+    }
+
+    // Vérifier le cache
+    const cached = this.leaderboardCache.get(gridSize);
+    const now = Date.now();
+    if (cached && (now - cached.timestamp) < this.CACHE_DURATION) {
+      console.log(`[Cache] Leaderboard ${gridSize}x${gridSize} depuis cache`);
+      return cached.data;
+    }
+
+    try {
+      console.log(`[Firebase] Chargement leaderboard ${gridSize}x${gridSize}`);
+      const leaderboardRef = ref(this.db, `leaderboards/grid_${gridSize}`);
+      const topQuery = query(leaderboardRef, orderByChild("time"), limitToFirst(3));
+      const snapshot = await get(topQuery);
+
+      if (!snapshot.exists()) {
+        const emptyData = { entries: [] };
+        this.leaderboardCache.set(gridSize, { data: emptyData, timestamp: now });
+        return emptyData;
+      }
+
+      const entries: LeaderboardEntry[] = [];
+      snapshot.forEach((child) => {
+        entries.push(child.val() as LeaderboardEntry);
+      });
+
+      // Trier par temps (croissant)
+      entries.sort((a, b) => a.time - b.time);
+
+      // Trouver le meilleur score de l'utilisateur actuel
+      let userBest: LeaderboardEntry | undefined;
+      if (this.auth?.currentUser) {
+        const userId = this.auth.currentUser.uid;
+        userBest = entries.find((e) => e.userId === userId);
+      }
+
+      const result = { entries: entries.slice(0, 3), userBest };
+
+      // Mettre en cache
+      this.leaderboardCache.set(gridSize, { data: result, timestamp: now });
+
+      return result;
+    } catch (error) {
+      console.error("Erreur récupération leaderboard:", error);
+      return { entries: [] };
+    }
+  }
+
+  /**
+   * Invalide le cache du leaderboard pour une taille de grille
+   */
+  invalidateLeaderboardCache(gridSize: number): void {
+    this.leaderboardCache.delete(gridSize);
+    console.log(`[Cache] Invalidé pour ${gridSize}x${gridSize}`);
+  }
+
+  /**
+   * Vérifie si un temps peut entrer dans le top 3
+   */
+  async canEnterLeaderboard(gridSize: number, time: number, playerName: string): Promise<boolean> {
+    if (!this.isAvailable || !this.db) {
+      return false;
+    }
+
+    try {
+      const leaderboardRef = ref(this.db, `leaderboards/grid_${gridSize}`);
+      const snapshot = await get(leaderboardRef);
+
+      if (!snapshot.exists()) {
+        // Pas de scores, peut entrer
+        return true;
+      }
+
+      const entries: LeaderboardEntry[] = [];
+      let playerBestTime: number | null = null;
+
+      snapshot.forEach((child) => {
+        const entry = child.val() as LeaderboardEntry;
+        entries.push(entry);
+
+        // Trouver le meilleur temps du joueur
+        if (entry.playerName.toLowerCase() === playerName.toLowerCase()) {
+          if (playerBestTime === null || entry.time < playerBestTime) {
+            playerBestTime = entry.time;
+          }
+        }
+      });
+
+      // Si le joueur existe déjà, vérifier si le nouveau temps est meilleur
+      if (playerBestTime !== null) {
+        return time < playerBestTime;
+      }
+
+      // Sinon, vérifier si on peut entrer dans le top 3
+      entries.sort((a, b) => a.time - b.time);
+
+      if (entries.length < 3) {
+        // Moins de 3 entrées, peut entrer
+        return true;
+      }
+
+      // Vérifier si le temps est meilleur que le 3ème
+      const thirdPlace = entries[2];
+      return time < thirdPlace.time;
+    } catch (error) {
+      console.error("Erreur vérification leaderboard:", error);
+      return false;
+    }
+  }
+
+  /**
    * Convertit un niveau stocké en GameState
    */
   convertToGameState(storedLevel: StoredLevel): GameState {
@@ -198,6 +389,7 @@ class LevelStorage {
       isCompleted: false,
       moveCount: 0,
       solution: regions.map((r) => r.queenPosition),
+      levelKey: storedLevel.key,
     };
   }
 }

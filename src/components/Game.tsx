@@ -12,6 +12,7 @@ export const Game: React.FC = () => {
     resetGame,
     newGame: originalNewGame,
     changeGridSizeOnly,
+    saveScore,
     gameTime,
     isGenerating,
     error,
@@ -69,6 +70,7 @@ export const Game: React.FC = () => {
             onResetGame={handleResetGame}
             onNewGame={handleNewGame}
             onGridSizeChange={handleGridSizeChange}
+            onSaveScore={saveScore}
           />
         </div>
       </div>

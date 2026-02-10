@@ -85,6 +85,7 @@ export interface GameControlsProps {
   onResetGame: () => void;
   onNewGame: () => void;
   onGridSizeChange: (size: number) => void;
+  onSaveScore: (playerName: string) => Promise<boolean>;
 }
 
 export interface ColoredRegion {
@@ -105,6 +106,20 @@ export interface GameState {
   moveCount: number;
   solution?: { row: number; col: number }[];
   bestTime?: number;
+  levelKey?: string; // Firebase key du niveau actuel
+}
+
+export interface LeaderboardEntry {
+  userId: string;
+  playerName: string;
+  time: number;
+  timestamp: number;
+  gridSize: number;
+}
+
+export interface LeaderboardData {
+  entries: LeaderboardEntry[];
+  userBest?: LeaderboardEntry;
 }
 
 export type CellState = "empty" | "queen" | "marked";

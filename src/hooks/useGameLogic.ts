@@ -62,7 +62,7 @@ export function useGameLogic(initialGridSize: number = 6) {
     }
   }, [isLoading, gameState.board.length, gameState.isCompleted, startTimer]);
 
-  // Stop timer on completion
+  // Stop timer on completion (pas de sauvegarde automatique, l'utilisateur doit entrer son nom)
   useEffect(() => {
     if (gameState.isCompleted) {
       stopTimer();
@@ -213,13 +213,11 @@ export function useGameLogic(initialGridSize: number = 6) {
     });
   }, [isLoading]);
 
-  // Reset du jeu (même niveau)
+  // Reset du jeu (même niveau) - le timer continue
   const resetGame = useCallback(() => {
-    resetTimer();
     setGameState(prevState => resetGameBoard(prevState));
-    // Relancer le timer immédiatement (la grille est toujours visible)
-    startTimer();
-  }, [resetTimer, startTimer]);
+    // Le timer continue de tourner, on ne le reset pas
+  }, []);
 
   // Nouveau jeu (charge un nouveau niveau)
   const newGame = useCallback(async (gridSize?: number) => {
@@ -232,6 +230,17 @@ export function useGameLogic(initialGridSize: number = 6) {
     await loadLevel(gridSize);
   }, [loadLevel]);
 
+  // Sauvegarde du score avec nom du joueur
+  const saveScore = useCallback(async (playerName: string): Promise<boolean> => {
+    if (!gameState.isCompleted) return false;
+
+    return await levelStorage.saveScore(
+      gameState.gridSize,
+      gameTime,
+      playerName
+    );
+  }, [gameState.isCompleted, gameState.gridSize, gameTime]);
+
   return {
     gameState,
     handleCellClick,
@@ -239,6 +248,7 @@ export function useGameLogic(initialGridSize: number = 6) {
     resetGame,
     newGame,
     changeGridSizeOnly,
+    saveScore,
     gameTime,
     isLoading,
     isGenerating: isLoading,

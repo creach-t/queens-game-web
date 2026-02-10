@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"C:\\\\Users\\\\yckno\\\\Projets\\\\queens-game-web\" log --oneline -10)",
+      "Bash(git -C \"C:\\\\Users\\\\yckno\\\\Projets\\\\queens-game-web\" show HEAD:src/hooks/useGameLogic.ts)",
+      "Bash(git checkout:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run build:*)",
+      "Bash(gh auth status:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nrefactor: performance overhaul + CI/CD pipeline\n\nPerformance:\n- Single setGameState per click \\(remove deferred setTimeout double-render\\)\n- React.memo on GameCell with custom comparator\n- Event delegation on grid \\(1 handler instead of N² closures\\)\n- Map-based validation indexing in rules.ts \\(O\\(Q+N\\) vs O\\(Q×N\\)\\)\n- requestAnimationFrame for animations \\(replace 144 setTimeout\\)\n- Timer via useRef, starts when grid is visible\n\nFeatures:\n- Touch swipe to mark multiple cells in one gesture\n- Touch tap handling \\(no more phantom click events\\)\n- Lighter region colors for cross visibility\n- Error state display on level loading failure\n\nCleanup:\n- Delete levelGenerator.ts \\(658 lines\\) and queensSolver.ts \\(337 lines\\)\n- Remove unused types, functions and imports \\(~1800 lines removed\\)\n- Firebase-only level loading\n\nInfra:\n- GitHub Actions CI/CD \\(type-check → build → GHCR → SSH deploy\\)\n- docker-compose.prod.yml with GHCR image\n- Dockerfile with build args, nginx.conf, HEALTHCHECK\n- Zero-downtime deploy via Traefik + healthcheck\n\nDocs:\n- Update CLAUDE.md to reflect new architecture\n- Rewrite README.md \\(concise, accurate\\)\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git merge:*)",
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(git pull:*)"
+    ]
+  }
+}
