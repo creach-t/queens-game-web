@@ -24,6 +24,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccessfully, setSavedSuccessfully] = useState(false);
   const [canEnter, setCanEnter] = useState(false);
+  const [savedPlayerName, setSavedPlayerName] = useState<string>(''); // Mémoriser le nom du joueur
 
   // Empêcher les chargements multiples
   const loadingRef = useRef(false);
@@ -57,7 +58,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
     loadLeaderboard();
   }, [loadLeaderboard]);
 
-  // Vérifier si le score peut entrer dans le top 3
+  // Vérifier si le score peut entrer dans le top 3 et sauvegarder automatiquement si nom déjà connu
   useEffect(() => {
     if (!isCompleted || !currentTime || savedSuccessfully) {
       setCanEnter(false);
@@ -65,23 +66,40 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
     }
 
     const checkEligibility = async () => {
-      // Utiliser un nom temporaire vide pour la vérification initiale
-      const eligible = await levelStorage.canEnterLeaderboard(gridSize, currentTime, playerName || '___temp___');
+      // Utiliser le nom sauvegardé si disponible, sinon un nom temporaire
+      const nameToCheck = savedPlayerName || playerName || '___temp___';
+      const eligible = await levelStorage.canEnterLeaderboard(gridSize, currentTime, nameToCheck);
       setCanEnter(eligible);
+
+      // Si le joueur a déjà un nom sauvegardé et qu'il est éligible, sauvegarder automatiquement
+      if (eligible && savedPlayerName && onSaveScore) {
+        setIsSaving(true);
+        const success = await onSaveScore(savedPlayerName);
+        setIsSaving(false);
+        if (success) {
+          setSavedSuccessfully(true);
+          // Recharger le leaderboard après 500ms
+          setTimeout(() => {
+            loadLeaderboard();
+          }, 500);
+        }
+      }
     };
 
     checkEligibility();
-  }, [isCompleted, currentTime, gridSize, savedSuccessfully, playerName]);
+  }, [isCompleted, currentTime, gridSize, savedSuccessfully, playerName, savedPlayerName, onSaveScore, loadLeaderboard]);
 
   const handleSaveScore = async () => {
     if (!playerName.trim() || !onSaveScore || !currentTime) return;
 
     setIsSaving(true);
-    const success = await onSaveScore(playerName.trim());
+    const trimmedName = playerName.trim();
+    const success = await onSaveScore(trimmedName);
     setIsSaving(false);
 
     if (success) {
       setSavedSuccessfully(true);
+      setSavedPlayerName(trimmedName); // Mémoriser le nom pour les prochaines victoires
       setPlayerName('');
       // Recharger le leaderboard après 500ms
       setTimeout(() => {
