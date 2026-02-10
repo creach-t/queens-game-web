@@ -70,6 +70,13 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
     // Note: on garde savedPlayerName pour permettre l'auto-save sur toutes les tailles
   }, [gridSize]);
 
+  // Réinitialiser savedSuccessfully quand une nouvelle partie commence
+  useEffect(() => {
+    if (!isCompleted) {
+      setSavedSuccessfully(false);
+    }
+  }, [isCompleted]);
+
   // Vérifier si le score peut entrer dans le top 3
   useEffect(() => {
     if (!isCompleted || !currentTime || savedSuccessfully) {
