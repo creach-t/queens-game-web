@@ -99,16 +99,10 @@ export function useGameLogic(initialGridSize: number = 6) {
 
   // Clic sur une cellule — UN SEUL setGameState, validation synchrone
   const handleCellClick = useCallback((row: number, col: number) => {
-    console.log(`[useGameLogic] handleCellClick(${row}, ${col}) — isLoading: ${isLoading}`);
     if (isLoading) return;
 
     setGameState(prevState => {
-      if (prevState.isCompleted) {
-        console.log(`[useGameLogic] handleCellClick — SKIP: game completed`);
-        return prevState;
-      }
-      const currentCellState = prevState.board[row][col].state;
-      console.log(`[useGameLogic] handleCellClick — cell(${row},${col}) state: "${currentCellState}" → will become: "${currentCellState === 'empty' ? 'marked' : currentCellState === 'marked' ? 'queen' : 'empty'}"`);
+      if (prevState.isCompleted) return prevState;
 
       // Clone intelligent : seule la cellule cliquée est dupliquée
       const newBoard = prevState.board.map((boardRow, r) =>
@@ -198,7 +192,6 @@ export function useGameLogic(initialGridSize: number = 6) {
   // Marquage rapide d'une cellule vide (pour le swipe tactile)
   // Ne fait rien si la cellule n'est pas vide — pas de cycle
   const markCell = useCallback((row: number, col: number) => {
-    console.log(`[useGameLogic] markCell(${row}, ${col}) — isLoading: ${isLoading}`);
     if (isLoading) return;
 
     setGameState(prevState => {

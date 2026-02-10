@@ -51,18 +51,12 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
 
   // Event delegation : desktop uniquement (tactile géré par touch handlers)
   const handleGridClick = useCallback((e: React.MouseEvent) => {
-    // Ignorer les click synthétiques sur device tactile
-    if (isTouchDevice.current) {
-      console.log('[BoardGrid] click IGNORED (touch device)');
-      return;
-    }
-    console.log('[BoardGrid] click event fired (mouse)');
+    if (isTouchDevice.current) return;
     const target = (e.target as HTMLElement).closest('[data-row]') as HTMLElement;
     if (!target) return;
     const row = Number(target.dataset.row);
     const col = Number(target.dataset.col);
     if (!isNaN(row) && !isNaN(col)) {
-      console.log(`[BoardGrid] click → onCellClick(${row}, ${col})`);
       onCellClick(row, col);
     }
   }, [onCellClick]);
@@ -81,7 +75,6 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
     isTouchDevice.current = true;
     const touch = e.touches[0];
     const cell = getCellAtPoint(touch.clientX, touch.clientY);
-    console.log(`[BoardGrid] touchstart at (${touch.clientX.toFixed(0)}, ${touch.clientY.toFixed(0)}) → cell:`, cell);
     if (!cell) return;
 
     touchStartCell.current = cell;
@@ -102,13 +95,11 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
     if (!hasMoved.current) {
       hasMoved.current = true;
       isSwiping.current = true;
-      console.log(`[BoardGrid] touchmove → swipe started`);
 
       // Marquer aussi la cellule de départ si elle est vide
       if (touchStartCell.current) {
         const startKey = `${touchStartCell.current.row}-${touchStartCell.current.col}`;
         swipedCells.current.add(startKey);
-        console.log(`[BoardGrid] swipe mark start cell (${touchStartCell.current.row}, ${touchStartCell.current.col})`);
         onMarkCell(touchStartCell.current.row, touchStartCell.current.col);
       }
     }
@@ -118,26 +109,19 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
 
     lastSwipedCell.current = cellKey;
     swipedCells.current.add(cellKey);
-    console.log(`[BoardGrid] swipe mark cell (${cell.row}, ${cell.col})`);
     onMarkCell(cell.row, cell.col);
   }, [onMarkCell]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     const wasSwiping = hasMoved.current;
     const startCell = touchStartCell.current;
-    const cellState = startCell ? gameState.board[startCell.row]?.[startCell.col]?.state : null;
-
-    console.log(`[BoardGrid] touchend — hasMoved: ${wasSwiping}, startCell: ${startCell ? `(${startCell.row},${startCell.col})` : 'null'}, cellState: ${cellState}`);
 
     // Toujours empêcher le click synthétique sur tactile — on gère tout ici
     e.preventDefault();
 
     // Tap sans mouvement → cycle normal (empty → marked → queen → empty)
     if (!wasSwiping && startCell) {
-      console.log(`[BoardGrid] touchend → TAP → onCellClick(${startCell.row}, ${startCell.col})`);
       onCellClick(startCell.row, startCell.col);
-    } else {
-      console.log(`[BoardGrid] touchend → SWIPE ended (no click)`);
     }
 
     isSwiping.current = false;
