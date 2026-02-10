@@ -8,6 +8,7 @@
       "$gridSize": {
         ".read": true,
         ".write": "auth != null",
+        ".indexOn": ["time"],
         "$scoreId": {
           ".validate": "newData.hasChildren(['userId', 'playerName', 'time', 'timestamp', 'gridSize']) && newData.child('userId').val() === auth.uid && newData.child('playerName').isString() && newData.child('playerName').val().length > 0 && newData.child('playerName').val().length <= 20 && newData.child('time').isNumber() && newData.child('timestamp').isNumber() && newData.child('gridSize').isNumber()"
         }

@@ -25,6 +25,7 @@ Pour activer le système de leaderboard, vous devez configurer les règles Fireb
       "$gridSize": {
         ".read": true,
         ".write": "auth != null",
+        ".indexOn": ["time"],
         "$scoreId": {
           ".validate": "newData.hasChildren(['userId', 'playerName', 'time', 'timestamp', 'gridSize']) && newData.child('userId').val() === auth.uid && newData.child('playerName').isString() && newData.child('playerName').val().length > 0 && newData.child('playerName').val().length <= 20 && newData.child('time').isNumber() && newData.child('timestamp').isNumber() && newData.child('gridSize').isNumber()"
         }
@@ -43,6 +44,7 @@ Pour activer le système de leaderboard, vous devez configurer les règles Fireb
 #### `leaderboards`
 - **Lecture** : Tous les utilisateurs peuvent lire les scores
 - **Écriture** : Seuls les utilisateurs authentifiés peuvent écrire
+- **Index** : Index sur le champ `time` pour optimiser les requêtes de tri (`.indexOn: ["time"]`)
 - **Validation** :
   - Le score doit contenir tous les champs requis : `userId`, `playerName`, `time`, `timestamp`, `gridSize`
   - `userId` doit correspondre à l'utilisateur connecté (empêche de sauvegarder un score pour quelqu'un d'autre)
@@ -99,12 +101,23 @@ Après avoir sauvegardé les règles dans la console Firebase, elles sont active
 
 ### Dépannage
 
+#### Erreur `PERMISSION_DENIED`
+
 Si vous rencontrez l'erreur `PERMISSION_DENIED` :
 
 1. Vérifiez que les règles sont bien déployées dans la console Firebase
 2. Vérifiez que l'authentification anonyme est activée
 3. Vérifiez que l'utilisateur est bien authentifié (console DevTools → Application → IndexedDB → firebaseLocalStorage)
 4. Testez dans le simulateur de règles Firebase
+
+#### Erreur `Index not defined, add ".indexOn": "time"`
+
+Si vous rencontrez cette erreur :
+
+1. Assurez-vous que la ligne `".indexOn": ["time"]` est présente dans les règles sous `leaderboards/$gridSize`
+2. Republiez les règles dans la console Firebase
+3. L'index sera créé automatiquement après la publication
+4. Rechargez la page pour que les nouvelles requêtes utilisent l'index
 
 ### Note de sécurité
 
