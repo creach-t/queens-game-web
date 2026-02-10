@@ -53,7 +53,11 @@ function App() {
       <footer className="border-t bg-white/50 py-6">
         <div className="container mx-auto px-4">
           <div className="flex flex-col items-center gap-4">
-            <p className="text-xs text-slate-500">Built with React & TypeScript</p>
+            <div className="flex items-center gap-3 text-xs text-slate-500">
+              <span>Built with React & TypeScript</span>
+              <span className="text-slate-300">•</span>
+              <span className="font-mono">v1.1.0</span>
+            </div>
 
             <div className="flex items-center gap-6">
               <a

@@ -24,17 +24,18 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccessfully, setSavedSuccessfully] = useState(false);
   const [canEnter, setCanEnter] = useState(false);
+  const [savedPlayerName, setSavedPlayerName] = useState<string>(''); // Mémoriser le nom du joueur
 
   // Empêcher les chargements multiples
   const loadingRef = useRef(false);
   const lastLoadedGridSize = useRef<number | null>(null);
 
-  const loadLeaderboard = useCallback(async () => {
+  const loadLeaderboard = useCallback(async (forceRefresh = false) => {
     // Éviter les chargements en parallèle
     if (loadingRef.current) return;
 
-    // Éviter de recharger si déjà chargé pour cette taille
-    if (lastLoadedGridSize.current === gridSize && leaderboardData.entries.length > 0) {
+    // Éviter de recharger si déjà chargé pour cette taille (sauf si forceRefresh)
+    if (!forceRefresh && lastLoadedGridSize.current === gridSize && leaderboardData.entries.length > 0) {
       return;
     }
 
@@ -42,6 +43,10 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
     setIsLoading(true);
 
     try {
+      // Si forceRefresh, invalider le cache d'abord
+      if (forceRefresh) {
+        levelStorage.invalidateLeaderboardCache(gridSize);
+      }
       const data = await levelStorage.getLeaderboard(gridSize);
       setLeaderboardData(data);
       lastLoadedGridSize.current = gridSize;
@@ -57,6 +62,21 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
     loadLeaderboard();
   }, [loadLeaderboard]);
 
+  // Réinitialiser les états lors du changement de taille de grille
+  useEffect(() => {
+    setSavedSuccessfully(false);
+    setCanEnter(false);
+    setPlayerName('');
+    // Note: on garde savedPlayerName pour permettre l'auto-save sur toutes les tailles
+  }, [gridSize]);
+
+  // Réinitialiser savedSuccessfully quand une nouvelle partie commence
+  useEffect(() => {
+    if (!isCompleted) {
+      setSavedSuccessfully(false);
+    }
+  }, [isCompleted]);
+
   // Vérifier si le score peut entrer dans le top 3
   useEffect(() => {
     if (!isCompleted || !currentTime || savedSuccessfully) {
@@ -65,27 +85,31 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
     }
 
     const checkEligibility = async () => {
-      // Utiliser un nom temporaire vide pour la vérification initiale
-      const eligible = await levelStorage.canEnterLeaderboard(gridSize, currentTime, playerName || '___temp___');
+      // Utiliser le nom sauvegardé si disponible, sinon un nom temporaire
+      const nameToCheck = savedPlayerName || playerName || '___temp___';
+      const eligible = await levelStorage.canEnterLeaderboard(gridSize, currentTime, nameToCheck);
       setCanEnter(eligible);
     };
 
     checkEligibility();
-  }, [isCompleted, currentTime, gridSize, savedSuccessfully, playerName]);
+  }, [isCompleted, currentTime, gridSize, savedSuccessfully, playerName, savedPlayerName]);
 
   const handleSaveScore = async () => {
-    if (!playerName.trim() || !onSaveScore || !currentTime) return;
+    // Utiliser le nom saisi ou le nom sauvegardé comme fallback
+    const nameToSave = playerName.trim() || savedPlayerName;
+    if (!nameToSave || !onSaveScore || !currentTime) return;
 
     setIsSaving(true);
-    const success = await onSaveScore(playerName.trim());
+    const success = await onSaveScore(nameToSave);
     setIsSaving(false);
 
     if (success) {
       setSavedSuccessfully(true);
+      setSavedPlayerName(nameToSave); // Mémoriser le nom pour les prochaines victoires
       setPlayerName('');
-      // Recharger le leaderboard après 500ms
+      // Recharger le leaderboard après 500ms avec forceRefresh
       setTimeout(() => {
-        loadLeaderboard();
+        loadLeaderboard(true);
       }, 500);
     }
   };
@@ -121,18 +145,18 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
               type="text"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
-              placeholder="Votre nom"
+              placeholder={savedPlayerName || "Votre nom"}
               maxLength={20}
               className="flex-1 px-3 py-2 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && playerName.trim()) {
+                if (e.key === 'Enter' && (playerName.trim() || savedPlayerName)) {
                   handleSaveScore();
                 }
               }}
             />
             <button
               onClick={handleSaveScore}
-              disabled={!playerName.trim() || isSaving}
+              disabled={(!playerName.trim() && !savedPlayerName) || isSaving}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
             >
               <Save className="w-4 h-4" />

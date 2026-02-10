@@ -119,6 +119,8 @@ push main → GitHub Actions → type-check → build → Docker image → GHCR 
 - **Top 3 only**: Reduces bandwidth by 70% vs top 10
 - **Name-based updates**: Same player name = update if better time, prevents duplicates
 - **Eligibility check**: Save form only shown if time qualifies for top 3
+- **Name persistence**: After first save, player name is remembered and pre-filled as placeholder in form
+- **Smart save**: If name field is empty, uses the saved name from previous win
 - **Client-side cache**: 30-second cache prevents excessive Firebase requests
 - **Anonymous auth**: Required for write access (Firebase rules)
 - **Always visible**: Leaderboard displays on page load, not just after completion
