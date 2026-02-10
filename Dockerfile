@@ -23,6 +23,9 @@ RUN npm ci
 # Copier le code source
 COPY . .
 
+# Nettoyer tout cache existant et rebuild à partir de zéro
+RUN rm -rf dist .vite node_modules/.vite
+
 # Build de l'application pour la production
 RUN npm run build
 
