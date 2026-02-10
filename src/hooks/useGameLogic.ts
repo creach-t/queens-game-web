@@ -62,21 +62,12 @@ export function useGameLogic(initialGridSize: number = 6) {
     }
   }, [isLoading, gameState.board.length, gameState.isCompleted, startTimer]);
 
-  // Stop timer on completion et sauvegarder le score
+  // Stop timer on completion (pas de sauvegarde automatique, l'utilisateur doit entrer son nom)
   useEffect(() => {
-    if (gameState.isCompleted && gameState.levelKey) {
+    if (gameState.isCompleted) {
       stopTimer();
-
-      // Sauvegarder le score dans Firebase
-      levelStorage.saveScore(
-        gameState.levelKey,
-        gameState.gridSize,
-        gameTime
-      ).catch(err => {
-        console.error('Erreur sauvegarde score:', err);
-      });
     }
-  }, [gameState.isCompleted, gameState.levelKey, gameState.gridSize, gameTime, stopTimer]);
+  }, [gameState.isCompleted, stopTimer]);
 
   // Chargement d'un niveau depuis Firebase
   const loadLevel = useCallback(async (gridSize: number) => {
@@ -241,6 +232,17 @@ export function useGameLogic(initialGridSize: number = 6) {
     await loadLevel(gridSize);
   }, [loadLevel]);
 
+  // Sauvegarde du score avec nom du joueur
+  const saveScore = useCallback(async (playerName: string): Promise<boolean> => {
+    if (!gameState.isCompleted) return false;
+
+    return await levelStorage.saveScore(
+      gameState.gridSize,
+      gameTime,
+      playerName
+    );
+  }, [gameState.isCompleted, gameState.gridSize, gameTime]);
+
   return {
     gameState,
     handleCellClick,
@@ -248,6 +250,7 @@ export function useGameLogic(initialGridSize: number = 6) {
     resetGame,
     newGame,
     changeGridSizeOnly,
+    saveScore,
     gameTime,
     isLoading,
     isGenerating: isLoading,

@@ -65,7 +65,7 @@ export interface SuccessMessageProps {
   gameState: GameState;
   gameTime: number;
   formatTime: (seconds: number) => string;
-  onScoreSaved?: () => void;
+  onScoreSaved?: (playerName: string) => Promise<boolean>;
 }
 
 export interface SizeGridSelectorProps {
@@ -86,6 +86,7 @@ export interface GameControlsProps {
   onResetGame: () => void;
   onNewGame: () => void;
   onGridSizeChange: (size: number) => void;
+  onSaveScore: (playerName: string) => Promise<boolean>;
 }
 
 export interface ColoredRegion {
@@ -111,10 +112,10 @@ export interface GameState {
 
 export interface LeaderboardEntry {
   userId: string;
+  playerName: string;
   time: number;
   timestamp: number;
   gridSize: number;
-  levelKey: string;
 }
 
 export interface LeaderboardData {

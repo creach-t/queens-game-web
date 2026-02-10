@@ -147,12 +147,12 @@ class LevelStorage {
   }
 
   /**
-   * Sauvegarde un score dans le leaderboard
+   * Sauvegarde un score dans le leaderboard (par taille de grille)
    */
   async saveScore(
-    levelKey: string,
     gridSize: number,
-    time: number
+    time: number,
+    playerName: string
   ): Promise<boolean> {
     if (!this.isAvailable || !this.db || !this.auth?.currentUser) {
       return false;
@@ -160,14 +160,14 @@ class LevelStorage {
 
     try {
       const userId = this.auth.currentUser.uid;
-      const leaderboardRef = ref(this.db, `leaderboards/${levelKey}`);
+      const leaderboardRef = ref(this.db, `leaderboards/grid_${gridSize}`);
 
       const entry: LeaderboardEntry = {
         userId,
+        playerName,
         time,
         timestamp: Date.now(),
         gridSize,
-        levelKey,
       };
 
       await push(leaderboardRef, entry);
@@ -179,15 +179,15 @@ class LevelStorage {
   }
 
   /**
-   * Récupère le top 10 des scores pour un niveau
+   * Récupère le top 10 des scores pour une taille de grille
    */
-  async getLeaderboard(levelKey: string): Promise<LeaderboardData> {
+  async getLeaderboard(gridSize: number): Promise<LeaderboardData> {
     if (!this.isAvailable || !this.db) {
       return { entries: [] };
     }
 
     try {
-      const leaderboardRef = ref(this.db, `leaderboards/${levelKey}`);
+      const leaderboardRef = ref(this.db, `leaderboards/grid_${gridSize}`);
       const topQuery = query(leaderboardRef, orderByChild("time"), limitToFirst(10));
       const snapshot = await get(topQuery);
 

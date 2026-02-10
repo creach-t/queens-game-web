@@ -1,58 +1,56 @@
 import React, { useEffect, useState } from 'react';
-import { Trophy, Clock, Medal } from 'lucide-react';
+import { Trophy, Clock, Medal, Save } from 'lucide-react';
 import { LeaderboardData } from '../types/game';
 import { levelStorage } from '../utils/levelStorage';
 
 interface LeaderboardProps {
-  levelKey?: string;
+  gridSize: number;
+  currentTime?: number;
+  isCompleted: boolean;
+  onSaveScore?: (playerName: string) => Promise<boolean>;
   formatTime: (seconds: number) => string;
 }
 
-export const Leaderboard: React.FC<LeaderboardProps> = ({ levelKey, formatTime }) => {
+export const Leaderboard: React.FC<LeaderboardProps> = ({
+  gridSize,
+  currentTime,
+  isCompleted,
+  onSaveScore,
+  formatTime
+}) => {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardData>({ entries: [] });
   const [isLoading, setIsLoading] = useState(true);
+  const [playerName, setPlayerName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedSuccessfully, setSavedSuccessfully] = useState(false);
+
+  const loadLeaderboard = async () => {
+    setIsLoading(true);
+    const data = await levelStorage.getLeaderboard(gridSize);
+    setLeaderboardData(data);
+    setIsLoading(false);
+  };
 
   useEffect(() => {
-    if (!levelKey) {
-      setIsLoading(false);
-      return;
-    }
-
-    const loadLeaderboard = async () => {
-      setIsLoading(true);
-      const data = await levelStorage.getLeaderboard(levelKey);
-      setLeaderboardData(data);
-      setIsLoading(false);
-    };
-
     loadLeaderboard();
-  }, [levelKey]);
+  }, [gridSize]);
 
-  if (isLoading) {
-    return (
-      <div className="bg-white border border-gray-200 rounded-lg p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Trophy className="w-5 h-5 text-yellow-600" />
-          <h3 className="font-semibold text-gray-800">Leaderboard</h3>
-        </div>
-        <div className="text-sm text-gray-500 text-center py-4">Chargement...</div>
-      </div>
-    );
-  }
+  const handleSaveScore = async () => {
+    if (!playerName.trim() || !onSaveScore || !currentTime) return;
 
-  if (!levelKey || leaderboardData.entries.length === 0) {
-    return (
-      <div className="bg-white border border-gray-200 rounded-lg p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Trophy className="w-5 h-5 text-yellow-600" />
-          <h3 className="font-semibold text-gray-800">Leaderboard</h3>
-        </div>
-        <div className="text-sm text-gray-500 text-center py-4">
-          Aucun score pour ce niveau
-        </div>
-      </div>
-    );
-  }
+    setIsSaving(true);
+    const success = await onSaveScore(playerName.trim());
+    setIsSaving(false);
+
+    if (success) {
+      setSavedSuccessfully(true);
+      setPlayerName('');
+      // Recharger le leaderboard après 500ms
+      setTimeout(() => {
+        loadLeaderboard();
+      }, 500);
+    }
+  };
 
   const getMedalIcon = (rank: number) => {
     switch (rank) {
@@ -68,46 +66,81 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ levelKey, formatTime }
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4">
-      <div className="flex items-center gap-2 mb-3">
+    <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
+      <div className="flex items-center gap-2">
         <Trophy className="w-5 h-5 text-yellow-600" />
-        <h3 className="font-semibold text-gray-800">Top 10</h3>
+        <h3 className="font-semibold text-gray-800">Leaderboard {gridSize}×{gridSize}</h3>
       </div>
 
-      <div className="space-y-1">
-        {leaderboardData.entries.map((entry, index) => (
-          <div
-            key={`${entry.userId}-${entry.timestamp}`}
-            className={`flex items-center justify-between p-2 rounded text-sm ${
-              entry.userId === leaderboardData.userBest?.userId
-                ? 'bg-blue-50 border border-blue-200'
-                : 'bg-gray-50'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {getMedalIcon(index + 1)}
-              <span className="text-gray-700 text-xs truncate max-w-[100px]">
-                {entry.userId.slice(0, 8)}...
-              </span>
-            </div>
-            <div className="flex items-center gap-1 text-gray-600">
-              <Clock className="w-3 h-3" />
-              <span className="font-medium">{formatTime(entry.time)}</span>
-            </div>
+      {/* Formulaire de sauvegarde du score */}
+      {isCompleted && currentTime && !savedSuccessfully && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+          <p className="text-sm text-blue-900 font-medium">
+            Enregistrez votre temps : {formatTime(currentTime)}
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              placeholder="Votre nom"
+              maxLength={20}
+              className="flex-1 px-3 py-2 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && playerName.trim()) {
+                  handleSaveScore();
+                }
+              }}
+            />
+            <button
+              onClick={handleSaveScore}
+              disabled={!playerName.trim() || isSaving}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+            >
+              <Save className="w-4 h-4" />
+              {isSaving ? 'Envoi...' : 'Enregistrer'}
+            </button>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
-      {leaderboardData.userBest && (
-        <div className="mt-3 pt-3 border-t border-gray-200">
-          <div className="text-xs text-gray-600 mb-1">Votre meilleur temps</div>
-          <div className="flex items-center justify-between bg-blue-50 border border-blue-200 p-2 rounded">
-            <span className="text-sm font-medium text-blue-900">Vous</span>
-            <div className="flex items-center gap-1 text-blue-900">
-              <Clock className="w-3 h-3" />
-              <span className="font-bold">{formatTime(leaderboardData.userBest.time)}</span>
+      {/* Message de confirmation */}
+      {savedSuccessfully && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+          <p className="text-sm text-green-800 font-medium">✓ Score enregistré avec succès !</p>
+        </div>
+      )}
+
+      {/* Liste du leaderboard */}
+      {isLoading ? (
+        <div className="text-sm text-gray-500 text-center py-4">Chargement...</div>
+      ) : leaderboardData.entries.length === 0 ? (
+        <div className="text-sm text-gray-500 text-center py-4">
+          Aucun score pour cette taille
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {leaderboardData.entries.map((entry, index) => (
+            <div
+              key={`${entry.userId}-${entry.timestamp}`}
+              className={`flex items-center justify-between p-2 rounded text-sm ${
+                entry.userId === leaderboardData.userBest?.userId
+                  ? 'bg-blue-50 border border-blue-200'
+                  : 'bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                {getMedalIcon(index + 1)}
+                <span className="text-gray-700 text-sm truncate font-medium">
+                  {entry.playerName}
+                </span>
+              </div>
+              <div className="flex items-center gap-1 text-gray-600 ml-2">
+                <Clock className="w-3 h-3" />
+                <span className="font-medium">{formatTime(entry.time)}</span>
+              </div>
             </div>
-          </div>
+          ))}
         </div>
       )}
     </div>

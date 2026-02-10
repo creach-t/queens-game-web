@@ -12,6 +12,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
   onResetGame,
   onNewGame,
   onGridSizeChange,
+  onSaveScore,
 }) => {
   const [levelCounts, setLevelCounts] = useState<Record<number, number>>({});
 
@@ -41,6 +42,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
           gameState={gameState}
           gameTime={gameTime}
           formatTime={formatTime}
+          onScoreSaved={onSaveScore}
         />
       )}
 
