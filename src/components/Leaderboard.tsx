@@ -90,7 +90,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
     <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
       <div className="flex items-center gap-2">
         <Trophy className="w-5 h-5 text-yellow-600" />
-        <h3 className="font-semibold text-gray-800">Leaderboard {gridSize}×{gridSize}</h3>
+        <h3 className="font-semibold text-gray-800">Top 3 - {gridSize}×{gridSize}</h3>
       </div>
 
       {/* Formulaire de sauvegarde du score */}

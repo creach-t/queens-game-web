@@ -18,8 +18,8 @@ Le système de leaderboard chargeait les données à chaque render du composant,
 
 **Lecture (Download)** :
 - Chargement niveau initial : ~2 KB
-- Chargement leaderboard (8 tailles) : ~8 × 2 KB = 16 KB
-- **Total lecture** : ~20 KB par session
+- Chargement leaderboard top 3 (8 tailles) : ~8 × 0.5 KB = 4 KB
+- **Total lecture** : ~6 KB par session
 
 **Écriture (Upload)** :
 - Sauvegarde 1 score : ~200 bytes
@@ -27,9 +27,11 @@ Le système de leaderboard chargeait les données à chaque render du composant,
 
 ### Estimations mensuelles (1000 utilisateurs actifs/mois)
 
-- **Lectures** : 1000 × 20 KB = 20 MB/mois
+- **Lectures** : 1000 × 6 KB = 6 MB/mois
 - **Écritures** : 1000 × 200 bytes = 200 KB/mois
-- **Total** : ~20 MB/mois
+- **Total** : ~6 MB/mois
+
+**Note** : Leaderboard limité au top 3 pour réduire la bande passante (au lieu du top 10)
 
 ## 🚨 Signes d'alerte
 
@@ -84,7 +86,19 @@ if (lastLoadedGridSize.current === gridSize && leaderboardData.entries.length > 
 
 **Impact** : Évite rechargements inutiles
 
-### 4. Index Firebase optimisé
+### 4. Top 3 au lieu de Top 10
+```typescript
+const topQuery = query(leaderboardRef, orderByChild("time"), limitToFirst(3));
+```
+
+**Impact** : Réduit 70% de la bande passante leaderboard
+
+### 5. Mise à jour intelligente par nom
+- Si un joueur avec le même nom existe, mise à jour uniquement si meilleur temps
+- Évite la duplication des entrées pour un même joueur
+- Réduit la croissance de la base de données
+
+### 6. Index Firebase optimisé
 ```json
 ".indexOn": ["time"]
 ```

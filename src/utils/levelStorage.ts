@@ -152,6 +152,7 @@ class LevelStorage {
 
   /**
    * Sauvegarde un score dans le leaderboard (par taille de grille)
+   * Si le nom existe déjà, met à jour uniquement si le nouveau temps est meilleur
    */
   async saveScore(
     gridSize: number,
@@ -166,6 +167,30 @@ class LevelStorage {
       const userId = this.auth.currentUser.uid;
       const leaderboardRef = ref(this.db, `leaderboards/grid_${gridSize}`);
 
+      // Récupérer tous les scores existants pour ce nom
+      const snapshot = await get(leaderboardRef);
+
+      let existingEntryKey: string | null = null;
+      let existingBestTime: number | null = null;
+
+      if (snapshot.exists()) {
+        snapshot.forEach((child) => {
+          const entry = child.val() as LeaderboardEntry;
+          if (entry.playerName.toLowerCase() === playerName.toLowerCase()) {
+            if (existingBestTime === null || entry.time < existingBestTime) {
+              existingBestTime = entry.time;
+              existingEntryKey = child.key;
+            }
+          }
+        });
+      }
+
+      // Si le joueur existe et que le nouveau temps est moins bon, on ne sauvegarde pas
+      if (existingBestTime !== null && time >= existingBestTime) {
+        console.log(`[Leaderboard] Score non enregistré : ${time}s >= ${existingBestTime}s pour ${playerName}`);
+        return false;
+      }
+
       const entry: LeaderboardEntry = {
         userId,
         playerName,
@@ -174,7 +199,17 @@ class LevelStorage {
         gridSize,
       };
 
-      await push(leaderboardRef, entry);
+      // Si le joueur existe avec un moins bon temps, on met à jour
+      if (existingEntryKey) {
+        const { set } = await import("firebase/database");
+        const entryRef = ref(this.db, `leaderboards/grid_${gridSize}/${existingEntryKey}`);
+        await set(entryRef, entry);
+        console.log(`[Leaderboard] Score mis à jour pour ${playerName}: ${existingBestTime}s → ${time}s`);
+      } else {
+        // Sinon on crée une nouvelle entrée
+        await push(leaderboardRef, entry);
+        console.log(`[Leaderboard] Nouveau score pour ${playerName}: ${time}s`);
+      }
 
       // Invalider le cache après sauvegarde
       this.invalidateLeaderboardCache(gridSize);
@@ -205,7 +240,7 @@ class LevelStorage {
     try {
       console.log(`[Firebase] Chargement leaderboard ${gridSize}x${gridSize}`);
       const leaderboardRef = ref(this.db, `leaderboards/grid_${gridSize}`);
-      const topQuery = query(leaderboardRef, orderByChild("time"), limitToFirst(10));
+      const topQuery = query(leaderboardRef, orderByChild("time"), limitToFirst(3));
       const snapshot = await get(topQuery);
 
       if (!snapshot.exists()) {
@@ -229,7 +264,7 @@ class LevelStorage {
         userBest = entries.find((e) => e.userId === userId);
       }
 
-      const result = { entries: entries.slice(0, 10), userBest };
+      const result = { entries: entries.slice(0, 3), userBest };
 
       // Mettre en cache
       this.leaderboardCache.set(gridSize, { data: result, timestamp: now });
