@@ -19,7 +19,7 @@ Puzzle logique : placez exactement une reine par ligne, colonne et region colore
 - **Grilles** : 5×5 (Tutoriel) a 12×12 (Mythique)
 - **Timer** : demarre des l'affichage, continue sur reset
 - **Leaderboard** : top 3 par taille de grille, visible immediatement
-- **Save intelligente** : formulaire uniquement si top 3 eligible
+- **Save intelligente** : formulaire uniquement si top 3 eligible, nom memorise comme placeholder
 
 ## Installation
 
