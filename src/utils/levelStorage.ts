@@ -187,7 +187,6 @@ class LevelStorage {
 
       // Si le joueur existe et que le nouveau temps est moins bon, on ne sauvegarde pas
       if (existingBestTime !== null && time >= existingBestTime) {
-        console.log(`[Leaderboard] Score non enregistré : ${time}s >= ${existingBestTime}s pour ${playerName}`);
         return false;
       }
 
@@ -282,6 +281,60 @@ class LevelStorage {
   invalidateLeaderboardCache(gridSize: number): void {
     this.leaderboardCache.delete(gridSize);
     console.log(`[Cache] Invalidé pour ${gridSize}x${gridSize}`);
+  }
+
+  /**
+   * Vérifie si un temps peut entrer dans le top 3
+   */
+  async canEnterLeaderboard(gridSize: number, time: number, playerName: string): Promise<boolean> {
+    if (!this.isAvailable || !this.db) {
+      return false;
+    }
+
+    try {
+      const leaderboardRef = ref(this.db, `leaderboards/grid_${gridSize}`);
+      const snapshot = await get(leaderboardRef);
+
+      if (!snapshot.exists()) {
+        // Pas de scores, peut entrer
+        return true;
+      }
+
+      const entries: LeaderboardEntry[] = [];
+      let playerBestTime: number | null = null;
+
+      snapshot.forEach((child) => {
+        const entry = child.val() as LeaderboardEntry;
+        entries.push(entry);
+
+        // Trouver le meilleur temps du joueur
+        if (entry.playerName.toLowerCase() === playerName.toLowerCase()) {
+          if (playerBestTime === null || entry.time < playerBestTime) {
+            playerBestTime = entry.time;
+          }
+        }
+      });
+
+      // Si le joueur existe déjà, vérifier si le nouveau temps est meilleur
+      if (playerBestTime !== null) {
+        return time < playerBestTime;
+      }
+
+      // Sinon, vérifier si on peut entrer dans le top 3
+      entries.sort((a, b) => a.time - b.time);
+
+      if (entries.length < 3) {
+        // Moins de 3 entrées, peut entrer
+        return true;
+      }
+
+      // Vérifier si le temps est meilleur que le 3ème
+      const thirdPlace = entries[2];
+      return time < thirdPlace.time;
+    } catch (error) {
+      console.error("Erreur vérification leaderboard:", error);
+      return false;
+    }
   }
 
   /**

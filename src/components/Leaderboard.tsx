@@ -23,6 +23,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
   const [playerName, setPlayerName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccessfully, setSavedSuccessfully] = useState(false);
+  const [canEnter, setCanEnter] = useState(false);
 
   // Empêcher les chargements multiples
   const loadingRef = useRef(false);
@@ -55,6 +56,22 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
   useEffect(() => {
     loadLeaderboard();
   }, [loadLeaderboard]);
+
+  // Vérifier si le score peut entrer dans le top 3
+  useEffect(() => {
+    if (!isCompleted || !currentTime || savedSuccessfully) {
+      setCanEnter(false);
+      return;
+    }
+
+    const checkEligibility = async () => {
+      // Utiliser un nom temporaire vide pour la vérification initiale
+      const eligible = await levelStorage.canEnterLeaderboard(gridSize, currentTime, playerName || '___temp___');
+      setCanEnter(eligible);
+    };
+
+    checkEligibility();
+  }, [isCompleted, currentTime, gridSize, savedSuccessfully, playerName]);
 
   const handleSaveScore = async () => {
     if (!playerName.trim() || !onSaveScore || !currentTime) return;
@@ -93,11 +110,11 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
         <h3 className="font-semibold text-gray-800">Top 3 - {gridSize}×{gridSize}</h3>
       </div>
 
-      {/* Formulaire de sauvegarde du score */}
-      {isCompleted && currentTime && !savedSuccessfully && (
+      {/* Formulaire de sauvegarde du score (uniquement si éligible) */}
+      {isCompleted && currentTime && !savedSuccessfully && canEnter && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
           <p className="text-sm text-blue-900 font-medium">
-            Enregistrez votre temps : {formatTime(currentTime)}
+            🎉 Top 3 ! Enregistrez votre temps : {formatTime(currentTime)}
           </p>
           <div className="flex gap-2">
             <input
