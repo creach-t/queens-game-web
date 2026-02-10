@@ -1,8 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
-import { get, getDatabase, ref } from "firebase/database";
+import { get, getDatabase, ref, push, query, orderByChild, limitToFirst } from "firebase/database";
 import { REGION_COLORS } from "../constants";
-import { StoredLevel, GameState } from "../types/game";
+import { StoredLevel, GameState, LeaderboardEntry, LeaderboardData } from "../types/game";
 
 class LevelStorage {
   private db: any = null;
@@ -147,6 +147,77 @@ class LevelStorage {
   }
 
   /**
+   * Sauvegarde un score dans le leaderboard
+   */
+  async saveScore(
+    levelKey: string,
+    gridSize: number,
+    time: number
+  ): Promise<boolean> {
+    if (!this.isAvailable || !this.db || !this.auth?.currentUser) {
+      return false;
+    }
+
+    try {
+      const userId = this.auth.currentUser.uid;
+      const leaderboardRef = ref(this.db, `leaderboards/${levelKey}`);
+
+      const entry: LeaderboardEntry = {
+        userId,
+        time,
+        timestamp: Date.now(),
+        gridSize,
+        levelKey,
+      };
+
+      await push(leaderboardRef, entry);
+      return true;
+    } catch (error) {
+      console.error("Erreur sauvegarde score:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Récupère le top 10 des scores pour un niveau
+   */
+  async getLeaderboard(levelKey: string): Promise<LeaderboardData> {
+    if (!this.isAvailable || !this.db) {
+      return { entries: [] };
+    }
+
+    try {
+      const leaderboardRef = ref(this.db, `leaderboards/${levelKey}`);
+      const topQuery = query(leaderboardRef, orderByChild("time"), limitToFirst(10));
+      const snapshot = await get(topQuery);
+
+      if (!snapshot.exists()) {
+        return { entries: [] };
+      }
+
+      const entries: LeaderboardEntry[] = [];
+      snapshot.forEach((child) => {
+        entries.push(child.val() as LeaderboardEntry);
+      });
+
+      // Trier par temps (croissant)
+      entries.sort((a, b) => a.time - b.time);
+
+      // Trouver le meilleur score de l'utilisateur actuel
+      let userBest: LeaderboardEntry | undefined;
+      if (this.auth?.currentUser) {
+        const userId = this.auth.currentUser.uid;
+        userBest = entries.find((e) => e.userId === userId);
+      }
+
+      return { entries: entries.slice(0, 10), userBest };
+    } catch (error) {
+      console.error("Erreur récupération leaderboard:", error);
+      return { entries: [] };
+    }
+  }
+
+  /**
    * Convertit un niveau stocké en GameState
    */
   convertToGameState(storedLevel: StoredLevel): GameState {
@@ -198,6 +269,7 @@ class LevelStorage {
       isCompleted: false,
       moveCount: 0,
       solution: regions.map((r) => r.queenPosition),
+      levelKey: storedLevel.key,
     };
   }
 }

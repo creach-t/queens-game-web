@@ -62,12 +62,21 @@ export function useGameLogic(initialGridSize: number = 6) {
     }
   }, [isLoading, gameState.board.length, gameState.isCompleted, startTimer]);
 
-  // Stop timer on completion
+  // Stop timer on completion et sauvegarder le score
   useEffect(() => {
-    if (gameState.isCompleted) {
+    if (gameState.isCompleted && gameState.levelKey) {
       stopTimer();
+
+      // Sauvegarder le score dans Firebase
+      levelStorage.saveScore(
+        gameState.levelKey,
+        gameState.gridSize,
+        gameTime
+      ).catch(err => {
+        console.error('Erreur sauvegarde score:', err);
+      });
     }
-  }, [gameState.isCompleted, stopTimer]);
+  }, [gameState.isCompleted, gameState.levelKey, gameState.gridSize, gameTime, stopTimer]);
 
   // Chargement d'un niveau depuis Firebase
   const loadLevel = useCallback(async (gridSize: number) => {

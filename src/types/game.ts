@@ -65,6 +65,7 @@ export interface SuccessMessageProps {
   gameState: GameState;
   gameTime: number;
   formatTime: (seconds: number) => string;
+  onScoreSaved?: () => void;
 }
 
 export interface SizeGridSelectorProps {
@@ -105,6 +106,20 @@ export interface GameState {
   moveCount: number;
   solution?: { row: number; col: number }[];
   bestTime?: number;
+  levelKey?: string; // Firebase key du niveau actuel
+}
+
+export interface LeaderboardEntry {
+  userId: string;
+  time: number;
+  timestamp: number;
+  gridSize: number;
+  levelKey: string;
+}
+
+export interface LeaderboardData {
+  entries: LeaderboardEntry[];
+  userBest?: LeaderboardEntry;
 }
 
 export type CellState = "empty" | "queen" | "marked";

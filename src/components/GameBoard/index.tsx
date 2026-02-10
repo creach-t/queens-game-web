@@ -35,10 +35,14 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   }, []);
 
   const cellSize = useMemo(() => {
-    const maxWidth = Math.min(600, windowSize.w * 0.85);
+    // Pour mobile (< 768px), utiliser 95% de la largeur pour maximiser l'espace
+    const isMobile = windowSize.w < 768;
+    const maxWidth = Math.min(600, windowSize.w * (isMobile ? 0.95 : 0.85));
     const maxHeight = Math.min(600, windowSize.h * 0.6);
     const availableSize = Math.min(maxWidth, maxHeight);
-    return Math.floor(availableSize / gameState.gridSize) - 6;
+    // Réduire la marge entre cellules sur mobile (grandes grilles)
+    const cellMargin = isMobile && gameState.gridSize >= 9 ? 4 : 6;
+    return Math.floor(availableSize / gameState.gridSize) - cellMargin;
   }, [gameState.gridSize, windowSize.w, windowSize.h]);
 
   // Animations
@@ -69,11 +73,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   }
 
   return (
-    <div className="flex justify-center items-center w-full p-2 md:p-4">
+    <div className="flex justify-center items-center w-full p-1 sm:p-2 md:p-4">
       <div className={`
         bg-gradient-to-br from-slate-50 to-slate-100
-        rounded-xl md:rounded-2xl shadow-xl border border-gray-200
-        p-3 md:p-6
+        rounded-lg sm:rounded-xl md:rounded-2xl shadow-xl border border-gray-200
+        p-2 sm:p-3 md:p-6
         transition-opacity duration-300
         ${isGameBlocked ? 'pointer-events-none opacity-70' : ''}
       `}>
