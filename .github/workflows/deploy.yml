@@ -133,6 +133,9 @@ jobs:
             # Supprimer toutes les anciennes images locales
             docker rmi $(docker images 'ghcr.io/creach-t/queens-game-web' -q) 2>/dev/null || true
 
+            # Export IMAGE_TAG so docker-compose can access it
+            export IMAGE_TAG
+
             # Pull la nouvelle image avec le tag SHA spécifique
             docker compose -f docker-compose.prod.yml pull
 
