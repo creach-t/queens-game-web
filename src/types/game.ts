@@ -10,13 +10,6 @@ export interface GameCell {
   isInConflictColumn?: boolean;
   isInConflictRegion?: boolean;
   isAroundConflictQueen?: boolean;
-  isDragHovered?: boolean;
-  isDragSelected?: boolean;
-}
-
-export interface ConnectedComponent {
-  cells: Position[];
-  connectedToRegion: number | null;
 }
 
 export interface StoredRegion {
@@ -33,17 +26,6 @@ export interface StoredLevel {
   createdAt: number;
 }
 
-export interface SolverResult {
-  solutionCount: number;
-  solutions: Position[][];
-  isUnique: boolean;
-}
-
-export interface CellClickInfo {
-  lastClickTime: number;
-  timeout: ReturnType<typeof setTimeout> | null;
-}
-
 export interface Position {
   row: number;
   col: number;
@@ -51,7 +33,7 @@ export interface Position {
 
 export interface ValidationResult {
   isValid: boolean;
-  conflicts: string[],
+  conflicts: string[];
   conflictPositions?: Position[];
 }
 
@@ -75,7 +57,6 @@ export interface TimerProps {
 export interface GameCellProps {
   cell: GameCell;
   size: number;
-  onClick: () => void;
   showVictoryAnimation?: boolean;
   isLoading?: boolean;
 }
@@ -104,27 +85,6 @@ export interface GameControlsProps {
   onResetGame: () => void;
   onNewGame: () => void;
   onGridSizeChange: (size: number) => void;
-  onLevelGenerated?: () => void;
-}
-
-export interface DragState {
-  isDragging: boolean;
-  dragStartCell: { row: number; col: number } | null;
-  dragMode: "mark" | "unmark" | null;
-  draggedCells: Set<string>;
-  dragPreviewCells: Set<string>;
-}
-
-export interface TouchState {
-  isTouch: boolean;
-  touchStartTime: number;
-  touchStartPosition: { x: number; y: number } | null;
-}
-
-export interface DragEventData {
-  clientX: number;
-  clientY: number;
-  type: "mouse" | "touch";
 }
 
 export interface ColoredRegion {
@@ -144,25 +104,10 @@ export interface GameState {
   isCompleted: boolean;
   moveCount: number;
   solution?: { row: number; col: number }[];
-  startTime?: number;
-  elapsedTime: number;
-  isTimerRunning: boolean;
   bestTime?: number;
 }
 
-export interface GameMove {
-  type: "place_queen" | "place_marker" | "remove";
-  row: number;
-  col: number;
-  previousState: "empty" | "queen" | "marked";
-}
-
 export type CellState = "empty" | "queen" | "marked";
-
-export interface GameConfig {
-  gridSize: number;
-  difficulty: "easy" | "medium" | "hard";
-}
 
 export interface BoardGridProps {
   gameState: GameState;
@@ -172,6 +117,7 @@ export interface BoardGridProps {
   isLoading: boolean;
   showVictoryAnimation: boolean;
   onCellClick: (row: number, col: number) => void;
+  onMarkCell: (row: number, col: number) => void;
 }
 
 export interface AnimationOverlayProps {
@@ -182,6 +128,7 @@ export interface AnimationOverlayProps {
 export interface GameBoardProps {
   gameState: GameState;
   onCellClick: (row: number, col: number) => void;
+  onMarkCell: (row: number, col: number) => void;
   showVictoryAnimation?: boolean;
   isGameBlocked?: boolean;
   animationMode?: "construction" | "destruction" | "none";

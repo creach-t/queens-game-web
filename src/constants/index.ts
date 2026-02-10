@@ -7,8 +7,8 @@ export const REGION_COLORS = [
   "#D4E157",
   "#4DD0E1",
   "#fa6464",
-  "#b0a997",
-  "#615f87",
-  "#995d36",
+  "#d4cfbc", // était #b0a997 — gris éclairci
+  "#9a96b8", // était #615f87 — violet éclairci
+  "#c9956e", // était #995d36 — marron éclairci
   "#02f760",
 ];

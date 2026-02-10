@@ -12,24 +12,19 @@ export const GameControls: React.FC<GameControlsProps> = ({
   onResetGame,
   onNewGame,
   onGridSizeChange,
-  onLevelGenerated
 }) => {
   const [levelCounts, setLevelCounts] = useState<Record<number, number>>({});
 
-  const loadLevelCounts = async () => {
-    const counts = await levelStorage.getLevelCounts();
-    setLevelCounts(counts);
-  };
-
+  // Charger les counts une seule fois au mount
   useEffect(() => {
-    loadLevelCounts();
+    let cancelled = false;
+    const load = async () => {
+      const counts = await levelStorage.getLevelCounts();
+      if (!cancelled) setLevelCounts(counts);
+    };
+    load();
+    return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => {
-    if (onLevelGenerated) {
-      loadLevelCounts();
-    }
-  }, [gameState.solution, onLevelGenerated]);
 
   const formatTime = (seconds: number): string => {
     const validSeconds = isNaN(seconds) || seconds < 0 ? 0 : Math.floor(seconds);
@@ -49,14 +44,14 @@ export const GameControls: React.FC<GameControlsProps> = ({
         />
       )}
 
-      {/* Contrôles principaux */}
+      {/* Controles principaux */}
       <MainControls
         onResetGame={onResetGame}
         onNewGame={onNewGame}
         isCompleted={gameState.isCompleted}
       />
 
-      {/* Sélecteur de grille */}
+      {/* Selecteur de grille */}
       <SizeGridSelector
         currentGridSize={gameState.gridSize}
         onGridSizeChange={onGridSizeChange}

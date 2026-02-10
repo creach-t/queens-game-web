@@ -2,22 +2,19 @@ import { Crown, X } from 'lucide-react';
 import React from 'react';
 import { GameCellProps } from '../types/game';
 
-export const GameCell: React.FC<GameCellProps> = ({
+const GameCellComponent: React.FC<GameCellProps> = ({
   cell,
   size,
-  onClick,
   showVictoryAnimation = false,
   isLoading = false
 }) => {
-  // Calculs directs - pas de fonctions
   const iconSize = size * 0.5;
   const hatchSize = Math.max(3, size * 0.08);
 
   const hasConflict = cell.isInConflictLine || cell.isInConflictColumn ||
                      cell.isInConflictRegion || cell.isAroundConflictQueen;
 
-  // Style unifié - pas de recalculs
-  const cellStyle = {
+  const cellStyle: React.CSSProperties = {
     backgroundColor: cell.state === 'queen' && (cell.isConflict || showVictoryAnimation)
       ? '#fef3c7'
       : cell.regionColor,
@@ -28,17 +25,12 @@ export const GameCell: React.FC<GameCellProps> = ({
       : undefined
   };
 
-  // Classes statiques - pas de concaténation
   const baseClasses = isLoading
     ? "relative flex items-center justify-center border border-slate-300/50 cursor-wait select-none"
     : "relative flex items-center justify-center border border-slate-300/50 cursor-pointer select-none hover:scale-105 active:scale-95";
 
   return (
-    <div
-      className={baseClasses}
-      onClick={isLoading ? undefined : onClick}
-      style={cellStyle}
-    >
+    <div className={baseClasses} style={cellStyle}>
       {cell.state === 'queen' && (
         <Crown
           size={iconSize}
@@ -53,8 +45,8 @@ export const GameCell: React.FC<GameCellProps> = ({
       {cell.state === 'marked' && (
         <X
           size={iconSize * 0.8}
-          className="text-slate-600"
-          strokeWidth={1.5}
+          className="text-slate-700"
+          strokeWidth={2}
         />
       )}
 
@@ -64,3 +56,19 @@ export const GameCell: React.FC<GameCellProps> = ({
     </div>
   );
 };
+
+// React.memo avec comparateur custom — seules les cellules modifiées re-render
+export const GameCell = React.memo(GameCellComponent, (prev, next) => {
+  return (
+    prev.cell.state === next.cell.state &&
+    prev.cell.isConflict === next.cell.isConflict &&
+    prev.cell.isInConflictLine === next.cell.isInConflictLine &&
+    prev.cell.isInConflictColumn === next.cell.isInConflictColumn &&
+    prev.cell.isInConflictRegion === next.cell.isInConflictRegion &&
+    prev.cell.isAroundConflictQueen === next.cell.isAroundConflictQueen &&
+    prev.cell.regionColor === next.cell.regionColor &&
+    prev.size === next.size &&
+    prev.showVictoryAnimation === next.showVictoryAnimation &&
+    prev.isLoading === next.isLoading
+  );
+});

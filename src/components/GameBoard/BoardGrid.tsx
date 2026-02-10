@@ -1,8 +1,20 @@
-import React from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { BoardGridProps } from '../../types/game';
-import { getCellBorderStyle, getCellCornerRadius } from '../../utils/boardUtils';
+import { getCellBorderStyle, getCornerClasses } from '../../utils/boardUtils';
 import { GameCell } from '../GameCell';
 import { AnimationOverlay } from './AnimationOverlay';
+
+/** Retrouve la cellule [data-row][data-col] sous un point (x, y) de l'écran */
+function getCellAtPoint(x: number, y: number): { row: number; col: number } | null {
+  const el = document.elementFromPoint(x, y);
+  if (!el) return null;
+  const cellEl = (el as HTMLElement).closest('[data-row]') as HTMLElement;
+  if (!cellEl) return null;
+  const row = Number(cellEl.dataset.row);
+  const col = Number(cellEl.dataset.col);
+  if (isNaN(row) || isNaN(col)) return null;
+  return { row, col };
+}
 
 export const BoardGrid: React.FC<BoardGridProps> = ({
   gameState,
@@ -11,8 +23,132 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
   isDestroying,
   isLoading,
   showVictoryAnimation,
-  onCellClick
+  onCellClick,
+  onMarkCell
 }) => {
+  // Pré-calculer les coins arrondis (4 entrées max)
+  const cornerClasses = useMemo(
+    () => getCornerClasses(gameState.gridSize),
+    [gameState.gridSize]
+  );
+
+  // Pré-calculer isMobile une seule fois
+  const isMobile = useMemo(() => window.innerWidth <= 768, []);
+
+  // Pré-calculer tous les styles de bordure (ne dépend que des régions)
+  const borderStyles = useMemo(() => {
+    const styles = new Map<string, React.CSSProperties>();
+    for (let row = 0; row < gameState.gridSize; row++) {
+      for (let col = 0; col < gameState.gridSize; col++) {
+        styles.set(
+          `${row}-${col}`,
+          getCellBorderStyle(gameState, { row, col }, isMobile)
+        );
+      }
+    }
+    return styles;
+  }, [gameState.gridSize, gameState.board, isMobile]);
+
+  // Event delegation : desktop uniquement (tactile géré par touch handlers)
+  const handleGridClick = useCallback((e: React.MouseEvent) => {
+    // Ignorer les click synthétiques sur device tactile
+    if (isTouchDevice.current) {
+      console.log('[BoardGrid] click IGNORED (touch device)');
+      return;
+    }
+    console.log('[BoardGrid] click event fired (mouse)');
+    const target = (e.target as HTMLElement).closest('[data-row]') as HTMLElement;
+    if (!target) return;
+    const row = Number(target.dataset.row);
+    const col = Number(target.dataset.col);
+    if (!isNaN(row) && !isNaN(col)) {
+      console.log(`[BoardGrid] click → onCellClick(${row}, ${col})`);
+      onCellClick(row, col);
+    }
+  }, [onCellClick]);
+
+  // --- Gestion tactile ---
+  // Dès qu'un touchstart est détecté, on sait qu'on est sur un device tactile
+  // et on ignore tous les click (qui sont gérés via touchend)
+  const isTouchDevice = useRef(false);
+  const isSwiping = useRef(false);
+  const lastSwipedCell = useRef<string | null>(null);
+  const swipedCells = useRef<Set<string>>(new Set());
+  const touchStartCell = useRef<{ row: number; col: number } | null>(null);
+  const hasMoved = useRef(false);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    isTouchDevice.current = true;
+    const touch = e.touches[0];
+    const cell = getCellAtPoint(touch.clientX, touch.clientY);
+    console.log(`[BoardGrid] touchstart at (${touch.clientX.toFixed(0)}, ${touch.clientY.toFixed(0)}) → cell:`, cell);
+    if (!cell) return;
+
+    touchStartCell.current = cell;
+    hasMoved.current = false;
+    // On ne démarre pas encore le swipe — on attend un touchmove
+    lastSwipedCell.current = `${cell.row}-${cell.col}`;
+    swipedCells.current = new Set();
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    const cell = getCellAtPoint(touch.clientX, touch.clientY);
+    if (!cell) return;
+
+    const cellKey = `${cell.row}-${cell.col}`;
+
+    // Première fois qu'on bouge : activer le mode swipe
+    if (!hasMoved.current) {
+      hasMoved.current = true;
+      isSwiping.current = true;
+      console.log(`[BoardGrid] touchmove → swipe started`);
+
+      // Marquer aussi la cellule de départ si elle est vide
+      if (touchStartCell.current) {
+        const startKey = `${touchStartCell.current.row}-${touchStartCell.current.col}`;
+        swipedCells.current.add(startKey);
+        console.log(`[BoardGrid] swipe mark start cell (${touchStartCell.current.row}, ${touchStartCell.current.col})`);
+        onMarkCell(touchStartCell.current.row, touchStartCell.current.col);
+      }
+    }
+
+    // Éviter de re-marquer la même cellule
+    if (cellKey === lastSwipedCell.current || swipedCells.current.has(cellKey)) return;
+
+    lastSwipedCell.current = cellKey;
+    swipedCells.current.add(cellKey);
+    console.log(`[BoardGrid] swipe mark cell (${cell.row}, ${cell.col})`);
+    onMarkCell(cell.row, cell.col);
+  }, [onMarkCell]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const wasSwiping = hasMoved.current;
+    const startCell = touchStartCell.current;
+    const cellState = startCell ? gameState.board[startCell.row]?.[startCell.col]?.state : null;
+
+    console.log(`[BoardGrid] touchend — hasMoved: ${wasSwiping}, startCell: ${startCell ? `(${startCell.row},${startCell.col})` : 'null'}, cellState: ${cellState}`);
+
+    // Toujours empêcher le click synthétique sur tactile — on gère tout ici
+    e.preventDefault();
+
+    // Tap sans mouvement → cycle normal (empty → marked → queen → empty)
+    if (!wasSwiping && startCell) {
+      console.log(`[BoardGrid] touchend → TAP → onCellClick(${startCell.row}, ${startCell.col})`);
+      onCellClick(startCell.row, startCell.col);
+    } else {
+      console.log(`[BoardGrid] touchend → SWIPE ended (no click)`);
+    }
+
+    isSwiping.current = false;
+    lastSwipedCell.current = null;
+    swipedCells.current.clear();
+    touchStartCell.current = null;
+    hasMoved.current = false;
+  }, [onCellClick, gameState.board]);
+
+  const isAnimating = isLoading || isDestroying;
+
   return (
     <div
       className="bg-slate-800 rounded-lg shadow-inner relative overflow-hidden"
@@ -21,33 +157,36 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
         gridTemplateColumns: `repeat(${gameState.gridSize}, ${cellSize}px)`,
         gridTemplateRows: `repeat(${gameState.gridSize}, ${cellSize}px)`,
         gap: '0px',
-        padding: '3px'
+        padding: '3px',
+        touchAction: 'none', // Empêcher le scroll pendant le swipe sur la grille
       }}
+      onClick={handleGridClick}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
-      {/* Cellules du plateau */}
       {gameState.board.map((row, rowIndex) =>
         row.map((cell, colIndex) => {
-          const position = { row: rowIndex, col: colIndex };
           const cellKey = `${rowIndex}-${colIndex}`;
           const isLoaded = loadedCells.has(cellKey);
-          const borderStyle = getCellBorderStyle(gameState, position);
-          const cornerRadius = getCellCornerRadius(gameState.gridSize, position);
 
           return (
             <div
               key={cellKey}
+              data-row={rowIndex}
+              data-col={colIndex}
               className={`
-                relative overflow-hidden transition-all duration-300 ease-out
-                ${cornerRadius}
+                relative overflow-hidden
+                ${cornerClasses.get(cellKey) || ''}
                 ${isLoaded ? 'scale-100 opacity-100' : 'scale-75 opacity-0'}
                 ${isDestroying ? 'blur-sm' : ''}
+                ${isAnimating ? 'transition-transform transition-opacity duration-300 ease-out' : ''}
               `}
-              style={borderStyle}
+              style={borderStyles.get(cellKey)}
             >
               <GameCell
                 cell={cell}
                 size={cellSize}
-                onClick={() => onCellClick(rowIndex, colIndex)}
                 showVictoryAnimation={showVictoryAnimation}
                 isLoading={!isLoaded}
               />
@@ -56,7 +195,6 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
         })
       )}
 
-      {/* Overlays d'animation */}
       <AnimationOverlay
         isDestroying={isDestroying}
         isLoading={isLoading}

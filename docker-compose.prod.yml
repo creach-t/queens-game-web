@@ -1,0 +1,21 @@
+services:
+  queens-game:
+    image: ghcr.io/creach-t/queens-game-web:latest
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.queens-game.rule=Host(`queens-game.creachtheo.fr`)"
+      - "traefik.http.routers.queens-game.entrypoints=websecure"
+      - "traefik.http.routers.queens-game.tls.certresolver=myresolver"
+      - "traefik.http.services.queens-game.loadbalancer.server.port=80"
+      # Redirection HTTP vers HTTPS
+      - "traefik.http.routers.queens-game-http.rule=Host(`queens-game.creachtheo.fr`)"
+      - "traefik.http.routers.queens-game-http.entrypoints=web"
+      - "traefik.http.routers.queens-game-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+    networks:
+      - traefik-public
+
+networks:
+  traefik-public:
+    external: true

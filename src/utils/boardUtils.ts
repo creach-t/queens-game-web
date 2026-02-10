@@ -3,13 +3,13 @@ import { GameState, Position } from '../types/game';
 
 /**
  * Calcule le style des bordures pour une cellule
- * Gère les bordures entre régions et les bordures externes
+ * Paramètre isMobile passé pour éviter 144 appels à window.innerWidth
  */
 export const getCellBorderStyle = (
   gameState: GameState,
-  position: Position
+  position: Position,
+  isMobile: boolean
 ): React.CSSProperties => {
-
   const { row, col } = position;
 
   if (!gameState.board || !gameState.board[row] || !gameState.board[row][col]) {
@@ -18,49 +18,30 @@ export const getCellBorderStyle = (
 
   const cell = gameState.board[row][col];
   const { gridSize } = gameState;
-  const isMobile = window.innerWidth <= 768;
-
   const style: React.CSSProperties = {};
 
-  // Bordures externes (contour de la grille) - toujours les plus épaisses
-  if (row === 0) {
-    style.borderTop = isMobile ? '2px solid #2c3e50' : '3px solid #2c3e50';
-  }
-  if (col === 0) {
-    style.borderLeft = isMobile ? '2px solid #2c3e50' : '3px solid #2c3e50';
-  }
-  if (row === gridSize - 1) {
-    style.borderBottom = isMobile ? '2px solid #2c3e50' : '3px solid #2c3e50';
-  }
-  if (col === gridSize - 1) {
-    style.borderRight = isMobile ? '2px solid #2c3e50' : '3px solid #2c3e50';
-  }
+  const thickBorder = isMobile ? '2px solid #2c3e50' : '3px solid #2c3e50';
+  const thinBorder = '1px solid #2c3e50';
 
-  // Bordures droites (verticales)
+  // Bordures externes
+  if (row === 0) style.borderTop = thickBorder;
+  if (col === 0) style.borderLeft = thickBorder;
+  if (row === gridSize - 1) style.borderBottom = thickBorder;
+  if (col === gridSize - 1) style.borderRight = thickBorder;
+
+  // Bordures droites (entre régions)
   if (col < gridSize - 1) {
     const rightCell = gameState.board[row][col + 1];
     if (rightCell) {
-      if (rightCell.regionId !== cell.regionId) {
-        // Entre régions différentes - bordure épaisse
-        style.borderRight = isMobile ? '2px solid #2c3e50' : '3px solid #2c3e50';
-      } else {
-        // Même région - bordure fine
-        style.borderRight = '1px solid #2c3e50';
-      }
+      style.borderRight = rightCell.regionId !== cell.regionId ? thickBorder : thinBorder;
     }
   }
 
-  // Bordures bas (horizontales)
+  // Bordures bas (entre régions)
   if (row < gridSize - 1) {
     const bottomCell = gameState.board[row + 1][col];
     if (bottomCell) {
-      if (bottomCell.regionId !== cell.regionId) {
-        // Entre régions différentes - bordure épaisse
-        style.borderBottom = isMobile ? '2px solid #2c3e50' : '3px solid #2c3e50';
-      } else {
-        // Même région - bordure fine
-        style.borderBottom = '1px solid #2c3e50';
-      }
+      style.borderBottom = bottomCell.regionId !== cell.regionId ? thickBorder : thinBorder;
     }
   }
 
@@ -68,26 +49,14 @@ export const getCellBorderStyle = (
 };
 
 /**
- * Détermine les coins arrondis pour les cellules d'angle de la grille
+ * Map des coins arrondis — seulement 4 cellules en ont besoin
  */
-export const getCellCornerRadius = (
-  gridSize: number,
-  position: Position
-): string => {
-  const { row, col } = position;
-  if (row === 0 && col === 0) return 'rounded-tl-md';
-  if (row === 0 && col === gridSize - 1) return 'rounded-tr-md';
-  if (row === gridSize - 1 && col === 0) return 'rounded-bl-md';
-  if (row === gridSize - 1 && col === gridSize - 1) return 'rounded-br-md';
-  return '';
-};
-
-/**
- * Calcule la taille optimale des cellules selon l'écran
- */
-export const calculateCellSize = (gridSize: number): number => {
-  const maxWidth = Math.min(600, window.innerWidth * 0.85);
-  const maxHeight = Math.min(600, window.innerHeight * 0.6);
-  const availableSize = Math.min(maxWidth, maxHeight);
-  return Math.floor(availableSize / gridSize) - 6;
+export const getCornerClasses = (gridSize: number): Map<string, string> => {
+  const g = gridSize - 1;
+  return new Map([
+    ['0-0', 'rounded-tl-md'],
+    [`0-${g}`, 'rounded-tr-md'],
+    [`${g}-0`, 'rounded-bl-md'],
+    [`${g}-${g}`, 'rounded-br-md'],
+  ]);
 };
