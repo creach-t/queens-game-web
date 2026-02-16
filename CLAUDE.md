@@ -36,6 +36,7 @@ src/
 ├── components/
 │   ├── Game.tsx              # Main game orchestrator (loading/error states)
 │   ├── GameCell.tsx          # Individual cell (React.memo, queen/marker/empty)
+│   ├── GameStats.tsx         # Online players + games won counters (real-time)
 │   ├── Timer.tsx             # MM:SS timer display
 │   ├── Leaderboard.tsx       # Top 3 leaderboard with save form (always visible)
 │   ├── GameBoard/
@@ -50,7 +51,7 @@ src/
 │       ├── SizeGridSelector.tsx  # Grid size picker (5-12)
 │       └── SuccessMessage.tsx    # Victory message (simplified)
 ├── hooks/
-│   ├── useGameLogic.ts       # Core game state (Firebase loading, timer, single-render clicks)
+│   ├── useGameLogic.ts       # Core game state (Firebase loading, timer, victory detection)
 │   └── useAnimations.ts      # Spiral animations (requestAnimationFrame)
 ├── lib/
 │   └── rules.ts              # Pure game rule validation (Map-based indexing)
@@ -58,7 +59,7 @@ src/
 │   └── game.ts               # All TypeScript interfaces
 ├── utils/
 │   ├── boardUtils.ts         # Border styles, corner classes
-│   ├── levelStorage.ts       # Firebase (levels + leaderboard with 30s cache)
+│   ├── levelStorage.ts       # Firebase (levels, stats, presence, level weighting)
 │   └── gameUtils.ts          # Board init/reset helpers
 ├── constants/
 │   └── index.ts              # Region color palette (12 pastel colors)
@@ -73,20 +74,22 @@ src/
 - **Validation**: Synchronous within single `setGameState` callback (no deferred setTimeout)
 - **Cell click cycle**: empty → marked → queen → empty
 - **Touch swipe**: Sliding on mobile marks multiple empty cells in one gesture
-- **Level loading**: Firebase-only via `levelStorage.getRandomLevel()`
+- **Level loading**: Firebase-only via `levelStorage.getRandomLevel()` with weighted selection (70% unsolved, 30% solved)
 - **Timer**: `useRef<setInterval>`, starts when grid becomes visible, continues on reset, stops on completion
 - **Animations**: Single `requestAnimationFrame` loop with Set-based spiral order (memoized)
 - **Memoization**: `React.memo` on GameCell with custom comparator, `useMemo` for border styles
 - **Event delegation**: Single click handler on grid container (data-row/data-col attributes)
+- **Real-time updates**: Firebase `onValue()` listeners for stats and presence tracking
 - **Leaderboard**: Top 3 per grid size, 30s client cache, name-based updates, shown only if eligible
 - **Path alias**: `@/*` maps to `./src/*`
 
 ## Key Files for Common Tasks
 
 - **Game rules/validation**: `src/lib/rules.ts` — pure functions, Map-based indexing
-- **Game state/logic**: `src/hooks/useGameLogic.ts` — main hook for gameplay
+- **Game state/logic**: `src/hooks/useGameLogic.ts` — main hook for gameplay, victory detection
 - **Type definitions**: `src/types/game.ts` — all interfaces
-- **Level loading + leaderboard**: `src/utils/levelStorage.ts` — Firebase persistence with caching
+- **Firebase integration**: `src/utils/levelStorage.ts` — levels, stats, presence, level weighting, real-time subscriptions
+- **Statistics UI**: `src/components/GameStats.tsx` — online players counter, games won counter
 - **Leaderboard UI**: `src/components/Leaderboard.tsx` — top 3, save form, eligibility check
 - **Firebase setup**: `FIREBASE_SETUP.md` — rules configuration guide
 - **Firebase monitoring**: `FIREBASE_MONITORING.md` — bandwidth optimization & alerts
@@ -113,8 +116,23 @@ push main → GitHub Actions → type-check → build → Docker image → GHCR 
 - **Types/interfaces**: PascalCase, centralized in `src/types/`
 - **Styling**: Tailwind utility classes; inline `style` for dynamic colors (region backgrounds)
 
-## Leaderboard System
+## Game Statistics & Progression
 
+### Statistics System
+- **Games Won Counter**: Real-time updates via Firebase `onValue()` listener
+- **Online Players Counter**: Real-time presence tracking with automatic cleanup
+- **Victory Detection**: Increments counter only when puzzle is solved (not on load/reset)
+- **Cache Invalidation**: Automatic cache refresh on victory for instant updates
+- **Anonymous Auth**: Required for Firebase write operations
+
+### Level Weighting System
+- **Smart Selection**: 70% chance for unsolved levels, 30% for solved levels
+- **Progress Tracking**: Per-user solved levels stored in Firebase (`users/{uid}/solved_levels`)
+- **Replay Support**: Solved levels remain available for practice
+- **First-time Players**: 100% unsolved pool (all levels available)
+- **All Solved**: Falls back to 100% solved pool (replay mode)
+
+### Leaderboard System
 - **Storage**: Firebase Realtime Database (`leaderboards/grid_{size}`)
 - **Top 3 only**: Reduces bandwidth by 70% vs top 10
 - **Name-based updates**: Same player name = update if better time, prevents duplicates
@@ -124,6 +142,12 @@ push main → GitHub Actions → type-check → build → Docker image → GHCR 
 - **Client-side cache**: 30-second cache prevents excessive Firebase requests
 - **Anonymous auth**: Required for write access (Firebase rules)
 - **Always visible**: Leaderboard displays on page load, not just after completion
+
+### Presence Tracking
+- **Real-time Count**: Firebase `.info/connected` listener for connection state
+- **Auto Cleanup**: `onDisconnect()` handlers remove stale presence data
+- **Guard Protection**: Null reference guards prevent errors during reconnection
+- **Auth Synchronization**: Wait for authentication before subscribing to presence
 
 See `FIREBASE_SETUP.md` for rules configuration and `FIREBASE_MONITORING.md` for usage optimization.
 
