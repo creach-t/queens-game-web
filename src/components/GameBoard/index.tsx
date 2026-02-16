@@ -2,7 +2,6 @@ import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import { GameBoardProps } from '../../types/game';
 import { useAnimations } from '../../hooks/useAnimations';
 import { BoardGrid } from './BoardGrid';
-import { LoadingState } from './LoadingState';
 
 export const GameBoard: React.FC<GameBoardProps> = ({
   gameState,
@@ -66,11 +65,6 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     if (isLoading || isGameBlocked || isDestroying) return;
     onMarkCell(row, col);
   }, [isLoading, isGameBlocked, isDestroying, onMarkCell]);
-
-  // État de chargement initial
-  if (!gameState.board || gameState.board.length === 0) {
-    return <LoadingState />;
-  }
 
   return (
     <div className="flex justify-center items-center w-full p-1 sm:p-2 md:p-4">

@@ -3,6 +3,7 @@ import { useGameLogic } from '../hooks/useGameLogic';
 import { GameBoard } from './GameBoard';
 import { GameControls } from './GameControls';
 import { Timer } from './Timer';
+import { LoadingState } from './GameBoard/LoadingState';
 
 export const Game: React.FC = () => {
   const {
@@ -15,18 +16,19 @@ export const Game: React.FC = () => {
     saveScore,
     gameTime,
     isGenerating,
+    isLoading,
     error,
   } = useGameLogic();
 
   const [boardAnimationKey, setBoardAnimationKey] = useState(0);
 
-  const handleGridSizeChange = useCallback((newSize: number) => {
-    changeGridSizeOnly(newSize);
+  const handleGridSizeChange = useCallback(async (newSize: number) => {
+    await changeGridSizeOnly(newSize);
     setBoardAnimationKey(prev => prev + 1);
   }, [changeGridSizeOnly]);
 
-  const handleNewGame = useCallback(() => {
-    originalNewGame(gameState.gridSize);
+  const handleNewGame = useCallback(async () => {
+    await originalNewGame(gameState.gridSize);
     setBoardAnimationKey(prev => prev + 1);
   }, [originalNewGame, gameState.gridSize]);
 
@@ -51,15 +53,19 @@ export const Game: React.FC = () => {
 
         {/* Plateau */}
         <div className="game-board-section">
-          <GameBoard
-            gameState={gameState}
-            onCellClick={handleCellClick}
-            onMarkCell={markCell}
-            showVictoryAnimation={showVictoryAnimation}
-            key={boardAnimationKey}
-            isGameBlocked={isGenerating}
-            animationMode="none"
-          />
+          {isLoading ? (
+            <LoadingState />
+          ) : (
+            <GameBoard
+              gameState={gameState}
+              onCellClick={handleCellClick}
+              onMarkCell={markCell}
+              showVictoryAnimation={showVictoryAnimation}
+              key={boardAnimationKey}
+              isGameBlocked={isGenerating}
+              animationMode="none"
+            />
+          )}
         </div>
 
         {/* Controles */}

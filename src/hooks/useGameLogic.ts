@@ -84,6 +84,9 @@ export function useGameLogic(initialGridSize: number = 6) {
 
       const newGameState = levelStorage.convertToGameState(storedLevel);
       setGameState(newGameState);
+
+      // Incrémenter le compteur de parties jouées
+      await levelStorage.incrementGamesPlayed();
     } catch (err) {
       setError('Erreur lors du chargement du niveau');
       console.error('Level loading error:', err);

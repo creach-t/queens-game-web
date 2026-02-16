@@ -15,6 +15,10 @@ class LevelStorage {
   private leaderboardCache: Map<number, { data: LeaderboardData; timestamp: number }> = new Map();
   private readonly CACHE_DURATION = 30000; // 30 secondes
 
+  // Cache pour les statistiques globales
+  private statsCache: { totalGames: number; timestamp: number } | null = null;
+  private readonly STATS_CACHE_DURATION = 60000; // 1 minute
+
   constructor(firebaseConfig: any) {
     try {
       if (!firebaseConfig.databaseURL) {
@@ -334,6 +338,62 @@ class LevelStorage {
     } catch (error) {
       console.error("Erreur vérification leaderboard:", error);
       return false;
+    }
+  }
+
+  /**
+   * Récupère le nombre total de parties jouées
+   */
+  async getTotalGamesPlayed(): Promise<number> {
+    if (!this.isAvailable || !this.db) {
+      return 0;
+    }
+
+    // Vérifier le cache
+    const now = Date.now();
+    if (this.statsCache && (now - this.statsCache.timestamp) < this.STATS_CACHE_DURATION) {
+      console.log(`[Cache] Stats depuis cache: ${this.statsCache.totalGames} parties`);
+      return this.statsCache.totalGames;
+    }
+
+    try {
+      console.log(`[Firebase] Chargement stats globales`);
+      const statsRef = ref(this.db, "stats/total_games");
+      const snapshot = await get(statsRef);
+
+      const totalGames = snapshot.exists() ? (snapshot.val() as number) : 0;
+
+      // Mettre en cache
+      this.statsCache = { totalGames, timestamp: now };
+
+      return totalGames;
+    } catch (error) {
+      console.error("Erreur récupération stats:", error);
+      return 0;
+    }
+  }
+
+  /**
+   * Incrémente le compteur de parties jouées
+   */
+  async incrementGamesPlayed(): Promise<void> {
+    if (!this.isAvailable || !this.db) {
+      return;
+    }
+
+    try {
+      const { runTransaction } = await import("firebase/database");
+      const statsRef = ref(this.db, "stats/total_games");
+
+      await runTransaction(statsRef, (currentValue) => {
+        return (currentValue || 0) + 1;
+      });
+
+      // Invalider le cache
+      this.statsCache = null;
+      console.log(`[Stats] Partie incrémentée`);
+    } catch (error) {
+      console.error("Erreur incrémentation stats:", error);
     }
   }
 
