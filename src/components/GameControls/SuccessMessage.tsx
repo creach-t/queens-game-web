@@ -8,15 +8,15 @@ export const SuccessMessage: React.FC<SuccessMessageProps> = ({
   formatTime
 }) => {
   return (
-    <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+    <div className="bg-green-50 border border-green-200 rounded-lg p-2">
       <div className="text-center">
-        <div className="flex items-center justify-center gap-3 mb-2">
-          <Trophy className="w-6 h-6 text-green-600" />
-          <div className="font-medium text-green-800">Félicitations !</div>
+        <div className="flex items-center justify-center gap-2 mb-1">
+          <Trophy className="w-4 h-4 text-green-600" />
+          <div className="font-medium text-green-800 text-sm">Félicitations !</div>
         </div>
-        <div className="text-sm text-green-700">
-          <div className="flex items-center justify-center gap-2">
-            <Clock className="w-4 h-4" />
+        <div className="text-xs text-green-700">
+          <div className="flex items-center justify-center gap-1">
+            <Clock className="w-3 h-3" />
             <span>Puzzle {gameState.gridSize}×{gameState.gridSize} résolu en {formatTime(gameTime)}</span>
           </div>
         </div>

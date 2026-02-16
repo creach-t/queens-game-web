@@ -39,11 +39,11 @@ export const GameStats: React.FC = () => {
   }
 
   return (
-    <div className="flex items-center justify-center gap-3 flex-wrap">
+    <div className="flex items-center justify-center gap-2 flex-wrap">
       {/* Online Players Counter */}
       {onlineCount !== null && onlineCount > 0 && (
-        <div className="flex items-center gap-2 text-sm text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
-          <Activity className="h-4 w-4" />
+        <div className="flex items-center gap-1 text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-200">
+          <Activity className="h-3 w-3" />
           <span className="font-medium">{onlineCount}</span>
           <span className="hidden sm:inline">
             joueur{onlineCount > 1 ? 's' : ''} en ligne
@@ -54,8 +54,8 @@ export const GameStats: React.FC = () => {
 
       {/* Total Games Counter */}
       {totalGames !== null && totalGames > 0 && (
-        <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
-          <Users className="h-4 w-4" />
+        <div className="flex items-center gap-1 text-xs text-slate-600 bg-slate-50 px-2 py-1 rounded border border-slate-200">
+          <Users className="h-3 w-3" />
           <span className="font-medium">{totalGames.toLocaleString()}</span>
           <span className="hidden sm:inline">
             partie{totalGames > 1 ? 's' : ''} gagnée{totalGames > 1 ? 's' : ''}

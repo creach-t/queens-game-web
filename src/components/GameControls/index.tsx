@@ -36,7 +36,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Message de victoire */}
       {gameState.isCompleted && (
         <SuccessMessage

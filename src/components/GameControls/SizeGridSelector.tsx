@@ -25,11 +25,11 @@ export const SizeGridSelector: React.FC<SizeGridSelectorProps> = ({
   const currentDifficulty = difficultyInfo[currentGridSize as keyof typeof difficultyInfo];
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <label className="font-medium text-gray-900">Difficulté</label>
+    <div className="bg-white rounded-lg border border-gray-200 p-3">
+      <div className="flex items-center justify-between mb-2">
+        <label className="font-medium text-gray-900 text-sm">Difficulté</label>
         {currentDifficulty && (
-          <span className={`px-3 py-1 rounded-full text-sm font-medium ${currentDifficulty.color}`}>
+          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${currentDifficulty.color}`}>
             {currentDifficulty.name}
           </span>
         )}
@@ -38,7 +38,7 @@ export const SizeGridSelector: React.FC<SizeGridSelectorProps> = ({
       <select
         value={currentGridSize}
         onChange={(e) => onGridSizeChange(Number(e.target.value))}
-        className="w-full h-12 border border-gray-300 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        className="w-full h-9 border border-gray-300 rounded px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
       >
         <option value={5}>5×5 — Tutoriel{formatLevelCount(5)}</option>
         <option value={6}>6×6 — Facile{formatLevelCount(6)}</option>

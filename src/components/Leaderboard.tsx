@@ -128,16 +128,16 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
+    <div className="bg-white border border-gray-200 rounded-lg p-3 space-y-3">
       <div className="flex items-center gap-2">
-        <Trophy className="w-5 h-5 text-yellow-600" />
-        <h3 className="font-semibold text-gray-800">Top 3 - {gridSize}×{gridSize}</h3>
+        <Trophy className="w-4 h-4 text-yellow-600" />
+        <h3 className="font-semibold text-gray-800 text-sm">Top 3 - {gridSize}×{gridSize}</h3>
       </div>
 
       {/* Formulaire de sauvegarde du score (uniquement si éligible) */}
       {isCompleted && currentTime && !savedSuccessfully && canEnter && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
-          <p className="text-sm text-blue-900 font-medium">
+        <div className="bg-blue-50 border border-blue-200 rounded p-2 space-y-2">
+          <p className="text-xs text-blue-900 font-medium">
             🎉 Top 3 ! Enregistrez votre temps : {formatTime(currentTime)}
           </p>
           <div className="flex gap-2">
@@ -147,7 +147,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
               onChange={(e) => setPlayerName(e.target.value)}
               placeholder={savedPlayerName || "Votre nom"}
               maxLength={20}
-              className="flex-1 px-3 py-2 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-2 py-1.5 text-xs border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (playerName.trim() || savedPlayerName)) {
                   handleSaveScore();
@@ -157,9 +157,9 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
             <button
               onClick={handleSaveScore}
               disabled={(!playerName.trim() && !savedPlayerName) || isSaving}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-xs font-medium rounded transition-colors flex items-center gap-1"
             >
-              <Save className="w-4 h-4" />
+              <Save className="w-3 h-3" />
               {isSaving ? 'Envoi...' : 'Enregistrer'}
             </button>
           </div>
@@ -168,16 +168,16 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
 
       {/* Message de confirmation */}
       {savedSuccessfully && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-          <p className="text-sm text-green-800 font-medium">✓ Score enregistré avec succès !</p>
+        <div className="bg-green-50 border border-green-200 rounded p-2">
+          <p className="text-xs text-green-800 font-medium">✓ Score enregistré avec succès !</p>
         </div>
       )}
 
       {/* Liste du leaderboard */}
       {isLoading ? (
-        <div className="text-sm text-gray-500 text-center py-4">Chargement...</div>
+        <div className="text-xs text-gray-500 text-center py-3">Chargement...</div>
       ) : leaderboardData.entries.length === 0 ? (
-        <div className="text-sm text-gray-500 text-center py-4">
+        <div className="text-xs text-gray-500 text-center py-3">
           Aucun score pour cette taille
         </div>
       ) : (
@@ -185,7 +185,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
           {leaderboardData.entries.map((entry, index) => (
             <div
               key={`${entry.userId}-${entry.timestamp}`}
-              className={`flex items-center justify-between p-2 rounded text-sm ${
+              className={`flex items-center justify-between p-1.5 rounded text-xs ${
                 entry.userId === leaderboardData.userBest?.userId
                   ? 'bg-blue-50 border border-blue-200'
                   : 'bg-gray-50'
@@ -193,13 +193,13 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 {getMedalIcon(index + 1)}
-                <span className="text-gray-700 text-sm truncate font-medium">
+                <span className="text-gray-700 text-xs truncate font-medium">
                   {entry.playerName}
                 </span>
               </div>
               <div className="flex items-center gap-1 text-gray-600 ml-2">
                 <Clock className="w-3 h-3" />
-                <span className="font-medium">{formatTime(entry.time)}</span>
+                <span className="font-medium text-xs">{formatTime(entry.time)}</span>
               </div>
             </div>
           ))}
