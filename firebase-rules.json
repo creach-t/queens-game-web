@@ -26,8 +26,8 @@
     },
     "presence": {
       "users": {
+        ".read": true,
         "$uid": {
-          ".read": true,
           ".write": "$uid === auth.uid",
           ".validate": "newData.hasChildren(['timestamp']) && newData.child('timestamp').isNumber()"
         }
