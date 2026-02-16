@@ -45,10 +45,7 @@ export const GameStats: React.FC = () => {
         <div className="flex items-center gap-1 text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-200">
           <Activity className="h-3 w-3" />
           <span className="font-medium">{onlineCount}</span>
-          <span className="hidden sm:inline">
-            joueur{onlineCount > 1 ? 's' : ''} en ligne
-          </span>
-          <span className="sm:hidden">online</span>
+          <span>joueur{onlineCount > 1 ? 's' : ''} en ligne</span>
         </div>
       )}
 
@@ -57,10 +54,7 @@ export const GameStats: React.FC = () => {
         <div className="flex items-center gap-1 text-xs text-slate-600 bg-slate-50 px-2 py-1 rounded border border-slate-200">
           <Users className="h-3 w-3" />
           <span className="font-medium">{totalGames.toLocaleString()}</span>
-          <span className="hidden sm:inline">
-            partie{totalGames > 1 ? 's' : ''} gagnée{totalGames > 1 ? 's' : ''}
-          </span>
-          <span className="sm:hidden">wins</span>
+          <span>partie{totalGames > 1 ? 's' : ''} gagnée{totalGames > 1 ? 's' : ''}</span>
         </div>
       )}
     </div>

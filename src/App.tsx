@@ -73,7 +73,7 @@ function App() {
         </div>
       </header>
 
-      <main className="container mx-auto px-3 py-4">
+      <main className="container mx-auto px-0 py-0">
         <Game />
       </main>
 
