@@ -32,6 +32,17 @@
           ".validate": "newData.hasChildren(['timestamp']) && newData.child('timestamp').isNumber()"
         }
       }
+    },
+    "users": {
+      "$uid": {
+        "solved_levels": {
+          ".read": "$uid === auth.uid",
+          ".write": "$uid === auth.uid",
+          "$levelKey": {
+            ".validate": "newData.hasChildren(['timestamp']) && newData.child('timestamp').isNumber()"
+          }
+        }
+      }
     }
   }
 }

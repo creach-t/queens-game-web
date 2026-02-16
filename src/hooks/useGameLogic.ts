@@ -77,10 +77,17 @@ export function useGameLogic(initialGridSize: number = 6) {
       // Guard contre StrictMode + éviter double increment
       if (!hasIncrementedVictory.current) {
         hasIncrementedVictory.current = true;
+
+        // Incrémenter compteur global
         levelStorage.incrementGamesWon();
+
+        // Marquer niveau comme résolu
+        if (gameState.levelKey) {
+          levelStorage.markLevelAsSolved(gameState.levelKey);
+        }
       }
     }
-  }, [gameState.isCompleted, gameState.board.length]);
+  }, [gameState.isCompleted, gameState.board.length, gameState.levelKey]);
 
   // Reset guard on new level
   useEffect(() => {

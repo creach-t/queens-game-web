@@ -107,7 +107,8 @@ class LevelStorage {
   }
 
   /**
-   * Récupère un niveau aléatoire depuis Firebase
+   * Récupère un niveau aléatoire depuis Firebase avec pondération
+   * Favorise les niveaux non-résolus (70% chance) vs résolus (30% chance)
    */
   async getRandomLevel(
     gridSize: number,
@@ -130,6 +131,7 @@ class LevelStorage {
       const allLevels = snapshot.val();
       const matchingLevels: { key: string; data: any }[] = [];
 
+      // Filtrer par gridSize + complexité
       for (const [key, level] of Object.entries(allLevels)) {
         const levelData = level as any;
         if (levelData.gridSize === gridSize) {
@@ -143,15 +145,37 @@ class LevelStorage {
         return null;
       }
 
-      const randomLevel =
-        matchingLevels[Math.floor(Math.random() * matchingLevels.length)];
+      // Charger les niveaux résolus
+      const solvedSet = await this.getSolvedLevels();
+
+      // Séparer résolus vs non-résolus
+      const unsolvedLevels = matchingLevels.filter(l => !solvedSet.has(l.key));
+      const solvedLevels = matchingLevels.filter(l => solvedSet.has(l.key));
+
+      console.log(`[LevelSelection] ${unsolvedLevels.length} non-résolus, ${solvedLevels.length} résolus`);
+
+      // Pondération: 70% non-résolus, 30% résolus
+      let selectedLevel: { key: string; data: any };
+
+      if (unsolvedLevels.length > 0 && (solvedLevels.length === 0 || Math.random() < 0.7)) {
+        // Choisir un niveau non-résolu
+        selectedLevel = unsolvedLevels[Math.floor(Math.random() * unsolvedLevels.length)];
+        console.log(`[LevelSelection] Niveau non-résolu sélectionné: ${selectedLevel.key}`);
+      } else if (solvedLevels.length > 0) {
+        // Choisir un niveau résolu (30% chance ou si pas de non-résolus)
+        selectedLevel = solvedLevels[Math.floor(Math.random() * solvedLevels.length)];
+        console.log(`[LevelSelection] Niveau résolu re-sélectionné: ${selectedLevel.key}`);
+      } else {
+        // Fallback (ne devrait jamais arriver)
+        selectedLevel = matchingLevels[Math.floor(Math.random() * matchingLevels.length)];
+      }
 
       return {
-        key: randomLevel.key,
-        gridSize: randomLevel.data.gridSize,
-        complexity: randomLevel.data.complexity,
-        regions: randomLevel.data.regions,
-        createdAt: randomLevel.data.createdAt,
+        key: selectedLevel.key,
+        gridSize: selectedLevel.data.gridSize,
+        complexity: selectedLevel.data.complexity,
+        regions: selectedLevel.data.regions,
+        createdAt: selectedLevel.data.createdAt,
       };
     } catch {
       return null;
@@ -538,6 +562,55 @@ class LevelStorage {
     } catch (error) {
       console.error("Erreur récupération stats victoires:", error);
       return 0;
+    }
+  }
+
+  /**
+   * Marque un niveau comme résolu pour l'utilisateur actuel
+   */
+  async markLevelAsSolved(levelKey: string): Promise<void> {
+    if (!this.isAvailable || !this.db || !this.auth?.currentUser) {
+      return;
+    }
+
+    try {
+      const { set } = await import("firebase/database");
+      const userId = this.auth.currentUser.uid;
+      const solvedRef = ref(this.db, `users/${userId}/solved_levels/${levelKey}`);
+
+      await set(solvedRef, {
+        timestamp: Date.now(),
+      });
+
+      console.log(`[SolvedLevels] Niveau ${levelKey} marqué comme résolu`);
+    } catch (error) {
+      console.error("Erreur marquage niveau résolu:", error);
+    }
+  }
+
+  /**
+   * Récupère les niveaux résolus par l'utilisateur
+   */
+  async getSolvedLevels(): Promise<Set<string>> {
+    if (!this.isAvailable || !this.db || !this.auth?.currentUser) {
+      return new Set();
+    }
+
+    try {
+      const userId = this.auth.currentUser.uid;
+      const solvedRef = ref(this.db, `users/${userId}/solved_levels`);
+      const snapshot = await get(solvedRef);
+
+      if (!snapshot.exists()) {
+        return new Set();
+      }
+
+      const solvedKeys = Object.keys(snapshot.val());
+      console.log(`[SolvedLevels] ${solvedKeys.length} niveaux résolus chargés`);
+      return new Set(solvedKeys);
+    } catch (error) {
+      console.error("Erreur récupération niveaux résolus:", error);
+      return new Set();
     }
   }
 
