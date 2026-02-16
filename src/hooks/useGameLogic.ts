@@ -26,6 +26,7 @@ export function useGameLogic(initialGridSize: number = 6) {
   // Timer via useRef — indépendant du state du jeu
   const [gameTime, setGameTime] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasIncrementedInitialLoad = useRef(false);
 
   const startTimer = useCallback(() => {
     if (timerRef.current) return;
@@ -70,7 +71,7 @@ export function useGameLogic(initialGridSize: number = 6) {
   }, [gameState.isCompleted, stopTimer]);
 
   // Chargement d'un niveau depuis Firebase
-  const loadLevel = useCallback(async (gridSize: number) => {
+  const loadLevel = useCallback(async (gridSize: number, isInitialLoad = false) => {
     setIsLoading(true);
     setError(null);
     resetTimer();
@@ -86,7 +87,16 @@ export function useGameLogic(initialGridSize: number = 6) {
       setGameState(newGameState);
 
       // Incrémenter le compteur de parties jouées
-      await levelStorage.incrementGamesPlayed();
+      // Guard contre le double-rendu StrictMode lors du montage initial
+      if (isInitialLoad) {
+        if (!hasIncrementedInitialLoad.current) {
+          hasIncrementedInitialLoad.current = true;
+          await levelStorage.incrementGamesPlayed();
+        }
+      } else {
+        // Pour les nouveaux jeux (bouton "New Game"), toujours incrémenter
+        await levelStorage.incrementGamesPlayed();
+      }
     } catch (err) {
       setError('Erreur lors du chargement du niveau');
       console.error('Level loading error:', err);
@@ -97,7 +107,7 @@ export function useGameLogic(initialGridSize: number = 6) {
 
   // Chargement initial
   useEffect(() => {
-    loadLevel(initialGridSize);
+    loadLevel(initialGridSize, true);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Clic sur une cellule — UN SEUL setGameState, validation synchrone
