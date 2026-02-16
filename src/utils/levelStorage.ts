@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
-import { get, getDatabase, ref, push, query, orderByChild, limitToFirst } from "firebase/database";
+import { get, getDatabase, ref, push, query, orderByChild, limitToFirst, onValue, onDisconnect } from "firebase/database";
 import { REGION_COLORS } from "../constants";
 import { StoredLevel, GameState, LeaderboardEntry, LeaderboardData } from "../types/game";
 
@@ -18,6 +18,10 @@ class LevelStorage {
   // Cache pour les statistiques globales
   private statsCache: { totalGames: number; timestamp: number } | null = null;
   private readonly STATS_CACHE_DURATION = 60000; // 1 minute
+
+  // Presence tracking
+  private presenceUnsubscribe: (() => void) | null = null;
+  private userPresenceRef: any = null;
 
   constructor(firebaseConfig: any) {
     try {
@@ -394,6 +398,92 @@ class LevelStorage {
       console.log(`[Stats] Partie incrémentée`);
     } catch (error) {
       console.error("Erreur incrémentation stats:", error);
+    }
+  }
+
+  /**
+   * Démarre le suivi de présence pour l'utilisateur actuel
+   */
+  async startPresenceTracking(): Promise<void> {
+    if (!this.isAvailable || !this.db) {
+      console.warn('[Presence] Firebase non disponible');
+      return;
+    }
+
+    await this.waitForAuth();
+
+    if (!this.auth?.currentUser) {
+      console.warn('[Presence] Utilisateur non authentifié');
+      return;
+    }
+
+    const userId = this.auth.currentUser.uid;
+    this.userPresenceRef = ref(this.db, `presence/users/${userId}`);
+
+    // Surveiller l'état de connexion
+    const connectedRef = ref(this.db, '.info/connected');
+
+    const unsubscribe = onValue(connectedRef, async (snapshot) => {
+      if (snapshot.val() === true) {
+        // Connecté - définir la présence
+        const { set } = await import("firebase/database");
+        await set(this.userPresenceRef, {
+          timestamp: Date.now()
+        });
+
+        // Configurer la suppression automatique à la déconnexion
+        onDisconnect(this.userPresenceRef).remove();
+
+        console.log('[Presence] Utilisateur marqué en ligne');
+      }
+    });
+
+    this.presenceUnsubscribe = unsubscribe;
+  }
+
+  /**
+   * S'abonne au nombre de joueurs en ligne
+   * @param callback Fonction appelée avec le nombre de joueurs en ligne
+   * @returns Fonction de désabonnement
+   */
+  subscribeToOnlineCount(callback: (count: number) => void): () => void {
+    if (!this.isAvailable || !this.db) {
+      callback(0);
+      return () => {};
+    }
+
+    const presenceRef = ref(this.db, 'presence/users');
+
+    const unsubscribe = onValue(presenceRef, (snapshot) => {
+      const count = snapshot.exists()
+        ? Object.keys(snapshot.val()).length
+        : 0;
+
+      console.log(`[Presence] ${count} joueur(s) en ligne`);
+      callback(count);
+    });
+
+    return unsubscribe;
+  }
+
+  /**
+   * Arrête le suivi de présence
+   */
+  async stopPresenceTracking(): Promise<void> {
+    if (this.presenceUnsubscribe) {
+      this.presenceUnsubscribe();
+      this.presenceUnsubscribe = null;
+    }
+
+    if (this.userPresenceRef) {
+      try {
+        const { remove } = await import("firebase/database");
+        await remove(this.userPresenceRef);
+        console.log('[Presence] Utilisateur marqué hors ligne');
+      } catch (error) {
+        console.error('[Presence] Erreur suppression:', error);
+      }
+      this.userPresenceRef = null;
     }
   }
 

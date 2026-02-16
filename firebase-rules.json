@@ -19,6 +19,15 @@
         ".read": true,
         ".write": "auth != null"
       }
+    },
+    "presence": {
+      "users": {
+        "$uid": {
+          ".read": true,
+          ".write": "$uid === auth.uid",
+          ".validate": "newData.hasChildren(['timestamp']) && newData.child('timestamp').isNumber()"
+        }
+      }
     }
   }
 }
