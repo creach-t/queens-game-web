@@ -14,27 +14,16 @@ export const GameStats: React.FC = () => {
     // S'abonner au nombre de joueurs en ligne
     const unsubscribePresence = levelStorage.subscribeToOnlineCount(setOnlineCount);
 
-    // Charger les stats de parties gagnées
-    const loadStats = async () => {
-      try {
-        const total = await levelStorage.getTotalGamesWon();
-        setTotalGames(total);
-      } catch (error) {
-        console.error('Error loading stats:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadStats();
-
-    // Rafraîchir les stats toutes les 60 secondes
-    const interval = setInterval(loadStats, 60000);
+    // S'abonner aux stats de parties gagnées (temps réel)
+    const unsubscribeStats = levelStorage.subscribeToGamesWon((count) => {
+      setTotalGames(count);
+      setIsLoading(false);
+    });
 
     return () => {
-      clearInterval(interval);
       levelStorage.stopPresenceTracking();
       unsubscribePresence();
+      unsubscribeStats();
     };
   }, []);
 

@@ -527,7 +527,10 @@ class LevelStorage {
         return (currentValue || 0) + 1;
       });
 
-      console.log(`[Stats] Partie gagnée incrémentée`);
+      // Invalider le cache pour forcer le rechargement
+      this.statsCache = null;
+
+      console.log(`[Stats] Partie gagnée incrémentée, cache invalidé`);
     } catch (error) {
       console.error("Erreur incrémentation parties gagnées:", error);
     }
@@ -563,6 +566,25 @@ class LevelStorage {
       console.error("Erreur récupération stats victoires:", error);
       return 0;
     }
+  }
+
+  /**
+   * S'abonner au compteur de parties gagnées (temps réel)
+   */
+  subscribeToGamesWon(callback: (count: number) => void): () => void {
+    if (!this.isAvailable || !this.db) {
+      callback(0);
+      return () => {};
+    }
+
+    const statsRef = ref(this.db, 'stats/total_games_won');
+    const unsubscribe = onValue(statsRef, (snapshot) => {
+      const count = snapshot.exists() ? (snapshot.val() as number) : 0;
+      console.log(`[Stats] Parties gagnées mises à jour: ${count}`);
+      callback(count);
+    });
+
+    return unsubscribe;
   }
 
   /**
