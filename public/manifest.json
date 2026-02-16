@@ -1,12 +1,12 @@
 {
-  "name": "Queens Game Web",
+  "name": "Queens Game Online - Puzzle de Logique Gratuit",
   "short_name": "Queens Game",
-  "description": "Version web responsive du célèbre puzzle Queens de LinkedIn",
-  "start_url": "/",
+  "description": "Jeu de puzzle de logique gratuit et illimité. Placez les reines stratégiquement sur la grille. Inspiré du jeu Queens de LinkedIn. Aucun téléchargement requis.",
+  "start_url": "/?utm_source=pwa",
   "display": "standalone",
-  "background_color": "#667eea",
-  "theme_color": "#0077b5",
-  "orientation": "portrait-primary",
+  "background_color": "#f8fafc",
+  "theme_color": "#10b981",
+  "orientation": "any",
   "icons": [
     {
       "src": "crown-192.png",

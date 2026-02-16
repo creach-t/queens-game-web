@@ -14,11 +14,26 @@ const EMPTY_GAME_STATE: GameState = {
   moveCount: 0,
 };
 
-export function useGameLogic(initialGridSize: number = 6) {
+const GRID_SIZE_STORAGE_KEY = 'queens-game-grid-size';
+
+const getInitialGridSize = (): number => {
+  const saved = localStorage.getItem(GRID_SIZE_STORAGE_KEY);
+  if (saved) {
+    const size = parseInt(saved, 10);
+    if (size >= 5 && size <= 12) {
+      return size;
+    }
+  }
+  return 6;
+};
+
+export function useGameLogic(initialGridSize?: number) {
+  const startingSize = initialGridSize || getInitialGridSize();
+
   const [gameState, setGameState] = useState<GameState>({
     ...EMPTY_GAME_STATE,
-    gridSize: initialGridSize,
-    queensRequired: initialGridSize,
+    gridSize: startingSize,
+    queensRequired: startingSize,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -121,7 +136,7 @@ export function useGameLogic(initialGridSize: number = 6) {
 
   // Chargement initial
   useEffect(() => {
-    loadLevel(initialGridSize);
+    loadLevel(startingSize);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Clic sur une cellule — UN SEUL setGameState, validation synchrone
@@ -254,6 +269,7 @@ export function useGameLogic(initialGridSize: number = 6) {
 
   // Changement de taille de grille
   const changeGridSizeOnly = useCallback(async (gridSize: number) => {
+    localStorage.setItem(GRID_SIZE_STORAGE_KEY, String(gridSize));
     await loadLevel(gridSize);
   }, [loadLevel]);
 

@@ -65,6 +65,8 @@ export interface SuccessMessageProps {
   gameState: GameState;
   gameTime: number;
   formatTime: (seconds: number) => string;
+  onSaveScore: (playerName: string) => Promise<boolean>;
+  onClose: () => void;
 }
 
 export interface SizeGridSelectorProps {
@@ -86,6 +88,10 @@ export interface GameControlsProps {
   onNewGame: () => void;
   onGridSizeChange: (size: number) => void;
   onSaveScore: (playerName: string) => Promise<boolean>;
+  isLoading?: boolean;
+  onCellClick: (row: number, col: number) => void;
+  onMarkCell: (row: number, col: number) => void;
+  isGameBlocked?: boolean;
 }
 
 export interface ColoredRegion {

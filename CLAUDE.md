@@ -36,22 +36,22 @@ src/
 ├── components/
 │   ├── Game.tsx              # Main game orchestrator (loading/error states)
 │   ├── GameCell.tsx          # Individual cell (React.memo, queen/marker/empty)
-│   ├── GameStats.tsx         # Online players + games won counters (real-time)
+│   ├── GameStats.tsx         # Online players + games won (real-time, discrete UI)
 │   ├── Timer.tsx             # MM:SS timer display
-│   ├── Leaderboard.tsx       # Top 3 leaderboard with save form (always visible)
+│   ├── Leaderboard.tsx       # Top 3 leaderboard (read-only, no form)
 │   ├── GameBoard/
 │   │   ├── index.tsx         # Board wrapper (responsive resize, useCallback)
 │   │   ├── BoardGrid.tsx     # Grid rendering (event delegation, touch swipe)
 │   │   ├── AnimationOverlay.tsx  # CSS-based animation overlay
 │   │   └── LoadingState.tsx
 │   └── GameControls/
-│       ├── index.tsx         # Controls container + leaderboard integration
-│       ├── MainControls.tsx  # Reset / New game
-│       ├── Rules.tsx         # Rules display
-│       ├── SizeGridSelector.tsx  # Grid size picker (5-12)
-│       └── SuccessMessage.tsx    # Victory message (simplified)
+│       ├── index.tsx         # Overlay-based controls with centered board
+│       ├── MainControls.tsx  # Reset / New game (with icons + text labels)
+│       ├── Rules.tsx         # Comprehensive rules popup (enhanced)
+│       ├── SizeGridSelector.tsx  # Grid size picker (5-12, localStorage)
+│       └── SuccessMessage.tsx    # Victory popup with leaderboard form
 ├── hooks/
-│   ├── useGameLogic.ts       # Core game state (Firebase loading, timer, victory detection)
+│   ├── useGameLogic.ts       # Core game state (Firebase, timer, grid size persistence)
 │   └── useAnimations.ts      # Spiral animations (requestAnimationFrame)
 ├── lib/
 │   └── rules.ts              # Pure game rule validation (Map-based indexing)
@@ -63,13 +63,28 @@ src/
 │   └── gameUtils.ts          # Board init/reset helpers
 ├── constants/
 │   └── index.ts              # Region color palette (12 pastel colors)
-├── App.tsx                   # Root component
+├── App.tsx                   # Root component with SEO content
 ├── main.tsx                  # Entry point
 └── index.css                 # Global Tailwind styles + animation keyframes
+
+public/
+├── robots.txt                # SEO: crawling rules
+├── sitemap.xml               # SEO: site structure
+└── manifest.json             # PWA manifest (optimized)
 ```
 
 ## Architecture
 
+### UI/UX Design (Feb 2026 Update)
+- **Layout**: Overlay-based interface with floating controls
+- **Structure**: Header → Top overlays → Centered board → Bottom overlays → Footer
+- **Grid Layout**: CSS Grid (3 columns) for perfect centering
+- **Top Controls**: Rules (?), Timer (center), Leaderboard/Trophy (right)
+- **Bottom Controls**: Difficulty selector, Actions (center), Spacer
+- **Victory Flow**: Centered popup with leaderboard form (if Top 3)
+- **Mobile**: Trophy icon popup for leaderboard, compact controls
+
+### Core Architecture
 - **State management**: `useState` + `useCallback` in custom hooks (no Redux/Zustand)
 - **Validation**: Synchronous within single `setGameState` callback (no deferred setTimeout)
 - **Cell click cycle**: empty → marked → queen → empty
@@ -80,17 +95,18 @@ src/
 - **Memoization**: `React.memo` on GameCell with custom comparator, `useMemo` for border styles
 - **Event delegation**: Single click handler on grid container (data-row/data-col attributes)
 - **Real-time updates**: Firebase `onValue()` listeners for stats and presence tracking
-- **Leaderboard**: Top 3 per grid size, 30s client cache, name-based updates, shown only if eligible
 - **Path alias**: `@/*` maps to `./src/*`
 
 ## Key Files for Common Tasks
 
 - **Game rules/validation**: `src/lib/rules.ts` — pure functions, Map-based indexing
-- **Game state/logic**: `src/hooks/useGameLogic.ts` — main hook for gameplay, victory detection
+- **Game state/logic**: `src/hooks/useGameLogic.ts` — main hook for gameplay, victory detection, grid size persistence
 - **Type definitions**: `src/types/game.ts` — all interfaces
 - **Firebase integration**: `src/utils/levelStorage.ts` — levels, stats, presence, level weighting, real-time subscriptions
-- **Statistics UI**: `src/components/GameStats.tsx` — online players counter, games won counter
-- **Leaderboard UI**: `src/components/Leaderboard.tsx` — top 3, save form, eligibility check
+- **Statistics UI**: `src/components/GameStats.tsx` — online players (green dot), games won (discrete)
+- **Leaderboard UI**: `src/components/Leaderboard.tsx` — Top 3 display only (read-only)
+- **Victory UI**: `src/components/GameControls/SuccessMessage.tsx` — popup with leaderboard form
+- **SEO**: `index.html`, `public/robots.txt`, `public/sitemap.xml`, `SEO_IMPROVEMENTS.md`
 - **Firebase setup**: `FIREBASE_SETUP.md` — rules configuration guide
 - **Firebase monitoring**: `FIREBASE_MONITORING.md` — bandwidth optimization & alerts
 - **Build config**: `vite.config.ts` (code splitting: Firebase + React as separate chunks)
@@ -121,6 +137,7 @@ push main → GitHub Actions → type-check → build → Docker image → GHCR 
 ### Statistics System
 - **Games Won Counter**: Real-time updates via Firebase `onValue()` listener
 - **Online Players Counter**: Real-time presence tracking with automatic cleanup
+- **UI**: Discrete header display with green animated dot for online count
 - **Victory Detection**: Increments counter only when puzzle is solved (not on load/reset)
 - **Cache Invalidation**: Automatic cache refresh on victory for instant updates
 - **Anonymous Auth**: Required for Firebase write operations
@@ -132,16 +149,22 @@ push main → GitHub Actions → type-check → build → Docker image → GHCR 
 - **First-time Players**: 100% unsolved pool (all levels available)
 - **All Solved**: Falls back to 100% solved pool (replay mode)
 
+### Grid Size Persistence
+- **localStorage Key**: `queens-game-grid-size`
+- **Auto-load**: Last selected grid size loaded on app start (5-12)
+- **Auto-save**: Grid size saved on change via `changeGridSizeOnly()`
+- **Validation**: Size constrained to 5-12 range
+
 ### Leaderboard System
 - **Storage**: Firebase Realtime Database (`leaderboards/grid_{size}`)
 - **Top 3 only**: Reduces bandwidth by 70% vs top 10
 - **Name-based updates**: Same player name = update if better time, prevents duplicates
-- **Eligibility check**: Save form only shown if time qualifies for top 3
-- **Name persistence**: After first save, player name is remembered and pre-filled as placeholder in form
-- **Smart save**: If name field is empty, uses the saved name from previous win
+- **Eligibility check**: Form shown in victory popup if time qualifies for top 3
+- **Name persistence**: localStorage (`queens-game-player-name`) for auto-fill
+- **Victory Flow**: Score submission only in SuccessMessage component
+- **Display**: Leaderboard component is read-only (no form)
 - **Client-side cache**: 30-second cache prevents excessive Firebase requests
 - **Anonymous auth**: Required for write access (Firebase rules)
-- **Always visible**: Leaderboard displays on page load, not just after completion
 
 ### Presence Tracking
 - **Real-time Count**: Firebase `.info/connected` listener for connection state
@@ -150,6 +173,32 @@ push main → GitHub Actions → type-check → build → Docker image → GHCR 
 - **Auth Synchronization**: Wait for authentication before subscribing to presence
 
 See `FIREBASE_SETUP.md` for rules configuration and `FIREBASE_MONITORING.md` for usage optimization.
+
+## SEO Optimization (Feb 2026)
+
+### Meta Tags & Structured Data
+- **Title**: "Queens Game Online | Jeu de Puzzle Logique Gratuit & Illimité"
+- **Description**: 155 chars with keywords (LinkedIn, gratuit, illimité, sans téléchargement)
+- **Keywords**: 13 strategic terms (queens game, queens puzzle, linkedin queens, logic game, etc.)
+- **Schema.org**: WebApplication + Game schemas with ratings, pricing, gameplay info
+- **Open Graph**: Optimized for social sharing (Facebook, LinkedIn)
+- **Twitter Cards**: Summary large image format
+
+### Technical SEO
+- **Canonical URL**: https://queens-game.creachtheo.fr
+- **Robots.txt**: Proper crawling rules, sitemap reference
+- **Sitemap.xml**: XML sitemap with priority and changefreq
+- **Language**: French (fr-FR) with proper locale tags
+- **Hidden Content**: SEO-friendly text (sr-only) with H1/H2/H3, keywords, rules
+- **PWA**: Optimized manifest with description, UTM tracking
+
+### Performance
+- **Core Web Vitals**: Optimized for LCP, FID, CLS
+- **Code Splitting**: Firebase and React as separate chunks
+- **Lazy Loading**: Components loaded on demand
+- **CDN**: Nginx + Traefik for fast delivery
+
+See `SEO_IMPROVEMENTS.md` for detailed analysis and benchmarks.
 
 ## Environment
 

@@ -1,0 +1,13 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Disallow admin or private routes if any
+Disallow: /api/
+Disallow: /*.json$
+
+# Sitemap
+Sitemap: https://queens-game.creachtheo.fr/sitemap.xml
+
+# Crawl delay (optional, helps prevent server overload)
+Crawl-delay: 1

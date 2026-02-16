@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Trophy, Clock, Medal, Save } from 'lucide-react';
+import { Trophy, Clock, Medal } from 'lucide-react';
 import { LeaderboardData } from '../types/game';
 import { levelStorage } from '../utils/levelStorage';
 
@@ -13,18 +13,10 @@ interface LeaderboardProps {
 
 export const Leaderboard: React.FC<LeaderboardProps> = ({
   gridSize,
-  currentTime,
-  isCompleted,
-  onSaveScore,
   formatTime
 }) => {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardData>({ entries: [] });
   const [isLoading, setIsLoading] = useState(true);
-  const [playerName, setPlayerName] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-  const [savedSuccessfully, setSavedSuccessfully] = useState(false);
-  const [canEnter, setCanEnter] = useState(false);
-  const [savedPlayerName, setSavedPlayerName] = useState<string>(''); // Mémoriser le nom du joueur
 
   // Empêcher les chargements multiples
   const loadingRef = useRef(false);
@@ -62,58 +54,6 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
     loadLeaderboard();
   }, [loadLeaderboard]);
 
-  // Réinitialiser les états lors du changement de taille de grille
-  useEffect(() => {
-    setSavedSuccessfully(false);
-    setCanEnter(false);
-    setPlayerName('');
-    // Note: on garde savedPlayerName pour permettre l'auto-save sur toutes les tailles
-  }, [gridSize]);
-
-  // Réinitialiser savedSuccessfully quand une nouvelle partie commence
-  useEffect(() => {
-    if (!isCompleted) {
-      setSavedSuccessfully(false);
-    }
-  }, [isCompleted]);
-
-  // Vérifier si le score peut entrer dans le top 3
-  useEffect(() => {
-    if (!isCompleted || !currentTime || savedSuccessfully) {
-      setCanEnter(false);
-      return;
-    }
-
-    const checkEligibility = async () => {
-      // Utiliser le nom sauvegardé si disponible, sinon un nom temporaire
-      const nameToCheck = savedPlayerName || playerName || '___temp___';
-      const eligible = await levelStorage.canEnterLeaderboard(gridSize, currentTime, nameToCheck);
-      setCanEnter(eligible);
-    };
-
-    checkEligibility();
-  }, [isCompleted, currentTime, gridSize, savedSuccessfully, playerName, savedPlayerName]);
-
-  const handleSaveScore = async () => {
-    // Utiliser le nom saisi ou le nom sauvegardé comme fallback
-    const nameToSave = playerName.trim() || savedPlayerName;
-    if (!nameToSave || !onSaveScore || !currentTime) return;
-
-    setIsSaving(true);
-    const success = await onSaveScore(nameToSave);
-    setIsSaving(false);
-
-    if (success) {
-      setSavedSuccessfully(true);
-      setSavedPlayerName(nameToSave); // Mémoriser le nom pour les prochaines victoires
-      setPlayerName('');
-      // Recharger le leaderboard après 500ms avec forceRefresh
-      setTimeout(() => {
-        loadLeaderboard(true);
-      }, 500);
-    }
-  };
-
   const getMedalIcon = (rank: number) => {
     switch (rank) {
       case 1:
@@ -133,45 +73,6 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
         <Trophy className="w-4 h-4 text-yellow-600" />
         <h3 className="font-semibold text-gray-800 text-sm">Top 3 - {gridSize}×{gridSize}</h3>
       </div>
-
-      {/* Formulaire de sauvegarde du score (uniquement si éligible) */}
-      {isCompleted && currentTime && !savedSuccessfully && canEnter && (
-        <div className="bg-blue-50 border border-blue-200 rounded p-2 space-y-2">
-          <p className="text-xs text-blue-900 font-medium">
-            🎉 Top 3 ! Enregistrez votre temps : {formatTime(currentTime)}
-          </p>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
-              placeholder={savedPlayerName || "Votre nom"}
-              maxLength={20}
-              className="flex-1 px-2 py-1.5 text-xs border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (playerName.trim() || savedPlayerName)) {
-                  handleSaveScore();
-                }
-              }}
-            />
-            <button
-              onClick={handleSaveScore}
-              disabled={(!playerName.trim() && !savedPlayerName) || isSaving}
-              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-xs font-medium rounded transition-colors flex items-center gap-1"
-            >
-              <Save className="w-3 h-3" />
-              {isSaving ? 'Envoi...' : 'Enregistrer'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Message de confirmation */}
-      {savedSuccessfully && (
-        <div className="bg-green-50 border border-green-200 rounded p-2">
-          <p className="text-xs text-green-800 font-medium">✓ Score enregistré avec succès !</p>
-        </div>
-      )}
 
       {/* Liste du leaderboard */}
       {isLoading ? (

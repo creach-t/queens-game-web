@@ -5,9 +5,9 @@ import { Crown, Github, ExternalLink } from 'lucide-react';
 
 function App() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col">
       {/* Header simplifié et compact */}
-      <header className="border-b bg-white/80 backdrop-blur-sm">
+      <header className="border-b bg-white/80 backdrop-blur-sm z-50 relative">
         <div className="container mx-auto px-3 py-2">
           {/* Desktop: tout sur une ligne */}
           <div className="hidden sm:flex items-center justify-between gap-2">
@@ -73,12 +73,49 @@ function App() {
         </div>
       </header>
 
-      <main className="container mx-auto px-0 py-0">
+      <main className="flex-1 relative">
+        {/* SEO Content - Hidden but crawlable */}
+        <div className="sr-only">
+          <h1>Queens Game Online - Jeu de Puzzle de Logique Gratuit et Illimité</h1>
+          <p>
+            Jouez au Queens Game, un jeu de puzzle de logique addictif inspiré du célèbre jeu Queens de LinkedIn.
+            Placez stratégiquement les reines sur une grille colorée en respectant les règles : une seule reine par
+            ligne, colonne et région, et aucune reine ne doit en toucher une autre (diagonales incluses).
+          </p>
+          <h2>Comment Jouer au Queens Game</h2>
+          <p>
+            Le Queens Game est un puzzle de logique fascinant qui teste vos compétences en déduction et stratégie.
+            Chaque grille contient des régions colorées, et vous devez placer exactement une reine dans chaque région,
+            ligne et colonne. Le défi : les reines ne peuvent pas se toucher, même en diagonale !
+          </p>
+          <h3>Règles du Jeu Queens</h3>
+          <ul>
+            <li>Placez une reine dans chaque région colorée</li>
+            <li>Une seule reine par ligne et par colonne</li>
+            <li>Les reines ne peuvent pas se toucher (incluant les diagonales)</li>
+            <li>Résolvez le puzzle pour gagner et battre votre record</li>
+          </ul>
+          <h3>Pourquoi Jouer au Queens Game ?</h3>
+          <ul>
+            <li>Niveaux illimités générés aléatoirement</li>
+            <li>Difficultés variées de 5×5 à 12×12</li>
+            <li>Classement en temps réel des meilleurs joueurs</li>
+            <li>Gratuit et sans téléchargement</li>
+            <li>Jouable sur mobile, tablette et ordinateur</li>
+            <li>Sauvegarde automatique de votre progression</li>
+          </ul>
+          <p>
+            Inspiré du problème classique des n-reines en informatique et du jeu Queens de LinkedIn News,
+            ce puzzle de logique améliore vos capacités de réflexion stratégique et de résolution de problèmes.
+            Parfait pour les amateurs de sudoku, puzzles logiques, et jeux de réflexion !
+          </p>
+        </div>
+
         <Game />
       </main>
 
       {/* Footer minimaliste */}
-      <footer className="border-t bg-white/50 py-3">
+      <footer className="border-t bg-white/50 py-3 z-50 relative">
         <div className="container mx-auto px-3">
           <div className="flex items-center justify-center gap-4 text-xs text-slate-500">
             <a

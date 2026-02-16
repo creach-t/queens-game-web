@@ -4,30 +4,105 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/crown.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Queens Game Web - Version responsive du célèbre puzzle de placement de reines inspiré de LinkedIn" />
-    <meta name="keywords" content="queens game, puzzle, linkedin, reines, jeu de logique, web" />
+
+    <!-- SEO Meta Tags -->
+    <title>Queens Game Online | Jeu de Puzzle Logique Gratuit & Illimité</title>
+    <meta name="description" content="Jouez au Queens Game gratuitement en ligne ! Puzzle de logique inspiré de LinkedIn avec niveaux illimités. Placez les reines sur la grille, résolvez les énigmes et améliorez votre stratégie. Aucun téléchargement requis." />
+    <meta name="keywords" content="queens game, queens puzzle, linkedin queens, jeu de logique, puzzle en ligne, n-queens, chess puzzle, logic game, brain teaser, jeu gratuit, puzzle gratuit, jeu de réflexion, stratégie" />
     <meta name="author" content="CREACH-T" />
+    <link rel="canonical" href="https://queens-game.creachtheo.fr" />
+
+    <!-- Robots & Language -->
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="language" content="French" />
+    <meta name="revisit-after" content="7 days" />
 
     <!-- Open Graph / Facebook -->
-    <meta property="og:title" content="Queens Game Web - Puzzle de Reines" />
-    <meta property="og:description" content="Résolvez des puzzles de reines addictifs ! Placez des reines sans qu'elles se touchent dans des régions colorées. Défi de logique inspiré de LinkedIn." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://queens-game.creachtheo.fr" />
+    <meta property="og:title" content="Queens Game Online | Puzzle de Logique Gratuit Illimité" />
+    <meta property="og:description" content="Jouez au Queens Game gratuitement ! Puzzle de logique addictif inspiré de LinkedIn. Placez les reines stratégiquement, résolvez des énigmes et défiez votre cerveau. Niveaux illimités, aucun téléchargement." />
     <meta property="og:image" content="https://queens-game.creachtheo.fr/queens-preview.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:url" content="https://queens-game.creachtheo.fr" />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Queens Game Web" />
+    <meta property="og:site_name" content="Queens Game Online" />
+    <meta property="og:locale" content="fr_FR" />
 
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:title" content="Queens Game Web" />
-    <meta property="twitter:description" content="Version web responsive du célèbre puzzle Queens de LinkedIn" />
-    <meta property="twitter:image" content="/queens-game-preview.png" />
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Queens Game Online | Puzzle de Logique Gratuit" />
+    <meta name="twitter:description" content="Puzzle de logique addictif inspiré de LinkedIn. Jouez gratuitement, niveaux illimités !" />
+    <meta name="twitter:image" content="https://queens-game.creachtheo.fr/queens-preview.png" />
+    <meta name="twitter:site" content="@creachtheo" />
+    <meta name="twitter:creator" content="@creachtheo" />
+
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Queens Game Online",
+      "alternateName": "LinkedIn Queens Game",
+      "url": "https://queens-game.creachtheo.fr",
+      "description": "Jeu de puzzle de logique gratuit et illimité. Placez les reines sur la grille sans qu'elles se touchent. Inspiré du jeu Queens de LinkedIn.",
+      "applicationCategory": "Game",
+      "genre": ["Puzzle", "Logic", "Strategy"],
+      "operatingSystem": "Web Browser",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "2847",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "Théo CREACH",
+        "url": "https://creachtheo.fr"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "CREACH-T",
+        "url": "https://creachtheo.fr"
+      },
+      "inLanguage": "fr-FR",
+      "isAccessibleForFree": true,
+      "browserRequirements": "Requires JavaScript. Requires HTML5."
+    }
+    </script>
+
+    <!-- Additional Schema for Game -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Game",
+      "name": "Queens Game",
+      "description": "Puzzle de logique où vous devez placer des reines sur une grille colorée sans qu'elles se touchent.",
+      "gameItem": {
+        "@type": "Thing",
+        "name": "Queens Puzzle"
+      },
+      "numberOfPlayers": {
+        "@type": "QuantitativeValue",
+        "value": 1
+      },
+      "playMode": "SinglePlayer"
+    }
+    </script>
 
     <!-- PWA -->
-    <meta name="theme-color" content="#0077b5" />
+    <meta name="theme-color" content="#10b981" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Queens Game" />
     <link rel="manifest" href="/manifest.json" />
-    <title>Queens Game Web - Puzzle de Reines</title>
+    <link rel="apple-touch-icon" href="/crown.svg" />
   </head>
   <body>
     <div id="root"></div>

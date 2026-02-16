@@ -38,7 +38,7 @@ export const Game: React.FC = () => {
   const showVictoryAnimation = !isGenerating && gameState.isCompleted;
 
   return (
-    <div className="relative h-[calc(100vh-9rem)]">
+    <div className="h-full flex flex-col">
       {/* Erreur de chargement */}
       {error && (
         <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 max-w-md mx-4 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs text-center">
@@ -46,24 +46,6 @@ export const Game: React.FC = () => {
         </div>
       )}
 
-      {/* Plateau de jeu centré */}
-      <div className="absolute inset-0 flex items-center justify-center px-2">
-        {isLoading ? (
-          <LoadingState />
-        ) : (
-          <GameBoard
-            gameState={gameState}
-            onCellClick={handleCellClick}
-            onMarkCell={markCell}
-            showVictoryAnimation={showVictoryAnimation}
-            key={boardAnimationKey}
-            isGameBlocked={isGenerating}
-            animationMode="none"
-          />
-        )}
-      </div>
-
-      {/* Overlays positionnés */}
       <GameControls
         gameState={gameState}
         gameTime={gameTime}
@@ -71,6 +53,10 @@ export const Game: React.FC = () => {
         onNewGame={handleNewGame}
         onGridSizeChange={handleGridSizeChange}
         onSaveScore={saveScore}
+        isLoading={isLoading}
+        onCellClick={handleCellClick}
+        onMarkCell={markCell}
+        isGameBlocked={isGenerating}
       />
     </div>
   );
