@@ -13,10 +13,10 @@ export const Rules: React.FC = () => {
       {/* Bouton ? */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-10 h-10 bg-white/90 backdrop-blur-sm hover:bg-white border border-gray-200 shadow-lg rounded-full flex items-center justify-center transition-all hover:scale-110"
+        className="w-9 h-9 sm:w-10 sm:h-10 bg-white/90 backdrop-blur-sm hover:bg-white border border-gray-200 shadow-lg rounded-full flex items-center justify-center transition-all hover:scale-110"
         title="Comment jouer"
       >
-        <HelpCircle className="w-5 h-5 text-blue-600" />
+        <HelpCircle className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-blue-600" />
       </button>
 
       {/* Popup des règles */}
