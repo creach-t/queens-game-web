@@ -38,7 +38,7 @@ export const Game: React.FC = () => {
   const showVictoryAnimation = !isGenerating && gameState.isCompleted;
 
   return (
-    <div className="relative min-h-[calc(100vh-4rem)]">
+    <div className="relative h-[calc(100vh-4rem)]">
       {/* Erreur de chargement */}
       {error && (
         <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 max-w-md mx-4 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs text-center">
@@ -47,7 +47,7 @@ export const Game: React.FC = () => {
       )}
 
       {/* Plateau de jeu centré */}
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] py-20 sm:py-24 px-2">
+      <div className="flex items-center justify-center h-full px-2">
         {isLoading ? (
           <LoadingState />
         ) : (

@@ -39,12 +39,12 @@ export const GameControls: React.FC<GameControlsProps> = ({
   return (
     <>
       {/* Top-Left: Rules (?) */}
-      <div className="fixed top-16 sm:top-20 left-2 sm:left-4 z-40">
+      <div className="fixed top-2 sm:top-4 left-2 sm:left-4 z-40">
         <Rules />
       </div>
 
       {/* Top-Center: Timer */}
-      <div className="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 z-40">
+      <div className="fixed top-2 sm:top-4 left-1/2 -translate-x-1/2 z-40">
         <Timer gameTime={gameTime} isCompleted={gameState.isCompleted} />
         {/* Message de victoire juste en dessous du timer */}
         {gameState.isCompleted && (
@@ -59,7 +59,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
       </div>
 
       {/* Top-Right: Leaderboard - visible on md+ screens */}
-      <div className="hidden md:block fixed top-16 sm:top-20 right-2 sm:right-4 z-40 max-w-xs">
+      <div className="hidden md:block fixed top-2 sm:top-4 right-2 sm:right-4 z-40 max-w-xs">
         <Leaderboard
           gridSize={gameState.gridSize}
           currentTime={gameState.isCompleted ? gameTime : undefined}
@@ -89,7 +89,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
 
       {/* Mobile Leaderboard - Show in popup when completed on small screens */}
       {gameState.isCompleted && (
-        <div className="md:hidden fixed top-28 sm:top-32 right-2 z-40 max-w-[min(280px,calc(100vw-1rem))]">
+        <div className="md:hidden fixed top-16 sm:top-20 right-2 z-40 max-w-[min(280px,calc(100vw-1rem))]">
           <Leaderboard
             gridSize={gameState.gridSize}
             currentTime={gameState.isCompleted ? gameTime : undefined}
