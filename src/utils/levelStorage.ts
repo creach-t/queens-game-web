@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
-import { get, getDatabase, ref, push, query, orderByChild, limitToFirst } from "firebase/database";
+import { get, getDatabase, ref, push, query, orderByChild, limitToFirst, onValue, onDisconnect } from "firebase/database";
 import { REGION_COLORS } from "../constants";
 import { StoredLevel, GameState, LeaderboardEntry, LeaderboardData } from "../types/game";
 
@@ -14,6 +14,15 @@ class LevelStorage {
   // Cache pour éviter les requêtes répétées
   private leaderboardCache: Map<number, { data: LeaderboardData; timestamp: number }> = new Map();
   private readonly CACHE_DURATION = 30000; // 30 secondes
+
+  // Cache pour les statistiques globales
+  private statsCache: { totalGames: number; timestamp: number } | null = null;
+  private readonly STATS_CACHE_DURATION = 60000; // 1 minute
+
+  // Presence tracking
+  private presenceUnsubscribe: (() => void) | null = null;
+  private userPresenceRef: any = null;
+  private onlineCountUnsubscribe: (() => void) | null = null;
 
   constructor(firebaseConfig: any) {
     try {
@@ -99,7 +108,8 @@ class LevelStorage {
   }
 
   /**
-   * Récupère un niveau aléatoire depuis Firebase
+   * Récupère un niveau aléatoire depuis Firebase avec pondération
+   * Favorise les niveaux non-résolus (70% chance) vs résolus (30% chance)
    */
   async getRandomLevel(
     gridSize: number,
@@ -122,6 +132,7 @@ class LevelStorage {
       const allLevels = snapshot.val();
       const matchingLevels: { key: string; data: any }[] = [];
 
+      // Filtrer par gridSize + complexité
       for (const [key, level] of Object.entries(allLevels)) {
         const levelData = level as any;
         if (levelData.gridSize === gridSize) {
@@ -135,15 +146,37 @@ class LevelStorage {
         return null;
       }
 
-      const randomLevel =
-        matchingLevels[Math.floor(Math.random() * matchingLevels.length)];
+      // Charger les niveaux résolus
+      const solvedSet = await this.getSolvedLevels();
+
+      // Séparer résolus vs non-résolus
+      const unsolvedLevels = matchingLevels.filter(l => !solvedSet.has(l.key));
+      const solvedLevels = matchingLevels.filter(l => solvedSet.has(l.key));
+
+      console.log(`[LevelSelection] ${unsolvedLevels.length} non-résolus, ${solvedLevels.length} résolus`);
+
+      // Pondération: 70% non-résolus, 30% résolus
+      let selectedLevel: { key: string; data: any };
+
+      if (unsolvedLevels.length > 0 && (solvedLevels.length === 0 || Math.random() < 0.7)) {
+        // Choisir un niveau non-résolu
+        selectedLevel = unsolvedLevels[Math.floor(Math.random() * unsolvedLevels.length)];
+        console.log(`[LevelSelection] Niveau non-résolu sélectionné: ${selectedLevel.key}`);
+      } else if (solvedLevels.length > 0) {
+        // Choisir un niveau résolu (30% chance ou si pas de non-résolus)
+        selectedLevel = solvedLevels[Math.floor(Math.random() * solvedLevels.length)];
+        console.log(`[LevelSelection] Niveau résolu re-sélectionné: ${selectedLevel.key}`);
+      } else {
+        // Fallback (ne devrait jamais arriver)
+        selectedLevel = matchingLevels[Math.floor(Math.random() * matchingLevels.length)];
+      }
 
       return {
-        key: randomLevel.key,
-        gridSize: randomLevel.data.gridSize,
-        complexity: randomLevel.data.complexity,
-        regions: randomLevel.data.regions,
-        createdAt: randomLevel.data.createdAt,
+        key: selectedLevel.key,
+        gridSize: selectedLevel.data.gridSize,
+        complexity: selectedLevel.data.complexity,
+        regions: selectedLevel.data.regions,
+        createdAt: selectedLevel.data.createdAt,
       };
     } catch {
       return null;
@@ -334,6 +367,304 @@ class LevelStorage {
     } catch (error) {
       console.error("Erreur vérification leaderboard:", error);
       return false;
+    }
+  }
+
+  /**
+   * Récupère le nombre total de parties jouées
+   */
+  async getTotalGamesPlayed(): Promise<number> {
+    if (!this.isAvailable || !this.db) {
+      return 0;
+    }
+
+    // Vérifier le cache
+    const now = Date.now();
+    if (this.statsCache && (now - this.statsCache.timestamp) < this.STATS_CACHE_DURATION) {
+      console.log(`[Cache] Stats depuis cache: ${this.statsCache.totalGames} parties`);
+      return this.statsCache.totalGames;
+    }
+
+    try {
+      console.log(`[Firebase] Chargement stats globales`);
+      const statsRef = ref(this.db, "stats/total_games");
+      const snapshot = await get(statsRef);
+
+      const totalGames = snapshot.exists() ? (snapshot.val() as number) : 0;
+
+      // Mettre en cache
+      this.statsCache = { totalGames, timestamp: now };
+
+      return totalGames;
+    } catch (error) {
+      console.error("Erreur récupération stats:", error);
+      return 0;
+    }
+  }
+
+  /**
+   * Incrémente le compteur de parties jouées
+   */
+  async incrementGamesPlayed(): Promise<void> {
+    if (!this.isAvailable || !this.db) {
+      return;
+    }
+
+    try {
+      const { runTransaction } = await import("firebase/database");
+      const statsRef = ref(this.db, "stats/total_games");
+
+      await runTransaction(statsRef, (currentValue) => {
+        return (currentValue || 0) + 1;
+      });
+
+      // Invalider le cache
+      this.statsCache = null;
+      console.log(`[Stats] Partie incrémentée`);
+    } catch (error) {
+      console.error("Erreur incrémentation stats:", error);
+    }
+  }
+
+  /**
+   * Démarre le suivi de présence pour l'utilisateur actuel
+   */
+  async startPresenceTracking(): Promise<void> {
+    if (!this.isAvailable || !this.db) {
+      console.warn('[Presence] Firebase non disponible');
+      return;
+    }
+
+    await this.waitForAuth();
+
+    if (!this.auth?.currentUser) {
+      console.warn('[Presence] Utilisateur non authentifié');
+      return;
+    }
+
+    const userId = this.auth.currentUser.uid;
+    this.userPresenceRef = ref(this.db, `presence/users/${userId}`);
+
+    // Surveiller l'état de connexion
+    const connectedRef = ref(this.db, '.info/connected');
+
+    const unsubscribe = onValue(connectedRef, async (snapshot) => {
+      if (snapshot.val() === true) {
+        // Guard: vérifier que la référence existe toujours
+        if (!this.userPresenceRef) {
+          console.warn('[Presence] Référence nulle, reconnexion ignorée');
+          return;
+        }
+
+        // Connecté - définir la présence
+        const { set } = await import("firebase/database");
+        await set(this.userPresenceRef, {
+          timestamp: Date.now()
+        });
+
+        // Guard avant onDisconnect
+        if (this.userPresenceRef) {
+          onDisconnect(this.userPresenceRef).remove();
+        }
+
+        console.log('[Presence] Utilisateur marqué en ligne');
+      }
+    });
+
+    this.presenceUnsubscribe = unsubscribe;
+  }
+
+  /**
+   * S'abonne au nombre de joueurs en ligne
+   * @param callback Fonction appelée avec le nombre de joueurs en ligne
+   * @returns Fonction de désabonnement
+   */
+  subscribeToOnlineCount(callback: (count: number) => void): () => void {
+    if (!this.isAvailable || !this.db) {
+      callback(0);
+      return () => {};
+    }
+
+    // Attendre l'authentification avant de s'abonner
+    this.waitForAuth().then((isAuthenticated) => {
+      if (!isAuthenticated) {
+        console.warn('[Presence] Lecture impossible: non authentifié');
+        callback(0);
+        return;
+      }
+
+      const presenceRef = ref(this.db, 'presence/users');
+
+      const unsubscribe = onValue(presenceRef, (snapshot) => {
+        const count = snapshot.exists()
+          ? Object.keys(snapshot.val()).length
+          : 0;
+
+        console.log(`[Presence] ${count} joueur(s) en ligne`);
+        callback(count);
+      }, (error) => {
+        console.error('[Presence] Erreur listener:', error);
+        callback(0);
+      });
+
+      // Stocker pour cleanup
+      this.onlineCountUnsubscribe = unsubscribe;
+    });
+
+    // Retourner fonction de cleanup
+    return () => {
+      if (this.onlineCountUnsubscribe) {
+        this.onlineCountUnsubscribe();
+        this.onlineCountUnsubscribe = null;
+      }
+    };
+  }
+
+  /**
+   * Arrête le suivi de présence
+   */
+  async stopPresenceTracking(): Promise<void> {
+    // CRITIQUE: Désabonner le listener AVANT de nullifier la référence
+    if (this.presenceUnsubscribe) {
+      this.presenceUnsubscribe();
+      this.presenceUnsubscribe = null;
+    }
+
+    // Ensuite supprimer la présence
+    if (this.userPresenceRef) {
+      try {
+        const { remove } = await import("firebase/database");
+        await remove(this.userPresenceRef);
+        console.log('[Presence] Utilisateur marqué hors ligne');
+      } catch (error) {
+        console.error('[Presence] Erreur suppression:', error);
+      }
+      this.userPresenceRef = null;
+    }
+  }
+
+  /**
+   * Incrémente le compteur de parties gagnées
+   */
+  async incrementGamesWon(): Promise<void> {
+    if (!this.isAvailable || !this.db) {
+      return;
+    }
+
+    try {
+      const { runTransaction } = await import("firebase/database");
+      const statsRef = ref(this.db, "stats/total_games_won");
+
+      await runTransaction(statsRef, (currentValue) => {
+        return (currentValue || 0) + 1;
+      });
+
+      // Invalider le cache pour forcer le rechargement
+      this.statsCache = null;
+
+      console.log(`[Stats] Partie gagnée incrémentée, cache invalidé`);
+    } catch (error) {
+      console.error("Erreur incrémentation parties gagnées:", error);
+    }
+  }
+
+  /**
+   * Récupère le nombre total de parties gagnées
+   */
+  async getTotalGamesWon(): Promise<number> {
+    if (!this.isAvailable || !this.db) {
+      return 0;
+    }
+
+    // Vérifier le cache (réutiliser la même structure)
+    const now = Date.now();
+    if (this.statsCache && (now - this.statsCache.timestamp) < this.STATS_CACHE_DURATION) {
+      console.log(`[Cache] Stats gagnées depuis cache: ${this.statsCache.totalGames} victoires`);
+      return this.statsCache.totalGames;
+    }
+
+    try {
+      console.log(`[Firebase] Chargement stats victoires`);
+      const statsRef = ref(this.db, "stats/total_games_won");
+      const snapshot = await get(statsRef);
+
+      const totalWon = snapshot.exists() ? (snapshot.val() as number) : 0;
+
+      // Mettre en cache
+      this.statsCache = { totalGames: totalWon, timestamp: now };
+
+      return totalWon;
+    } catch (error) {
+      console.error("Erreur récupération stats victoires:", error);
+      return 0;
+    }
+  }
+
+  /**
+   * S'abonner au compteur de parties gagnées (temps réel)
+   */
+  subscribeToGamesWon(callback: (count: number) => void): () => void {
+    if (!this.isAvailable || !this.db) {
+      callback(0);
+      return () => {};
+    }
+
+    const statsRef = ref(this.db, 'stats/total_games_won');
+    const unsubscribe = onValue(statsRef, (snapshot) => {
+      const count = snapshot.exists() ? (snapshot.val() as number) : 0;
+      console.log(`[Stats] Parties gagnées mises à jour: ${count}`);
+      callback(count);
+    });
+
+    return unsubscribe;
+  }
+
+  /**
+   * Marque un niveau comme résolu pour l'utilisateur actuel
+   */
+  async markLevelAsSolved(levelKey: string): Promise<void> {
+    if (!this.isAvailable || !this.db || !this.auth?.currentUser) {
+      return;
+    }
+
+    try {
+      const { set } = await import("firebase/database");
+      const userId = this.auth.currentUser.uid;
+      const solvedRef = ref(this.db, `users/${userId}/solved_levels/${levelKey}`);
+
+      await set(solvedRef, {
+        timestamp: Date.now(),
+      });
+
+      console.log(`[SolvedLevels] Niveau ${levelKey} marqué comme résolu`);
+    } catch (error) {
+      console.error("Erreur marquage niveau résolu:", error);
+    }
+  }
+
+  /**
+   * Récupère les niveaux résolus par l'utilisateur
+   */
+  async getSolvedLevels(): Promise<Set<string>> {
+    if (!this.isAvailable || !this.db || !this.auth?.currentUser) {
+      return new Set();
+    }
+
+    try {
+      const userId = this.auth.currentUser.uid;
+      const solvedRef = ref(this.db, `users/${userId}/solved_levels`);
+      const snapshot = await get(solvedRef);
+
+      if (!snapshot.exists()) {
+        return new Set();
+      }
+
+      const solvedKeys = Object.keys(snapshot.val());
+      console.log(`[SolvedLevels] ${solvedKeys.length} niveaux résolus chargés`);
+      return new Set(solvedKeys);
+    } catch (error) {
+      console.error("Erreur récupération niveaux résolus:", error);
+      return new Set();
     }
   }
 

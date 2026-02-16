@@ -1,4 +1,5 @@
 import { Game } from './components/Game';
+import { GameStats } from './components/GameStats';
 // import { Toaster } from './components/ui/toaster';
 import { Crown, Github, ExternalLink } from 'lucide-react';
 
@@ -31,17 +32,22 @@ function App() {
             </a>
           </div>
 
-          {/* Titre principal centré */}
-          <div className="flex items-center justify-center gap-3">
-            <Crown className="h-8 w-8 text-slate-700" />
-            <div className="text-center">
-              <h1 className="text-2xl font-semibold text-slate-900">
-                Queens Game
-              </h1>
-              <p className="text-sm text-slate-600">
-                Place queens without conflicts
-              </p>
+          {/* Titre principal centré avec stats */}
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex items-center justify-center gap-3">
+              <Crown className="h-8 w-8 text-slate-700" />
+              <div className="text-center">
+                <h1 className="text-2xl font-semibold text-slate-900">
+                  Queens Game
+                </h1>
+                <p className="text-sm text-slate-600">
+                  Place queens without conflicts
+                </p>
+              </div>
             </div>
+
+            {/* Game Stats */}
+            <GameStats />
           </div>
         </div>
       </header>

@@ -14,10 +14,19 @@
 
 Puzzle logique : placez exactement une reine par ligne, colonne et region coloree. Les reines ne peuvent pas se toucher (y compris en diagonale).
 
+### Fonctionnalités
+
 - **Tap** : cycle vide → marqueur → reine → vide
 - **Slide tactile** : marquer plusieurs cases d'un geste
 - **Grilles** : 5×5 (Tutoriel) a 12×12 (Mythique)
 - **Timer** : demarre des l'affichage, continue sur reset
+- **Statistiques temps réel** :
+  - Compteur de joueurs en ligne (presence tracking)
+  - Compteur de parties gagnées (mises à jour instantanées)
+- **Progression intelligente** :
+  - Sélection pondérée des niveaux (70% non-résolus, 30% résolus)
+  - Historique de progression par utilisateur
+  - Replay des niveaux complétés possible
 - **Leaderboard** : top 3 par taille de grille, visible immediatement
 - **Save intelligente** : formulaire uniquement si top 3 eligible, nom memorise comme placeholder
 
@@ -48,7 +57,7 @@ npm run type-check   # Verification TypeScript
 | Vite 5.1 | Build tool |
 | Tailwind CSS | Styling |
 | Lucide React | Icones |
-| Firebase 11.9.1 | Base de donnees (niveaux + leaderboard) |
+| Firebase 11.9.1 | Base de donnees (niveaux, stats, presence, progression) |
 | Docker + Nginx | Deploiement |
 | Traefik | Reverse proxy + TLS |
 | GitHub Actions + GHCR | CI/CD |
@@ -60,17 +69,18 @@ src/
 ├── components/          # Composants React
 │   ├── Game.tsx         # Orchestrateur principal
 │   ├── GameCell.tsx     # Cellule (React.memo)
+│   ├── GameStats.tsx    # Compteurs (joueurs en ligne, parties gagnées)
 │   ├── Timer.tsx        # Chronometre
 │   ├── Leaderboard.tsx  # Top 3 + save form (eligibility check)
 │   ├── GameBoard/       # Plateau (event delegation, touch swipe)
 │   └── GameControls/    # Controles (reset, nouveau jeu, difficulte)
 ├── hooks/
-│   ├── useGameLogic.ts  # Etat du jeu, timer, validation synchrone, save
+│   ├── useGameLogic.ts  # Etat du jeu, timer, validation synchrone, victory detection
 │   └── useAnimations.ts # Animations spirale (requestAnimationFrame)
 ├── lib/
 │   └── rules.ts         # Validation pure (Map-based, O(N))
 ├── utils/
-│   ├── levelStorage.ts  # Firebase (niveaux + leaderboard avec cache 30s)
+│   ├── levelStorage.ts  # Firebase (niveaux, stats, presence, weighting, listeners)
 │   ├── boardUtils.ts    # Styles de bordure
 │   └── gameUtils.ts     # Init/reset du plateau
 └── types/
@@ -85,9 +95,13 @@ src/
 - **Validation Map-based** : O(Q+N) au lieu de O(Q×N)
 - **`requestAnimationFrame`** pour les animations (au lieu de 144 setTimeout)
 - **Touch swipe** avec `document.elementFromPoint` pour marquer en glissant
+- **Real-time Firebase listeners** : `onValue()` pour stats et presence (pas de polling)
+- **Cache invalidation intelligente** : refresh automatique sur victoire
+- **Auth synchronization** : wait for auth avant Firebase reads (evite permission errors)
 - **Cache leaderboard 30s** : evite requetes Firebase repetees (reduit 90% bande passante)
 - **Top 3 uniquement** : 70% moins de donnees vs top 10
 - **Eligibility pre-check** : formulaire save uniquement si temps qualifie
+- **Presence cleanup guards** : null checks pour eviter errors lors reconnexion
 
 ## CI/CD
 

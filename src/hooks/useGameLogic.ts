@@ -69,6 +69,33 @@ export function useGameLogic(initialGridSize: number = 6) {
     }
   }, [gameState.isCompleted, stopTimer]);
 
+  // Incrémenter le compteur de victoires à la complétion
+  const hasIncrementedVictory = useRef(false);
+
+  useEffect(() => {
+    if (gameState.isCompleted && gameState.board.length > 0) {
+      // Guard contre StrictMode + éviter double increment
+      if (!hasIncrementedVictory.current) {
+        hasIncrementedVictory.current = true;
+
+        // Incrémenter compteur global
+        levelStorage.incrementGamesWon();
+
+        // Marquer niveau comme résolu
+        if (gameState.levelKey) {
+          levelStorage.markLevelAsSolved(gameState.levelKey);
+        }
+      }
+    }
+  }, [gameState.isCompleted, gameState.board.length, gameState.levelKey]);
+
+  // Reset guard on new level
+  useEffect(() => {
+    if (!isLoading) {
+      hasIncrementedVictory.current = false;
+    }
+  }, [isLoading]);
+
   // Chargement d'un niveau depuis Firebase
   const loadLevel = useCallback(async (gridSize: number) => {
     setIsLoading(true);

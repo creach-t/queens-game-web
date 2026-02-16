@@ -13,6 +13,36 @@
           ".validate": "newData.hasChildren(['userId', 'playerName', 'time', 'timestamp', 'gridSize']) && newData.child('userId').val() === auth.uid && newData.child('playerName').isString() && newData.child('playerName').val().length > 0 && newData.child('playerName').val().length <= 20 && newData.child('time').isNumber() && newData.child('timestamp').isNumber() && newData.child('gridSize').isNumber()"
         }
       }
+    },
+    "stats": {
+      "total_games": {
+        ".read": true,
+        ".write": "auth != null"
+      },
+      "total_games_won": {
+        ".read": true,
+        ".write": "auth != null"
+      }
+    },
+    "presence": {
+      "users": {
+        ".read": true,
+        "$uid": {
+          ".write": "$uid === auth.uid",
+          ".validate": "newData.hasChildren(['timestamp']) && newData.child('timestamp').isNumber()"
+        }
+      }
+    },
+    "users": {
+      "$uid": {
+        "solved_levels": {
+          ".read": "$uid === auth.uid",
+          ".write": "$uid === auth.uid",
+          "$levelKey": {
+            ".validate": "newData.hasChildren(['timestamp']) && newData.child('timestamp').isNumber()"
+          }
+        }
+      }
     }
   }
 }

@@ -18,7 +18,10 @@
       "Bash(ssh:*)",
       "Bash(gh run list:*)",
       "Bash(python:*)",
-      "Bash(wget:*)"
+      "Bash(wget:*)",
+      "Bash(cat:*)",
+      "Bash(npm run dev:*)",
+      "Bash(firebase projects:list:*)"
     ]
   }
 }
