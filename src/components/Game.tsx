@@ -1,8 +1,6 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import { useGameLogic } from '../hooks/useGameLogic';
-import { GameBoard } from './GameBoard';
 import { GameControls } from './GameControls';
-import { LoadingState } from './GameBoard/LoadingState';
 
 export const Game: React.FC = () => {
   const {
@@ -19,23 +17,17 @@ export const Game: React.FC = () => {
     error,
   } = useGameLogic();
 
-  const [boardAnimationKey, setBoardAnimationKey] = useState(0);
-
   const handleGridSizeChange = useCallback(async (newSize: number) => {
     await changeGridSizeOnly(newSize);
-    setBoardAnimationKey(prev => prev + 1);
   }, [changeGridSizeOnly]);
 
   const handleNewGame = useCallback(async () => {
     await originalNewGame(gameState.gridSize);
-    setBoardAnimationKey(prev => prev + 1);
   }, [originalNewGame, gameState.gridSize]);
 
   const handleResetGame = useCallback(() => {
     resetGame();
   }, [resetGame]);
-
-  const showVictoryAnimation = !isGenerating && gameState.isCompleted;
 
   return (
     <div className="h-full flex flex-col">

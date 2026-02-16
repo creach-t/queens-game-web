@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Users, Activity } from 'lucide-react';
 import { levelStorage } from '../utils/levelStorage';
 
 export const GameStats: React.FC = () => {
