@@ -128,7 +128,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-3 space-y-3">
+    <div className="bg-white/90 backdrop-blur-sm border border-gray-200 shadow-lg rounded-lg p-3 space-y-3">
       <div className="flex items-center gap-2">
         <Trophy className="w-4 h-4 text-yellow-600" />
         <h3 className="font-semibold text-gray-800 text-sm">Top 3 - {gridSize}×{gridSize}</h3>

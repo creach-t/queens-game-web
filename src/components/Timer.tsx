@@ -15,23 +15,21 @@ export const Timer: React.FC<TimerProps> = ({
   };
 
   return (
-    <div className="mb-2">
-      <div className={`bg-white rounded-lg border px-3 py-1.5 transition-all duration-300 ${
-        isCompleted ? 'border-green-200 bg-green-50' : 'border-gray-200'
-      }`}>
-        <div className="flex items-center justify-center gap-2">
-          <Clock className={`w-4 h-4 transition-colors duration-300 ${
-            isCompleted ? 'text-green-600' : 'text-gray-600'
-          }`} />
-          <div className={`text-lg font-medium transition-colors duration-300 ${
-            isCompleted ? 'text-green-700' : 'text-gray-800'
-          }`}>
-            {formatTime(gameTime)}
-          </div>
-          {isCompleted && (
-            <CheckCircle className="w-4 h-4 text-green-500 animate-pulse-subtle" />
-          )}
+    <div className={`bg-white/90 backdrop-blur-sm rounded-lg border shadow-lg px-3 py-1.5 transition-all duration-300 ${
+      isCompleted ? 'border-green-200 bg-green-50/90' : 'border-gray-200'
+    }`}>
+      <div className="flex items-center justify-center gap-2">
+        <Clock className={`w-4 h-4 transition-colors duration-300 ${
+          isCompleted ? 'text-green-600' : 'text-gray-600'
+        }`} />
+        <div className={`text-lg font-medium transition-colors duration-300 ${
+          isCompleted ? 'text-green-700' : 'text-gray-800'
+        }`}>
+          {formatTime(gameTime)}
         </div>
+        {isCompleted && (
+          <CheckCircle className="w-4 h-4 text-green-500 animate-pulse-subtle" />
+        )}
       </div>
     </div>
   );

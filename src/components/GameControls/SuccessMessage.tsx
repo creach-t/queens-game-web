@@ -8,7 +8,7 @@ export const SuccessMessage: React.FC<SuccessMessageProps> = ({
   formatTime
 }) => {
   return (
-    <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+    <div className="bg-green-50/90 backdrop-blur-sm border border-green-200 shadow-lg rounded-lg p-2">
       <div className="text-center">
         <div className="flex items-center justify-center gap-2 mb-1">
           <Trophy className="w-4 h-4 text-green-600" />

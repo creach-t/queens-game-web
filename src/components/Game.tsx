@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import { useGameLogic } from '../hooks/useGameLogic';
 import { GameBoard } from './GameBoard';
 import { GameControls } from './GameControls';
-import { Timer } from './Timer';
 import { LoadingState } from './GameBoard/LoadingState';
 
 export const Game: React.FC = () => {
@@ -39,47 +38,40 @@ export const Game: React.FC = () => {
   const showVictoryAnimation = !isGenerating && gameState.isCompleted;
 
   return (
-    <div className="game">
-      <div className="game-container">
-        {/* Timer */}
-        <Timer gameTime={gameTime} isCompleted={gameState.isCompleted} />
-
-        {/* Erreur de chargement */}
-        {error && (
-          <div className="mx-4 mb-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm text-center">
-            {error}
-          </div>
-        )}
-
-        {/* Plateau */}
-        <div className="game-board-section">
-          {isLoading ? (
-            <LoadingState />
-          ) : (
-            <GameBoard
-              gameState={gameState}
-              onCellClick={handleCellClick}
-              onMarkCell={markCell}
-              showVictoryAnimation={showVictoryAnimation}
-              key={boardAnimationKey}
-              isGameBlocked={isGenerating}
-              animationMode="none"
-            />
-          )}
+    <div className="relative min-h-[calc(100vh-8rem)]">
+      {/* Erreur de chargement */}
+      {error && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 max-w-md mx-4 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs text-center">
+          {error}
         </div>
+      )}
 
-        {/* Controles */}
-        <div className="game-controls-section">
-          <GameControls
+      {/* Plateau de jeu centré */}
+      <div className="flex items-center justify-center min-h-[calc(100vh-8rem)] p-4">
+        {isLoading ? (
+          <LoadingState />
+        ) : (
+          <GameBoard
             gameState={gameState}
-            gameTime={gameTime}
-            onResetGame={handleResetGame}
-            onNewGame={handleNewGame}
-            onGridSizeChange={handleGridSizeChange}
-            onSaveScore={saveScore}
+            onCellClick={handleCellClick}
+            onMarkCell={markCell}
+            showVictoryAnimation={showVictoryAnimation}
+            key={boardAnimationKey}
+            isGameBlocked={isGenerating}
+            animationMode="none"
           />
-        </div>
+        )}
       </div>
+
+      {/* Overlays positionnés */}
+      <GameControls
+        gameState={gameState}
+        gameTime={gameTime}
+        onResetGame={handleResetGame}
+        onNewGame={handleNewGame}
+        onGridSizeChange={handleGridSizeChange}
+        onSaveScore={saveScore}
+      />
     </div>
   );
 };
