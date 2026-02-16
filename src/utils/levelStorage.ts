@@ -22,6 +22,7 @@ class LevelStorage {
   // Presence tracking
   private presenceUnsubscribe: (() => void) | null = null;
   private userPresenceRef: any = null;
+  private onlineCountUnsubscribe: (() => void) | null = null;
 
   constructor(firebaseConfig: any) {
     try {
@@ -449,14 +450,22 @@ class LevelStorage {
 
     const unsubscribe = onValue(connectedRef, async (snapshot) => {
       if (snapshot.val() === true) {
+        // Guard: vérifier que la référence existe toujours
+        if (!this.userPresenceRef) {
+          console.warn('[Presence] Référence nulle, reconnexion ignorée');
+          return;
+        }
+
         // Connecté - définir la présence
         const { set } = await import("firebase/database");
         await set(this.userPresenceRef, {
           timestamp: Date.now()
         });
 
-        // Configurer la suppression automatique à la déconnexion
-        onDisconnect(this.userPresenceRef).remove();
+        // Guard avant onDisconnect
+        if (this.userPresenceRef) {
+          onDisconnect(this.userPresenceRef).remove();
+        }
 
         console.log('[Presence] Utilisateur marqué en ligne');
       }
@@ -476,32 +485,52 @@ class LevelStorage {
       return () => {};
     }
 
-    const presenceRef = ref(this.db, 'presence/users');
+    // Attendre l'authentification avant de s'abonner
+    this.waitForAuth().then((isAuthenticated) => {
+      if (!isAuthenticated) {
+        console.warn('[Presence] Lecture impossible: non authentifié');
+        callback(0);
+        return;
+      }
 
-    const unsubscribe = onValue(presenceRef, (snapshot) => {
-      const count = snapshot.exists()
-        ? Object.keys(snapshot.val()).length
-        : 0;
+      const presenceRef = ref(this.db, 'presence/users');
 
-      console.log(`[Presence] ${count} joueur(s) en ligne`);
-      callback(count);
-    }, (error) => {
-      console.error('[Presence] Erreur listener:', error);
-      callback(0);
+      const unsubscribe = onValue(presenceRef, (snapshot) => {
+        const count = snapshot.exists()
+          ? Object.keys(snapshot.val()).length
+          : 0;
+
+        console.log(`[Presence] ${count} joueur(s) en ligne`);
+        callback(count);
+      }, (error) => {
+        console.error('[Presence] Erreur listener:', error);
+        callback(0);
+      });
+
+      // Stocker pour cleanup
+      this.onlineCountUnsubscribe = unsubscribe;
     });
 
-    return unsubscribe;
+    // Retourner fonction de cleanup
+    return () => {
+      if (this.onlineCountUnsubscribe) {
+        this.onlineCountUnsubscribe();
+        this.onlineCountUnsubscribe = null;
+      }
+    };
   }
 
   /**
    * Arrête le suivi de présence
    */
   async stopPresenceTracking(): Promise<void> {
+    // CRITIQUE: Désabonner le listener AVANT de nullifier la référence
     if (this.presenceUnsubscribe) {
       this.presenceUnsubscribe();
       this.presenceUnsubscribe = null;
     }
 
+    // Ensuite supprimer la présence
     if (this.userPresenceRef) {
       try {
         const { remove } = await import("firebase/database");

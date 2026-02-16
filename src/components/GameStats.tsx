@@ -15,10 +15,7 @@ export const GameStats: React.FC = () => {
       // Démarrer le suivi de présence et attendre qu'il soit initialisé
       await levelStorage.startPresenceTracking();
 
-      // Petit délai pour laisser Firebase se stabiliser
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // S'abonner au nombre de joueurs en ligne (après l'init)
+      // S'abonner au nombre de joueurs en ligne (attendra auth en interne)
       unsubscribePresence = levelStorage.subscribeToOnlineCount(setOnlineCount);
 
       // S'abonner aux stats de parties gagnées (temps réel)
