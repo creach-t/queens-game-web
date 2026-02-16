@@ -485,6 +485,9 @@ class LevelStorage {
 
       console.log(`[Presence] ${count} joueur(s) en ligne`);
       callback(count);
+    }, (error) => {
+      console.error('[Presence] Erreur listener:', error);
+      callback(0);
     });
 
     return unsubscribe;
