@@ -97,8 +97,9 @@ export const GameControls: React.FC<GameControlsProps> = ({
       {/* Mobile Leaderboard Popup */}
       {showLeaderboard && (
         <>
+          {/* Standardized backdrop */}
           <div
-            className="md:hidden fixed inset-0 bg-black/20 z-45"
+            className="md:hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
             onClick={() => setShowLeaderboard(false)}
           />
           <div className="md:hidden fixed top-16 right-2 z-50 max-w-[min(320px,calc(100vw-1rem))]">
@@ -130,17 +131,26 @@ export const GameControls: React.FC<GameControlsProps> = ({
 
         {/* Victory Message - overlay centré sur la grille */}
         {gameState.isCompleted && showSuccessMessage && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-2 sm:p-4">
-            <div className="pointer-events-auto w-full flex items-center justify-center">
-              <SuccessMessage
-                gameState={gameState}
-                gameTime={gameTime}
-                formatTime={formatTime}
-                onSaveScore={onSaveScore}
-                onClose={() => setShowSuccessMessage(false)}
-              />
+          <>
+            {/* Standardized backdrop */}
+            <div
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+              onClick={() => setShowSuccessMessage(false)}
+            />
+
+            {/* Content centered with fixed positioning */}
+            <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-50 p-2 sm:p-4">
+              <div className="pointer-events-auto w-full flex items-center justify-center">
+                <SuccessMessage
+                  gameState={gameState}
+                  gameTime={gameTime}
+                  formatTime={formatTime}
+                  onSaveScore={onSaveScore}
+                  onClose={() => setShowSuccessMessage(false)}
+                />
+              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
 

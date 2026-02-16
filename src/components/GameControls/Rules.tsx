@@ -5,7 +5,8 @@ import {
   MousePointerClick,
   Grid3x3,
   Slash,
-  Target
+  Target,
+  RotateCcw
 } from 'lucide-react';
 import React, { useState } from 'react';
 
@@ -26,14 +27,14 @@ export const Rules: React.FC = () => {
       {/* Popup des règles */}
       {isOpen && (
         <>
-          {/* Overlay transparent pour fermer */}
+          {/* Standardized backdrop */}
           <div
-            className="fixed inset-0 z-30"
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
             onClick={() => setIsOpen(false)}
           />
 
           {/* Contenu de la bulle */}
-          <div className="absolute top-0 left-0 mt-12 z-40 w-80 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-md rounded-xl border-2 border-blue-200 shadow-2xl">
+          <div className="absolute top-0 left-0 mt-12 z-50 w-80 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-md rounded-xl border-2 border-blue-200 shadow-2xl">
             <div className="p-4 space-y-3">
               {/* Header */}
               <div className="flex items-center justify-between mb-2">
@@ -136,5 +137,3 @@ export const Rules: React.FC = () => {
     </div>
   );
 };
-
-import { RotateCcw } from 'lucide-react';

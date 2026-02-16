@@ -49,17 +49,12 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
     return styles;
   }, [gameState.gridSize, gameState.board, isMobile]);
 
-  // Event delegation : desktop uniquement (tactile géré par touch handlers)
-  const handleGridClick = useCallback((e: React.MouseEvent) => {
-    if (isTouchDevice.current) return;
-    const target = (e.target as HTMLElement).closest('[data-row]') as HTMLElement;
-    if (!target) return;
-    const row = Number(target.dataset.row);
-    const col = Number(target.dataset.col);
-    if (!isNaN(row) && !isNaN(col)) {
-      onCellClick(row, col);
-    }
-  }, [onCellClick]);
+  // Event delegation : ne plus utilisé, remplacé par handleMouseUp
+  // Gardé pour compatibilité mais ne fait rien
+  const handleGridClick = useCallback(() => {
+    // Le click est maintenant géré par handleMouseUp
+    return;
+  }, []);
 
   // --- Gestion tactile ---
   // Dès qu'un touchstart est détecté, on sait qu'on est sur un device tactile
@@ -70,6 +65,13 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
   const swipedCells = useRef<Set<string>>(new Set());
   const touchStartCell = useRef<{ row: number; col: number } | null>(null);
   const hasMoved = useRef(false);
+
+  // --- Gestion mouse drag (desktop) ---
+  const isDragging = useRef(false);
+  const mouseStartCell = useRef<{ row: number; col: number } | null>(null);
+  const draggedCells = useRef<Set<string>>(new Set());
+  const lastDraggedCell = useRef<string | null>(null);
+  const hasMouseMoved = useRef(false);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     isTouchDevice.current = true;
@@ -131,11 +133,85 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
     hasMoved.current = false;
   }, [onCellClick, gameState.board]);
 
+  // --- Gestion mouse drag (desktop) ---
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // Skip si device tactile
+    if (isTouchDevice.current) return;
+
+    const cell = getCellAtPoint(e.clientX, e.clientY);
+    if (!cell) return;
+
+    mouseStartCell.current = cell;
+    hasMouseMoved.current = false;
+    lastDraggedCell.current = `${cell.row}-${cell.col}`;
+    draggedCells.current = new Set();
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    // Skip si device tactile ou pas de mousedown actif
+    if (isTouchDevice.current || !mouseStartCell.current) return;
+
+    const cell = getCellAtPoint(e.clientX, e.clientY);
+    if (!cell) return;
+
+    const cellKey = `${cell.row}-${cell.col}`;
+
+    // Première fois qu'on bouge : activer le mode drag
+    if (!hasMouseMoved.current) {
+      hasMouseMoved.current = true;
+      isDragging.current = true;
+
+      // Marquer aussi la cellule de départ si elle est vide
+      if (mouseStartCell.current) {
+        const startKey = `${mouseStartCell.current.row}-${mouseStartCell.current.col}`;
+        draggedCells.current.add(startKey);
+        onMarkCell(mouseStartCell.current.row, mouseStartCell.current.col);
+      }
+    }
+
+    // Éviter de re-marquer la même cellule
+    if (cellKey === lastDraggedCell.current || draggedCells.current.has(cellKey)) return;
+
+    lastDraggedCell.current = cellKey;
+    draggedCells.current.add(cellKey);
+    onMarkCell(cell.row, cell.col);
+  }, [onMarkCell]);
+
+  const handleMouseUp = useCallback(() => {
+    if (isTouchDevice.current) return;
+
+    const wasDragging = hasMouseMoved.current;
+    const startCell = mouseStartCell.current;
+
+    // Click sans drag → cycle normal
+    if (!wasDragging && startCell) {
+      onCellClick(startCell.row, startCell.col);
+    }
+
+    // Reset tous les états de drag
+    isDragging.current = false;
+    lastDraggedCell.current = null;
+    draggedCells.current.clear();
+    mouseStartCell.current = null;
+    hasMouseMoved.current = false;
+  }, [onCellClick]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (isTouchDevice.current) return;
+
+    // Reset l'état de drag quand la souris quitte la grille
+    isDragging.current = false;
+    lastDraggedCell.current = null;
+    draggedCells.current.clear();
+    mouseStartCell.current = null;
+    hasMouseMoved.current = false;
+  }, []);
+
   const isAnimating = isLoading || isDestroying;
 
   return (
     <div
-      className="bg-slate-800 rounded-lg shadow-inner relative overflow-hidden"
+      className="bg-slate-800 rounded-lg shadow-inner relative overflow-hidden select-none"
       style={{
         display: 'grid',
         gridTemplateColumns: `repeat(${gameState.gridSize}, ${cellSize}px)`,
@@ -145,6 +221,10 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
         touchAction: 'none', // Empêcher le scroll pendant le swipe sur la grille
       }}
       onClick={handleGridClick}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
