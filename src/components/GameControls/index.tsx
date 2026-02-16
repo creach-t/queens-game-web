@@ -130,8 +130,8 @@ export const GameControls: React.FC<GameControlsProps> = ({
 
         {/* Victory Message - overlay centré sur la grille */}
         {gameState.isCompleted && showSuccessMessage && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="pointer-events-auto">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-2 sm:p-4">
+            <div className="pointer-events-auto w-full flex items-center justify-center">
               <SuccessMessage
                 gameState={gameState}
                 gameTime={gameTime}

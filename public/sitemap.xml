@@ -1,17 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"
-        xmlns:xhtml="http://www.w3.org/1999/xhtml"
-        xmlns:mobile="http://www.google.com/schemas/sitemap-mobile/1.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
-        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
+        xmlns:xhtml="http://www.w3.org/1999/xhtml"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+              http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
 
-  <!-- Main page -->
+  <!-- Page d'accueil - Queens Game Web -->
   <url>
     <loc>https://queens-game.creachtheo.fr/</loc>
     <lastmod>2026-02-16</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://queens-game.creachtheo.fr/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://queens-game.creachtheo.fr/"/>
+  </url>
+
+  <!-- Portfolio du créateur -->
+  <url>
+    <loc>https://creachtheo.fr/</loc>
+    <lastmod>2026-02-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://creachtheo.fr/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://creachtheo.fr/?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://creachtheo.fr/"/>
+    <image:image>
+      <image:loc>https://creachtheo.fr/img/projects/queensgame.jpg</image:loc>
+      <image:title>Queens Game Web - Jeu de puzzle logique gratuit et illimité</image:title>
+      <image:caption>Interface du Queens Game inspiré de LinkedIn Queens</image:caption>
+    </image:image>
   </url>
 
 </urlset>
