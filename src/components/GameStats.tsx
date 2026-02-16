@@ -8,22 +8,32 @@ export const GameStats: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Démarrer le suivi de présence
-    levelStorage.startPresenceTracking();
+    let unsubscribePresence: (() => void) | undefined;
+    let unsubscribeStats: (() => void) | undefined;
 
-    // S'abonner au nombre de joueurs en ligne
-    const unsubscribePresence = levelStorage.subscribeToOnlineCount(setOnlineCount);
+    const setup = async () => {
+      // Démarrer le suivi de présence et attendre qu'il soit initialisé
+      await levelStorage.startPresenceTracking();
 
-    // S'abonner aux stats de parties gagnées (temps réel)
-    const unsubscribeStats = levelStorage.subscribeToGamesWon((count) => {
-      setTotalGames(count);
-      setIsLoading(false);
-    });
+      // Petit délai pour laisser Firebase se stabiliser
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // S'abonner au nombre de joueurs en ligne (après l'init)
+      unsubscribePresence = levelStorage.subscribeToOnlineCount(setOnlineCount);
+
+      // S'abonner aux stats de parties gagnées (temps réel)
+      unsubscribeStats = levelStorage.subscribeToGamesWon((count) => {
+        setTotalGames(count);
+        setIsLoading(false);
+      });
+    };
+
+    setup();
 
     return () => {
       levelStorage.stopPresenceTracking();
-      unsubscribePresence();
-      unsubscribeStats();
+      if (unsubscribePresence) unsubscribePresence();
+      if (unsubscribeStats) unsubscribeStats();
     };
   }, []);
 
