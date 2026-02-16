@@ -488,6 +488,60 @@ class LevelStorage {
   }
 
   /**
+   * Incrémente le compteur de parties gagnées
+   */
+  async incrementGamesWon(): Promise<void> {
+    if (!this.isAvailable || !this.db) {
+      return;
+    }
+
+    try {
+      const { runTransaction } = await import("firebase/database");
+      const statsRef = ref(this.db, "stats/total_games_won");
+
+      await runTransaction(statsRef, (currentValue) => {
+        return (currentValue || 0) + 1;
+      });
+
+      console.log(`[Stats] Partie gagnée incrémentée`);
+    } catch (error) {
+      console.error("Erreur incrémentation parties gagnées:", error);
+    }
+  }
+
+  /**
+   * Récupère le nombre total de parties gagnées
+   */
+  async getTotalGamesWon(): Promise<number> {
+    if (!this.isAvailable || !this.db) {
+      return 0;
+    }
+
+    // Vérifier le cache (réutiliser la même structure)
+    const now = Date.now();
+    if (this.statsCache && (now - this.statsCache.timestamp) < this.STATS_CACHE_DURATION) {
+      console.log(`[Cache] Stats gagnées depuis cache: ${this.statsCache.totalGames} victoires`);
+      return this.statsCache.totalGames;
+    }
+
+    try {
+      console.log(`[Firebase] Chargement stats victoires`);
+      const statsRef = ref(this.db, "stats/total_games_won");
+      const snapshot = await get(statsRef);
+
+      const totalWon = snapshot.exists() ? (snapshot.val() as number) : 0;
+
+      // Mettre en cache
+      this.statsCache = { totalGames: totalWon, timestamp: now };
+
+      return totalWon;
+    } catch (error) {
+      console.error("Erreur récupération stats victoires:", error);
+      return 0;
+    }
+  }
+
+  /**
    * Convertit un niveau stocké en GameState
    */
   convertToGameState(storedLevel: StoredLevel): GameState {

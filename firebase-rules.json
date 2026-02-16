@@ -18,6 +18,10 @@
       "total_games": {
         ".read": true,
         ".write": "auth != null"
+      },
+      "total_games_won": {
+        ".read": true,
+        ".write": "auth != null"
       }
     },
     "presence": {

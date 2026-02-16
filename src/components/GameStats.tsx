@@ -14,10 +14,10 @@ export const GameStats: React.FC = () => {
     // S'abonner au nombre de joueurs en ligne
     const unsubscribePresence = levelStorage.subscribeToOnlineCount(setOnlineCount);
 
-    // Charger les stats de parties jouées
+    // Charger les stats de parties gagnées
     const loadStats = async () => {
       try {
-        const total = await levelStorage.getTotalGamesPlayed();
+        const total = await levelStorage.getTotalGamesWon();
         setTotalGames(total);
       } catch (error) {
         console.error('Error loading stats:', error);
@@ -62,9 +62,9 @@ export const GameStats: React.FC = () => {
           <Users className="h-4 w-4" />
           <span className="font-medium">{totalGames.toLocaleString()}</span>
           <span className="hidden sm:inline">
-            partie{totalGames > 1 ? 's' : ''} jouée{totalGames > 1 ? 's' : ''}
+            partie{totalGames > 1 ? 's' : ''} gagnée{totalGames > 1 ? 's' : ''}
           </span>
-          <span className="sm:hidden">parties</span>
+          <span className="sm:hidden">wins</span>
         </div>
       )}
     </div>
