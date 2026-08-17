@@ -338,11 +338,13 @@ function computeEliminated(
 /**
  * Indice progressif et pédagogique.
  * Ordre de priorité :
- *   1. error      → une croix (❌) du joueur sur une case où une reine doit aller,
- *                   ou une reine mal placée (d'après la solution)
+ *   1. error      → une contradiction PUREMENT LOGIQUE : une région, une ligne ou une
+ *                   colonne dont toutes les cases sont barrées (❌) ou éliminées par une
+ *                   reine, alors qu'une reine y est obligatoire (la solution n'est jamais
+ *                   consultée à ce palier — on ne révèle donc aucun emplacement de reine).
  *   2. elimination→ zones interdites (une loi rend ces cases impossibles) + explication
  *   3. deduction  → une seule case reste possible dans une région / ligne / colonne
- *   4. reveal     → position d'une reine (dernier recours)
+ *   4. reveal     → position d'une reine (dernier recours ; SEUL palier à lire `solution`)
  *
  * `stage` fait monter le niveau d'aide quand le joueur reste bloqué (0 → 1 → 2+).
  */
@@ -354,51 +356,89 @@ export function computeProgressiveHint(
   stage: number
 ): ProgressiveHint | null {
   const cellToRegion = buildCellToRegion(regions);
-
-  // --- PALIER 1 (prioritaire) : erreurs du joueur ---
-  if (solution && solution.length > 0) {
-    const solutionSet = new Set(solution.map((p) => `${p.row}-${p.col}`));
-
-    // a) Une croix posée sur une case où une reine est requise
-    for (let row = 0; row < gridSize; row++) {
-      for (let col = 0; col < gridSize; col++) {
-        const key = `${row}-${col}`;
-        if (board[row][col].state === "marked" && solutionSet.has(key)) {
-          return {
-            level: "error",
-            forbidden: [],
-            target: { row, col },
-            title: "Erreur : croix à retirer",
-            explanation:
-              "Tu as barré (❌) une case où une reine doit se trouver. Retire cette croix pour pouvoir résoudre la grille.",
-            penalty: HINT_PENALTIES.error,
-          };
-        }
-      }
-    }
-
-    // b) Une reine placée là où la solution n'en attend pas
-    for (let row = 0; row < gridSize; row++) {
-      for (let col = 0; col < gridSize; col++) {
-        const key = `${row}-${col}`;
-        if (board[row][col].state === "queen" && !solutionSet.has(key)) {
-          return {
-            level: "error",
-            forbidden: [],
-            target: { row, col },
-            title: "Erreur : reine mal placée",
-            explanation:
-              "Cette reine ne peut pas occuper cette case dans la solution. Déplace-la pour continuer.",
-            penalty: HINT_PENALTIES.error,
-          };
-        }
-      }
-    }
-  }
-
   const eliminated = computeEliminated(board, gridSize, cellToRegion);
   const isCandidate = (row: number, col: number): boolean =>
     board[row][col].state !== "queen" && !eliminated.has(`${row}-${col}`);
+
+  // Une case est « jouable » si elle peut encore accueillir une reine :
+  // vide (ni reine ni croix) ET non éliminée par une reine déjà placée.
+  const isPlayable = (row: number, col: number): boolean =>
+    board[row][col].state === "empty" && !eliminated.has(`${row}-${col}`);
+
+  // --- PALIER 1 (prioritaire) : contradiction logique (sur-barrage du joueur) ---
+  // Une région / ligne / colonne SANS reine mais dont plus aucune case n'est jouable
+  // (toutes barrées ou éliminées) est insoluble : le joueur a forcément barré une
+  // case indispensable. On surligne toute la zone SANS désigner de cible, et on lui
+  // demande de retirer une croix — jamais on ne montre où va la reine.
+  {
+    // a) Par région
+    for (const region of regions) {
+      const hasQueen = region.cells.some(
+        (c) => board[c.row][c.col].state === "queen"
+      );
+      if (hasQueen) continue;
+      const hasPlayable = region.cells.some((c) => isPlayable(c.row, c.col));
+      const hasMarked = region.cells.some(
+        (c) => board[c.row][c.col].state === "marked"
+      );
+      if (!hasPlayable && hasMarked) {
+        return {
+          level: "error",
+          forbidden: region.cells.map((c) => ({ row: c.row, col: c.col })),
+          target: null,
+          title: "Erreur : région sans issue",
+          explanation:
+            "Tu as barré toutes les cases possibles de cette région — une reine doit pourtant y aller. Retire une de tes croix.",
+          penalty: HINT_PENALTIES.error,
+        };
+      }
+    }
+
+    // b) Par ligne
+    for (let row = 0; row < gridSize; row++) {
+      const hasQueen = board[row].some((cell) => cell.state === "queen");
+      if (hasQueen) continue;
+      let hasPlayable = false;
+      let hasMarked = false;
+      for (let col = 0; col < gridSize; col++) {
+        if (isPlayable(row, col)) hasPlayable = true;
+        if (board[row][col].state === "marked") hasMarked = true;
+      }
+      if (!hasPlayable && hasMarked) {
+        return {
+          level: "error",
+          forbidden: Array.from({ length: gridSize }, (_, col) => ({ row, col })),
+          target: null,
+          title: "Erreur : ligne sans issue",
+          explanation: `Tu as barré toutes les cases possibles de la ligne ${row + 1} — une reine doit pourtant y aller. Retire une de tes croix.`,
+          penalty: HINT_PENALTIES.error,
+        };
+      }
+    }
+
+    // c) Par colonne
+    for (let col = 0; col < gridSize; col++) {
+      let hasQueen = false;
+      let hasPlayable = false;
+      let hasMarked = false;
+      for (let row = 0; row < gridSize; row++) {
+        if (board[row][col].state === "queen") hasQueen = true;
+        if (isPlayable(row, col)) hasPlayable = true;
+        if (board[row][col].state === "marked") hasMarked = true;
+      }
+      if (hasQueen) continue;
+      if (!hasPlayable && hasMarked) {
+        return {
+          level: "error",
+          forbidden: Array.from({ length: gridSize }, (_, row) => ({ row, col })),
+          target: null,
+          title: "Erreur : colonne sans issue",
+          explanation: `Tu as barré toutes les cases possibles de la colonne ${col + 1} — une reine doit pourtant y aller. Retire une de tes croix.`,
+          penalty: HINT_PENALTIES.error,
+        };
+      }
+    }
+  }
 
   // --- PALIER 2 : zones interdites (élimination) ---
   if (stage <= 0) {
