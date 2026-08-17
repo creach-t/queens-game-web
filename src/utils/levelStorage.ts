@@ -1,12 +1,12 @@
-import { initializeApp } from "firebase/app";
-import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
-import { get, getDatabase, ref, push, query, orderByChild, limitToFirst, onValue, onDisconnect } from "firebase/database";
+import { initializeApp, FirebaseOptions } from "firebase/app";
+import { Auth, getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
+import { Database, DatabaseReference, get, getDatabase, ref, push, query, orderByChild, limitToFirst, onValue, onDisconnect } from "firebase/database";
 import { REGION_COLORS } from "../constants";
 import { StoredLevel, GameState, LeaderboardEntry, LeaderboardData, SaveScoreResult, LeaderboardPage, RankedEntry } from "../types/game";
 
 class LevelStorage {
-  private db: any = null;
-  private auth: any = null;
+  private db: Database | null = null;
+  private auth: Auth | null = null;
   private isAvailable: boolean = false;
   private isAuthenticated: boolean = false;
   private authPromise: Promise<void> | null = null;
@@ -15,16 +15,12 @@ class LevelStorage {
   private leaderboardCache: Map<number, { data: LeaderboardData; timestamp: number }> = new Map();
   private readonly CACHE_DURATION = 30000; // 30 secondes
 
-  // Cache pour les statistiques globales
-  private statsCache: { totalGames: number; timestamp: number } | null = null;
-  private readonly STATS_CACHE_DURATION = 60000; // 1 minute
-
   // Presence tracking
   private presenceUnsubscribe: (() => void) | null = null;
-  private userPresenceRef: any = null;
+  private userPresenceRef: DatabaseReference | null = null;
   private onlineCountUnsubscribe: (() => void) | null = null;
 
-  constructor(firebaseConfig: any) {
+  constructor(firebaseConfig: FirebaseOptions) {
     try {
       if (!firebaseConfig.databaseURL) {
         throw new Error("Configuration Firebase invalide : databaseURL manquant");
@@ -43,16 +39,17 @@ class LevelStorage {
   }
 
   private async initAuth(): Promise<void> {
-    if (!this.auth) return;
+    const auth = this.auth;
+    if (!auth) return;
 
     return new Promise((resolve) => {
-      onAuthStateChanged(this.auth, async (user) => {
+      onAuthStateChanged(auth, async (user) => {
         if (user) {
           this.isAuthenticated = true;
           resolve();
         } else {
           try {
-            await signInAnonymously(this.auth);
+            await signInAnonymously(auth);
           } catch (error) {
             console.error("Erreur authentification anonyme:", error);
             resolve();
@@ -401,62 +398,6 @@ class LevelStorage {
   }
 
   /**
-   * Récupère le nombre total de parties jouées
-   */
-  async getTotalGamesPlayed(): Promise<number> {
-    if (!this.isAvailable || !this.db) {
-      return 0;
-    }
-
-    // Vérifier le cache
-    const now = Date.now();
-    if (this.statsCache && (now - this.statsCache.timestamp) < this.STATS_CACHE_DURATION) {
-      console.log(`[Cache] Stats depuis cache: ${this.statsCache.totalGames} parties`);
-      return this.statsCache.totalGames;
-    }
-
-    try {
-      console.log(`[Firebase] Chargement stats globales`);
-      const statsRef = ref(this.db, "stats/total_games");
-      const snapshot = await get(statsRef);
-
-      const totalGames = snapshot.exists() ? (snapshot.val() as number) : 0;
-
-      // Mettre en cache
-      this.statsCache = { totalGames, timestamp: now };
-
-      return totalGames;
-    } catch (error) {
-      console.error("Erreur récupération stats:", error);
-      return 0;
-    }
-  }
-
-  /**
-   * Incrémente le compteur de parties jouées
-   */
-  async incrementGamesPlayed(): Promise<void> {
-    if (!this.isAvailable || !this.db) {
-      return;
-    }
-
-    try {
-      const { runTransaction } = await import("firebase/database");
-      const statsRef = ref(this.db, "stats/total_games");
-
-      await runTransaction(statsRef, (currentValue) => {
-        return (currentValue || 0) + 1;
-      });
-
-      // Invalider le cache
-      this.statsCache = null;
-      console.log(`[Stats] Partie incrémentée`);
-    } catch (error) {
-      console.error("Erreur incrémentation stats:", error);
-    }
-  }
-
-  /**
    * Démarre le suivi de présence pour l'utilisateur actuel
    */
   async startPresenceTracking(): Promise<void> {
@@ -510,7 +451,8 @@ class LevelStorage {
    * @returns Fonction de désabonnement
    */
   subscribeToOnlineCount(callback: (count: number) => void): () => void {
-    if (!this.isAvailable || !this.db) {
+    const db = this.db;
+    if (!this.isAvailable || !db) {
       callback(0);
       return () => {};
     }
@@ -523,7 +465,7 @@ class LevelStorage {
         return;
       }
 
-      const presenceRef = ref(this.db, 'presence/users');
+      const presenceRef = ref(db, 'presence/users');
 
       const unsubscribe = onValue(presenceRef, (snapshot) => {
         const count = snapshot.exists()
@@ -589,44 +531,9 @@ class LevelStorage {
         return (currentValue || 0) + 1;
       });
 
-      // Invalider le cache pour forcer le rechargement
-      this.statsCache = null;
-
-      console.log(`[Stats] Partie gagnée incrémentée, cache invalidé`);
+      console.log(`[Stats] Partie gagnée incrémentée`);
     } catch (error) {
       console.error("Erreur incrémentation parties gagnées:", error);
-    }
-  }
-
-  /**
-   * Récupère le nombre total de parties gagnées
-   */
-  async getTotalGamesWon(): Promise<number> {
-    if (!this.isAvailable || !this.db) {
-      return 0;
-    }
-
-    // Vérifier le cache (réutiliser la même structure)
-    const now = Date.now();
-    if (this.statsCache && (now - this.statsCache.timestamp) < this.STATS_CACHE_DURATION) {
-      console.log(`[Cache] Stats gagnées depuis cache: ${this.statsCache.totalGames} victoires`);
-      return this.statsCache.totalGames;
-    }
-
-    try {
-      console.log(`[Firebase] Chargement stats victoires`);
-      const statsRef = ref(this.db, "stats/total_games_won");
-      const snapshot = await get(statsRef);
-
-      const totalWon = snapshot.exists() ? (snapshot.val() as number) : 0;
-
-      // Mettre en cache
-      this.statsCache = { totalGames: totalWon, timestamp: now };
-
-      return totalWon;
-    } catch (error) {
-      console.error("Erreur récupération stats victoires:", error);
-      return 0;
     }
   }
 

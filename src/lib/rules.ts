@@ -241,21 +241,6 @@ export function validateCompleteGameState(
 }
 
 /**
- * Checks if a position is within grid bounds
- */
-export function isPositionInBounds(
-  position: Position,
-  gridSize: number
-): boolean {
-  return (
-    position.row >= 0 &&
-    position.row < gridSize &&
-    position.col >= 0 &&
-    position.col < gridSize
-  );
-}
-
-/**
  * Gets a hint for the next best move based on the solution
  */
 export function getHint(
