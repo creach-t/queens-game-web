@@ -3,6 +3,7 @@ import { GameState, SaveScoreResult, ProgressiveHint } from '../types/game';
 import { updateConflicts, validateCompleteGameState, getPlacedQueens, computeProgressiveHint } from '../lib/rules';
 import { resetGameBoard } from '../utils/gameUtils';
 import { levelStorage } from '../utils/levelStorage';
+import { requestClientLevel } from '../utils/generatorClient';
 
 const EMPTY_GAME_STATE: GameState = {
   board: [],
@@ -157,8 +158,12 @@ export function useGameLogic(initialGridSize?: number) {
     setHintStage(0);
   }, [gameState.queensPlaced]);
 
-  // Chargement d'un niveau depuis Firebase
+  // Anti-course : ignore les chargements obsolètes si l'utilisateur enchaîne les clics.
+  const loadIdRef = useRef(0);
+
+  // Chargement d'un niveau : génération client (Web Worker) d'abord, repli Firebase.
   const loadLevel = useCallback(async (gridSize: number) => {
+    const loadId = ++loadIdRef.current;
     setIsLoading(true);
     setError(null);
     resetTimer();
@@ -174,19 +179,29 @@ export function useGameLogic(initialGridSize?: number) {
     setHintsUsed(0);
 
     try {
-      const storedLevel = await levelStorage.getRandomLevel(gridSize);
-      if (!storedLevel) {
-        setError(`Aucun niveau ${gridSize}x${gridSize} disponible`);
+      // 1. Génération 100 % client (hors thread principal). Instantané ≤10, rapide 11-12.
+      const generated = await requestClientLevel(gridSize);
+      if (loadIdRef.current !== loadId) return; // un chargement plus récent a pris le relais
+      if (generated) {
+        setGameState(generated);
         return;
       }
 
-      const newGameState = levelStorage.convertToGameState(storedLevel);
-      setGameState(newGameState);
+      // 2. Repli Firebase si le budget de génération a été dépassé (grandes grilles).
+      const storedLevel = await levelStorage.getRandomLevel(gridSize);
+      if (loadIdRef.current !== loadId) return;
+      if (storedLevel) {
+        setGameState(levelStorage.convertToGameState(storedLevel));
+        return;
+      }
+
+      setError(`Impossible de générer un niveau ${gridSize}x${gridSize}`);
     } catch (err) {
+      if (loadIdRef.current !== loadId) return;
       setError('Erreur lors du chargement du niveau');
       console.error('Level loading error:', err);
     } finally {
-      setIsLoading(false);
+      if (loadIdRef.current === loadId) setIsLoading(false);
     }
   }, [resetTimer]);
 

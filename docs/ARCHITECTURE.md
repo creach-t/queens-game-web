@@ -1,12 +1,17 @@
 # Architecture — Queens Game Web
 
 > Document synchronisé avec le code source réel (voir `src/`).
-> Dernière vérification : audit du 2026-08-17.
+> Dernière vérification : 2026-08-17 (ajout du générateur client-side + refonte layout).
 
 Queens Game Web est une SPA React sans backend applicatif : toute la logique de jeu
-s'exécute côté client, et **Firebase Realtime Database** sert uniquement de couche de
-persistance (niveaux, scores, statistiques, présence). Il n'y a **aucune génération de
-niveau côté client** — les grilles sont lues depuis Firebase.
+s'exécute côté client, et **Firebase Realtime Database** sert de couche de persistance
+(scores, statistiques, présence) et de **filet de secours** pour les niveaux.
+
+**Génération de niveaux 100 % côté client** (depuis 2026-08) : les grilles sont générées
+dans le navigateur, hors du thread principal via un **Web Worker**, par une approche
+« seed-and-repair » à solution unique garantie (`utils/levelGenerator.ts`). Firebase
+(`generated_levels_v1`) ne sert plus que de repli quand la génération dépasse son budget
+de temps — en pratique surtout pour le 12×12 (voir « Chargement d'un niveau »).
 
 ## Vue d'ensemble des couches
 
@@ -39,8 +44,15 @@ flowchart TD
         RULES["lib/rules.ts<br/>validation + computeProgressiveHint (pur)"]
     end
 
+    subgraph Gen["Génération de niveaux (client)"]
+        GCLIENT["utils/generatorClient.ts<br/>pilote le worker + budget + repli"]
+        WORKER["workers/levelGenerator.worker.ts<br/>hors thread principal"]
+        GENERATOR["utils/levelGenerator.ts<br/>seed-and-repair, solution unique"]
+    end
+
     subgraph Data["Accès données"]
-        STORE["utils/levelStorage.ts<br/>singleton LevelStorage"]
+        STORE["utils/levelStorage.ts<br/>singleton LevelStorage (repli + scores)"]
+        METRICS["utils/boardMetrics.ts<br/>taille plateau (source unique)"]
         CONST["constants (palette couleurs)"]
     end
 
@@ -60,8 +72,13 @@ flowchart TD
     GC --> HINT
     GC --> SUCCESS
     GC --> TIMER
+    GC --> METRICS
     BOARD --> ANIM
+    BOARD --> METRICS
     HOOK --> RULES
+    HOOK --> GCLIENT
+    GCLIENT --> WORKER --> GENERATOR
+    GENERATOR --> CONST
     HOOK --> STORE
     GC --> STORE
     STATS --> STORE
@@ -104,22 +121,53 @@ sequenceDiagram
 
 ## Chargement d'un niveau
 
+Depuis 2026-08, `useGameLogic.loadLevel` **génère d'abord côté client** (via le Web Worker)
+et ne se replie sur Firebase que si le budget de temps est dépassé. Un garde anti-course
+(`loadIdRef`) ignore les chargements obsolètes lors de clics rapides.
+
 ```mermaid
 sequenceDiagram
     participant H as useGameLogic
+    participant GC as generatorClient
+    participant W as Web Worker
     participant S as levelStorage
     participant FB as Firebase
 
-    H->>S: getRandomLevel(gridSize)
-    S->>FB: waitForAuth() (anonyme)
-    S->>FB: get("generated_levels_v1")
-    FB-->>S: tous les niveaux
-    S->>FB: getSolvedLevels() (users/{uid}/solved_levels)
-    Note over S: pondération 70% non-résolus / 30% résolus
-    S-->>H: StoredLevel
-    H->>S: convertToGameState(storedLevel)
-    S-->>H: GameState (board + regions + solution)
+    H->>GC: requestClientLevel(gridSize, budget≈1200ms)
+    GC->>W: postMessage({ gridSize, timeBudgetMs })
+    Note over W: seed-and-repair<br/>solution unique
+    alt généré dans le budget (≤10 instantané, 11 souvent)
+        W-->>GC: GameState
+        GC-->>H: GameState (sans levelKey)
+    else budget dépassé (12×12, parfois 11)
+        W-->>GC: null
+        GC-->>H: null
+        H->>S: getRandomLevel(gridSize)  (repli)
+        S->>FB: get("generated_levels_v1") + pondération 70/30
+        S-->>H: StoredLevel → convertToGameState
+    end
 ```
+
+## Génération de niveaux (seed-and-repair)
+
+`utils/levelGenerator.ts` produit des grilles à **solution unique garantie**, en quelques
+millisecondes jusqu'à 10×10 :
+
+1. **Solution N-Queens aléatoire** — permutation ligne→colonne sans deux reines adjacentes.
+2. **Découpage en régions contiguës** — flood aléatoire multi-source depuis les reines
+   (contiguïté garantie par construction).
+3. **Vérification d'unicité** — solveur bitmask exact qui s'arrête à 2 solutions (µs).
+4. **Repair ciblé** — si une 2ᵉ solution existe, on déplace UNE case vers une région voisine
+   pour la casser (sans toucher aux cases-reines ni rompre la contiguïté), plafond `4·n`
+   itérations sinon nouveau découpage.
+
+Invariant validé sur 1500+ tirages (`scripts/validate-generator.ts`) : **unique + soluble +
+régions contiguës + pavage complet**. Le module est autonome (aucune dépendance Firebase) et
+exécuté dans un **Web Worker** pour ne jamais geler l'UI.
+
+**Plafond de perf** (intrinsèque à l'unicité sur découpage aléatoire) : instantané ≤10
+(6×6 ≈ 0,2 ms, 9×9 ≈ 7 ms, 10×10 ≈ 57 ms), mais 11×11 ≈ 440 ms et 12×12 ≈ 5 s. Avec le
+budget de ~1200 ms, le 12×12 (et parfois le 11×11) bascule sur le repli Firebase.
 
 ## Système d'indice progressif
 
@@ -159,7 +207,7 @@ flowchart TD
 
 | Chemin                                   | Contenu                                        |
 |------------------------------------------|------------------------------------------------|
-| `generated_levels_v1/{key}`              | `{ gridSize, complexity, regions, createdAt }` |
+| `generated_levels_v1/{key}`              | `{ gridSize, complexity, regions, createdAt }` — **repli** (génération désormais client) |
 | `leaderboards/grid_{size}/{key}`         | `{ userId, playerName, time, timestamp, gridSize }` |
 | `stats/total_games_won`                  | compteur global de victoires                   |
 | `stats/total_games`                      | compteur de parties (⚠️ non alimenté, voir audit) |
@@ -186,3 +234,11 @@ flowchart TD
 - **Délégation d'événements** : handlers souris/tactile posés sur le conteneur de grille,
   résolution de cellule via `data-row`/`data-col` + `document.elementFromPoint`.
 - **Caches côté client** : leaderboard 30 s, stats 60 s (voir réserve dans l'audit).
+- **Taille du plateau centralisée** : `utils/boardMetrics.ts` est la source unique
+  (fenêtre → `cellSize` / largeur de carte). `GameBoard` l'utilise pour dimensionner,
+  `GameControls` pour décider si la **carte leaderboard peut flotter** en haut à droite
+  sans chevaucher la grille — sinon elle retombe sur le **bouton trophée** (popup, comme
+  sur mobile). Budget hauteur du plateau : 55 % de la fenêtre (réserve la place de la
+  bannière d'indice + du dock).
+- **Bannière d'indice dans le flux** (`GameControls`), placée entre la grille et le dock
+  de boutons : elle ne recouvre jamais la grille.

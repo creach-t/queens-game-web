@@ -4,7 +4,7 @@
 
 Queens Game Web is a browser-based puzzle game inspired by LinkedIn's Queens Game. Players place queens on a colored grid so that each row, column, and region contains exactly one queen with no two queens adjacent (including diagonals).
 
-Levels are loaded from Firebase (no client-side generation).
+Levels are **generated client-side** (unique-solution "seed-and-repair" generator running in a Web Worker), with Firebase (`generated_levels_v1`) kept as a time-budget fallback — mostly for 12×12, which is too slow to generate on demand. See `docs/ARCHITECTURE.md` and `src/utils/levelGenerator.ts`.
 
 Live: https://queens-game.creachtheo.fr
 
@@ -25,6 +25,9 @@ npm run dev          # Dev server at localhost:3000 (auto-opens browser)
 npm run build        # Production build to dist/
 npm run preview      # Preview production build
 npm run type-check   # TypeScript type checking (tsc --noEmit)
+
+# Validate the level generator (unique + solvable + contiguous + full tiling, 1500+ samples)
+npx esbuild scripts/validate-generator.ts --bundle --platform=node --format=esm | node --input-type=module -
 ```
 
 No test framework is configured. CI runs type-check + build as validation.
@@ -51,15 +54,20 @@ src/
 │       ├── SizeGridSelector.tsx  # Grid size picker (5-12, localStorage)
 │       └── SuccessMessage.tsx    # Victory popup with leaderboard form
 ├── hooks/
-│   ├── useGameLogic.ts       # Core game state (Firebase, timer, grid size persistence)
+│   ├── useGameLogic.ts       # Core game state (client-gen first + Firebase fallback, timer, grid size persistence)
 │   └── useAnimations.ts      # Spiral animations (requestAnimationFrame)
 ├── lib/
 │   └── rules.ts              # Pure game rule validation (Map-based indexing)
 ├── types/
 │   └── game.ts               # All TypeScript interfaces
+├── workers/
+│   └── levelGenerator.worker.ts  # Runs the generator off the main thread
 ├── utils/
 │   ├── boardUtils.ts         # Border styles, corner classes
-│   ├── levelStorage.ts       # Firebase (levels, stats, presence, level weighting)
+│   ├── boardMetrics.ts       # Single source of truth for board size (cellSize / card width)
+│   ├── levelGenerator.ts     # Client-side unique-solution generator (seed-and-repair)
+│   ├── generatorClient.ts    # Web Worker driver: time budget, requestId, fallback
+│   ├── levelStorage.ts       # Firebase (fallback levels, stats, presence, level weighting)
 │   └── gameUtils.ts          # Board init/reset helpers
 ├── constants/
 │   └── index.ts              # Region color palette (12 pastel colors)
@@ -89,7 +97,7 @@ public/
 - **Validation**: Synchronous within single `setGameState` callback (no deferred setTimeout)
 - **Cell click cycle**: empty → marked → queen → empty
 - **Touch swipe**: Sliding on mobile marks multiple empty cells in one gesture
-- **Level loading**: Firebase-only via `levelStorage.getRandomLevel()` with weighted selection (70% unsolved, 30% solved)
+- **Level loading**: client-side generation first (Web Worker, ~1200ms budget), Firebase `levelStorage.getRandomLevel()` fallback when the budget is exceeded (weighted 70% unsolved / 30% solved). `loadIdRef` guards against stale loads on rapid clicks
 - **Timer**: `useRef<setInterval>`, starts when grid becomes visible, continues on reset, stops on completion
 - **Animations**: Single `requestAnimationFrame` loop with Set-based spiral order (memoized)
 - **Memoization**: `React.memo` on GameCell with custom comparator, `useMemo` for border styles
@@ -99,10 +107,13 @@ public/
 
 ## Key Files for Common Tasks
 
+- **Level generation**: `src/utils/levelGenerator.ts` — client-side unique-solution generator (seed-and-repair). Validate with `scripts/validate-generator.ts` (see command below)
+- **Generation worker/driver**: `src/workers/levelGenerator.worker.ts` + `src/utils/generatorClient.ts` — off-main-thread generation, time budget, Firebase fallback
+- **Board sizing / responsive**: `src/utils/boardMetrics.ts` — single source for board size + the leaderboard float-vs-trophy decision
 - **Game rules/validation**: `src/lib/rules.ts` — pure functions, Map-based indexing
 - **Game state/logic**: `src/hooks/useGameLogic.ts` — main hook for gameplay, victory detection, grid size persistence
 - **Type definitions**: `src/types/game.ts` — all interfaces
-- **Firebase integration**: `src/utils/levelStorage.ts` — levels, stats, presence, level weighting, real-time subscriptions
+- **Firebase integration**: `src/utils/levelStorage.ts` — fallback levels, stats, presence, level weighting, real-time subscriptions
 - **Statistics UI**: `src/components/GameStats.tsx` — online players (green dot), games won (discrete)
 - **Leaderboard UI**: `src/components/Leaderboard.tsx` — Top 3 display only (read-only)
 - **Victory UI**: `src/components/GameControls/SuccessMessage.tsx` — popup with leaderboard form

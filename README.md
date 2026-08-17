@@ -19,6 +19,7 @@ Puzzle logique addictif : placez exactement **une reine par ligne, colonne et r�
 ### ✨ Fonctionnalités
 
 #### 🎮 Gameplay
+- **Niveaux générés côté client** : chaque grille est générée dans le navigateur (Web Worker), à **solution unique garantie**, instantanément jusqu'au 10×10 — Firebase sert de repli pour le 12×12
 - **Clic simple en cycle** : chaque clic fait défiler l'état d'une case `vide → marquée (❌) → reine (👑) → vide` (pas de double-clic)
 - **Glisser-marquer** : maintenir et glisser marque plusieurs cases vides d'un geste — à la **souris (desktop)** comme au **doigt (mobile)**
 - **Indice progressif (4 paliers)** : signale d'abord vos **erreurs de croix**, puis les **zones interdites** (avec explication de la loi), la **case forcée** par déduction, et enfin la **position d'une reine** en dernier recours. Pénalité de temps croissante, uniquement si utilisé, avec cooldown
@@ -103,12 +104,17 @@ src/
 │       ├── SizeGridSelector.tsx    # Sélecteur difficulté
 │       └── SuccessMessage.tsx      # Popup victoire + formulaire
 ├── hooks/
-│   ├── useGameLogic.ts             # État jeu, timer, validation
+│   ├── useGameLogic.ts             # État jeu, timer, validation, chargement (client + repli)
 │   └── useAnimations.ts            # Animations spirale
 ├── lib/
 │   └── rules.ts                    # Validation pure (Map-based)
+├── workers/
+│   └── levelGenerator.worker.ts    # Génération hors thread principal
 ├── utils/
-│   ├── levelStorage.ts             # Firebase (niveaux, stats, weighting)
+│   ├── levelGenerator.ts           # Générateur client (seed-and-repair, solution unique)
+│   ├── generatorClient.ts          # Pilote Worker : budget, requestId, repli Firebase
+│   ├── boardMetrics.ts             # Taille plateau (source unique) + décision leaderboard
+│   ├── levelStorage.ts             # Firebase (repli niveaux, stats, weighting)
 │   ├── boardUtils.ts               # Utilitaires bordures
 │   └── gameUtils.ts                # Init/reset plateau
 ├── types/

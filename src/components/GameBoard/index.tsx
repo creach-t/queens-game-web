@@ -2,6 +2,7 @@ import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import { GameBoardProps } from '../../types/game';
 import { useAnimations } from '../../hooks/useAnimations';
 import { BoardGrid } from './BoardGrid';
+import { computeCellSize } from '../../utils/boardMetrics';
 
 export const GameBoard: React.FC<GameBoardProps> = ({
   gameState,
@@ -40,16 +41,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     };
   }, []);
 
-  const cellSize = useMemo(() => {
-    // Pour mobile (< 768px), utiliser 95% de la largeur pour maximiser l'espace
-    const isMobile = windowSize.w < 768;
-    const maxWidth = Math.min(600, windowSize.w * (isMobile ? 0.95 : 0.85));
-    const maxHeight = Math.min(600, windowSize.h * 0.6);
-    const availableSize = Math.min(maxWidth, maxHeight);
-    // Réduire la marge entre cellules sur mobile (grandes grilles)
-    const cellMargin = isMobile && gameState.gridSize >= 9 ? 4 : 6;
-    return Math.floor(availableSize / gameState.gridSize) - cellMargin;
-  }, [gameState.gridSize, windowSize.w, windowSize.h]);
+  const cellSize = useMemo(
+    () => computeCellSize(windowSize.w, windowSize.h, gameState.gridSize),
+    [gameState.gridSize, windowSize.w, windowSize.h]
+  );
 
   // Animations
   const {
