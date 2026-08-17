@@ -27,25 +27,37 @@ plusieurs croix « à la volée » reste donc peu direct au clavier/souris.
 
 ---
 
-## 2. 🔜 Bouton d'indice avec pénalité temporelle
+## 2. ✅ Bouton d'indice progressif avec pénalité temporelle
 
-**Retour :** ajouter un bouton d'**indice relançable toutes les X secondes**, qui **ajoute
-des secondes au timer** — de façon à ne pas pénaliser les joueurs qui ne l'utilisent pas.
+**Retour :** un vrai indice doit **enseigner la déduction**, pas donner la réponse. Il faut
+d'abord montrer les **zones d'impossibilité** (où une reine ne peut pas aller selon une loi)
+**en l'expliquant**, et ne révéler la position d'une reine **qu'en dernier recours**. En
+**priorité**, si le joueur a fait une **erreur dans ses croix (❌)**, le signaler.
 
-**Design proposé :**
-- Réutiliser `getHint(board, solution)` **déjà présent** dans `lib/rules.ts` (actuellement
-  code mort) : il renvoie la prochaine position de reine correcte non encore placée.
-- **Cooldown** de X secondes entre deux indices (bouton désactivé + décompte visible).
-- **Pénalité** : +N secondes ajoutées au `gameTime` à chaque indice utilisé (ex. +30 s),
-  au lieu d'un malus fixe qui s'appliquerait à tous.
-- Feedback visuel : surligner brièvement la case suggérée (réutiliser `isHighlighted`,
-  déjà dans le type `GameCell`).
+**✅ Livré — indice à 4 paliers (moteur pur `computeProgressiveHint` dans `lib/rules.ts`) :**
 
-**À trancher :** valeurs de X (cooldown) et N (pénalité) ; comportement si le joueur a
-placé des reines erronées (indice sur la prochaine case de `solution` restante).
+| Palier | Déclenchement | Ce qui est montré | Pénalité |
+|--------|---------------|-------------------|----------|
+| **1. Erreur** (prioritaire) | croix (❌) sur une case où une reine est requise, ou reine hors-solution | case fautive entourée + explication | +5 s |
+| **2. Élimination** | reines posées → zones interdites ; sinon région confinée à une ligne/colonne | cases interdites hachurées en rouge + explication de la loi | +5 s |
+| **3. Déduction** | une seule case reste possible dans une région / ligne / colonne | case forcée entourée en bleu + explication | +10 s |
+| **4. Révélation** | aucune déduction simple disponible (dernier recours) | position de la reine entourée en bleu | +15 s |
 
-**Impacts :** `useGameLogic` (exposer un `useHint()` + malus timer), UI d'un bouton
-« Indice » dans `MainControls`.
+- **Escalade** : chaque appel monte d'un palier (élimination → déduction → révélation) tant
+  que le joueur reste bloqué ; l'escalade **se réinitialise** dès qu'une reine bouge.
+- **Pénalité seulement si utilisé** (0 pour qui n'y touche pas), croissante selon le palier.
+- **Cooldown 10 s** entre deux indices (bouton désactivé + décompte tabulaire visible).
+- **Bannière explicative** (`HintBanner`) colorée par palier, `aria-live` pour lecteurs d'écran.
+- **Feedback plateau** : overlay rouge hachuré pour les cases interdites, halo bleu pulsé
+  (`.hint-highlight`) pour la case cible ; respecte `prefers-reduced-motion`.
+
+**Fichiers :** `lib/rules.ts` (`computeProgressiveHint`), `hooks/useGameLogic.ts` (état,
+paliers, cooldown, pénalité), `components/GameControls/HintBanner.tsx`, `MainControls.tsx`
+(bouton Indice), plomberie board (`GameBoard`/`BoardGrid`).
+
+> Correctifs au passage : bug de cooldown (fuite d'interval → retombait à 0 en ~3 s) corrigé
+> via un interval unique par ref ; refonte du dock de contrôles aux standards
+> (cibles ≥44px, focus visible, `aria-label`, chiffres tabulaires, reduced-motion).
 
 ---
 

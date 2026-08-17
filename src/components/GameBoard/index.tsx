@@ -11,7 +11,14 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   isGameBlocked = false,
   animationMode = 'none',
   onAnimationComplete,
+  hintForbidden,
+  hintTarget = null,
 }) => {
+  const forbiddenKeys = useMemo(
+    () => new Set((hintForbidden ?? []).map((p) => `${p.row}-${p.col}`)),
+    [hintForbidden]
+  );
+  const targetKey = hintTarget ? `${hintTarget.row}-${hintTarget.col}` : null;
   // Responsive cell size avec resize listener
   const [windowSize, setWindowSize] = useState({
     w: window.innerWidth,
@@ -84,6 +91,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           showVictoryAnimation={showVictoryAnimation && !isLoading && !isDestroying}
           onCellClick={handleCellClick}
           onMarkCell={handleMarkCell}
+          forbiddenKeys={forbiddenKeys}
+          targetKey={targetKey}
         />
       </div>
     </div>

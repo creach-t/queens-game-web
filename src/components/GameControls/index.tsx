@@ -3,6 +3,7 @@ import { Trophy } from 'lucide-react';
 import { GameControlsProps } from '../../types/game';
 import { levelStorage } from '../../utils/levelStorage';
 import { MainControls } from './MainControls';
+import { HintBanner } from './HintBanner';
 import { Rules } from './Rules';
 import { SizeGridSelector } from './SizeGridSelector';
 import { SuccessMessage } from './SuccessMessage';
@@ -23,6 +24,11 @@ export const GameControls: React.FC<GameControlsProps> = ({
   onCellClick,
   onMarkCell,
   isGameBlocked,
+  onHint,
+  hintCooldown,
+  hintPenalty,
+  hint,
+  onDismissHint,
 }) => {
   const [levelCounts, setLevelCounts] = useState<Record<number, number>>({});
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -117,6 +123,13 @@ export const GameControls: React.FC<GameControlsProps> = ({
 
       {/* Grille de jeu - flex-1 pour prendre l'espace disponible */}
       <div className="flex-1 flex items-center justify-center px-2 relative min-h-0">
+        {/* Bannière d'indice — overlay flottant en haut du plateau */}
+        {hint && (
+          <div className="absolute top-1 left-1/2 -translate-x-1/2 z-30 flex justify-center px-2 pointer-events-none">
+            <HintBanner hint={hint} onClose={() => onDismissHint?.()} />
+          </div>
+        )}
+
         {isLoading ? (
           <LoadingState />
         ) : (
@@ -127,6 +140,8 @@ export const GameControls: React.FC<GameControlsProps> = ({
             showVictoryAnimation={showVictoryAnimation}
             isGameBlocked={isGameBlocked || false}
             animationMode="none"
+            hintForbidden={hint?.forbidden}
+            hintTarget={hint?.target}
           />
         )}
 
@@ -155,30 +170,23 @@ export const GameControls: React.FC<GameControlsProps> = ({
         )}
       </div>
 
-      {/* Overlays du bas */}
-      <div className="grid grid-cols-3 items-end gap-2 px-2 sm:px-4 py-2">
-        {/* Grid Size Selector avec label - colonne gauche */}
-        <div className="flex flex-col items-start gap-1">
-          <span className="text-xs text-gray-600 font-medium px-1">Difficulté</span>
-          <SizeGridSelector
-            currentGridSize={gameState.gridSize}
-            onGridSizeChange={onGridSizeChange}
-            levelCounts={levelCounts}
-          />
-        </div>
+      {/* Dock de contrôles bas — centré, pouce-friendly, s'adapte en largeur */}
+      <div className="flex flex-wrap items-center justify-center gap-2 px-2 sm:px-4 py-2">
+        <SizeGridSelector
+          currentGridSize={gameState.gridSize}
+          onGridSizeChange={onGridSizeChange}
+          levelCounts={levelCounts}
+        />
 
-        {/* Main Controls avec label - colonne centrale */}
-        <div className="flex flex-col items-center gap-1">
-          <span className="text-xs text-gray-600 font-medium">Actions</span>
-          <MainControls
-            onResetGame={onResetGame}
-            onNewGame={onNewGame}
-            isCompleted={gameState.isCompleted}
-          />
-        </div>
-
-        {/* Spacer - colonne droite */}
-        <div></div>
+        <MainControls
+          onResetGame={onResetGame}
+          onNewGame={onNewGame}
+          isCompleted={gameState.isCompleted}
+          onHint={onHint}
+          hintCooldown={hintCooldown}
+          hintPenalty={hintPenalty}
+          hintDisabled={isLoading}
+        />
       </div>
 
       {/* Modale du classement complet */}

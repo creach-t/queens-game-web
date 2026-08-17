@@ -128,6 +128,64 @@ body {
   }
 }
 
+/* --- Accessibilité : focus clavier visible et cohérent --- */
+:where(button, a, select, input, [tabindex]):focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Réduit le délai de 300ms et évite le double-tap zoom sur les contrôles */
+button,
+a,
+select,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+/* --- Halo pulsé de la case suggérée par l'indice --- */
+@keyframes hintPulse {
+  0%   { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.95), 0 0 0 3px rgba(37, 99, 235, 0.45); }
+  70%  { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.95), 0 0 0 10px rgba(37, 99, 235, 0); }
+  100% { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.95), 0 0 0 10px rgba(37, 99, 235, 0); }
+}
+
+.hint-highlight {
+  position: relative;
+  z-index: 20;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.95);
+  animation: hintPulse 1.2s ease-out infinite;
+}
+
+/* Overlay des cases interdites (indice d'élimination) : hachures rouges + liseré */
+.hint-forbidden-overlay {
+  z-index: 15;
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    rgba(220, 38, 38, 0.30) 4px,
+    rgba(220, 38, 38, 0.30) 8px
+  );
+  box-shadow: inset 0 0 0 2px rgba(220, 38, 38, 0.6);
+}
+
+/* --- Respect de prefers-reduced-motion (reset accessible universel) --- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .hint-highlight {
+    animation: none;
+  }
+}
+
 /* Print styles */
 @media print {
   .no-print {

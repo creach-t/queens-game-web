@@ -79,6 +79,13 @@ export interface MainControlsProps {
   onResetGame: () => void;
   onNewGame: () => void;
   isCompleted: boolean;
+  onHint: () => void;
+  /** Secondes restantes avant le prochain indice (0 = prêt) */
+  hintCooldown: number;
+  /** Secondes ajoutées au chrono par indice */
+  hintPenalty: number;
+  /** Désactive l'indice (chargement / partie terminée) */
+  hintDisabled?: boolean;
 }
 
 export interface GameControlsProps {
@@ -92,6 +99,12 @@ export interface GameControlsProps {
   onCellClick: (row: number, col: number) => void;
   onMarkCell: (row: number, col: number) => void;
   isGameBlocked?: boolean;
+  // Indice
+  onHint: () => void;
+  hintCooldown: number;
+  hintPenalty: number;
+  hint?: ProgressiveHint | null;
+  onDismissHint?: () => void;
 }
 
 export interface ColoredRegion {
@@ -158,6 +171,21 @@ export interface LeaderboardPage {
 
 export type CellState = "empty" | "queen" | "marked";
 
+/** Paliers d'indice : erreur joueur (prioritaire) → élimination → déduction → révélation */
+export type HintLevel = "error" | "elimination" | "deduction" | "reveal";
+
+export interface ProgressiveHint {
+  level: HintLevel;
+  /** Cases où une reine est impossible (à surligner en interdit) */
+  forbidden: Position[];
+  /** Case forcée (déduction) ou reine révélée (dernier recours) */
+  target: Position | null;
+  title: string;
+  explanation: string;
+  /** Secondes ajoutées au chrono pour ce palier */
+  penalty: number;
+}
+
 export interface BoardGridProps {
   gameState: GameState;
   cellSize: number;
@@ -167,6 +195,10 @@ export interface BoardGridProps {
   showVictoryAnimation: boolean;
   onCellClick: (row: number, col: number) => void;
   onMarkCell: (row: number, col: number) => void;
+  /** Clés "row-col" des cases interdites (indice élimination) */
+  forbiddenKeys?: Set<string>;
+  /** Clé "row-col" de la case cible (déduction / révélation) */
+  targetKey?: string | null;
 }
 
 export interface AnimationOverlayProps {
@@ -182,4 +214,8 @@ export interface GameBoardProps {
   isGameBlocked?: boolean;
   animationMode?: "construction" | "destruction" | "none";
   onAnimationComplete?: () => void;
+  /** Cases interdites (indice élimination) */
+  hintForbidden?: Position[];
+  /** Case cible (déduction / révélation) */
+  hintTarget?: Position | null;
 }

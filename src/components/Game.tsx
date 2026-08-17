@@ -15,6 +15,11 @@ export const Game: React.FC = () => {
     isGenerating,
     isLoading,
     error,
+    showHint,
+    dismissHint,
+    hint,
+    hintCooldown,
+    hintPenalty,
   } = useGameLogic();
 
   const handleGridSizeChange = useCallback(async (newSize: number) => {
@@ -49,6 +54,11 @@ export const Game: React.FC = () => {
         onCellClick={handleCellClick}
         onMarkCell={markCell}
         isGameBlocked={isGenerating}
+        onHint={showHint}
+        hintCooldown={hintCooldown}
+        hintPenalty={hintPenalty}
+        hint={hint}
+        onDismissHint={dismissHint}
       />
     </div>
   );

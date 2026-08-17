@@ -24,7 +24,9 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
   isLoading,
   showVictoryAnimation,
   onCellClick,
-  onMarkCell
+  onMarkCell,
+  forbiddenKeys,
+  targetKey
 }) => {
   // Pré-calculer les coins arrondis (4 entrées max)
   const cornerClasses = useMemo(
@@ -233,6 +235,8 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
         row.map((cell, colIndex) => {
           const cellKey = `${rowIndex}-${colIndex}`;
           const isLoaded = loadedCells.has(cellKey);
+          const isTarget = targetKey === cellKey;
+          const isForbidden = forbiddenKeys?.has(cellKey) ?? false;
 
           return (
             <div
@@ -245,6 +249,7 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
                 ${isLoaded ? 'scale-100 opacity-100' : 'scale-75 opacity-0'}
                 ${isDestroying ? 'blur-sm' : ''}
                 ${isAnimating ? 'transition-transform transition-opacity duration-300 ease-out' : ''}
+                ${isTarget ? 'hint-highlight' : ''}
               `}
               style={borderStyles.get(cellKey)}
             >
@@ -254,6 +259,9 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
                 showVictoryAnimation={showVictoryAnimation}
                 isLoading={!isLoaded}
               />
+              {isForbidden && (
+                <div className="hint-forbidden-overlay absolute inset-0 pointer-events-none" aria-hidden="true" />
+              )}
             </div>
           );
         })

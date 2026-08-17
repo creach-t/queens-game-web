@@ -11,7 +11,7 @@ const difficultyInfo = {
   9: { name: "Expert", color: "bg-red-100 text-red-700" },
   10: { name: "Maître", color: "bg-purple-100 text-purple-700" },
   11: { name: "Légendaire", color: "bg-pink-100 text-pink-700" },
-  12: { name: "Mythique", color: "bg-gray-100 text-gray-700" }
+  12: { name: "Mythique", color: "bg-gray-200 text-gray-700" }
 };
 
 export const SizeGridSelector: React.FC<SizeGridSelectorProps> = ({
@@ -37,12 +37,22 @@ export const SizeGridSelector: React.FC<SizeGridSelectorProps> = ({
   const currentDifficulty = difficultyInfo[currentGridSize as keyof typeof difficultyInfo];
 
   return (
-    <div className="bg-white/90 backdrop-blur-sm rounded-lg border border-gray-200 shadow-lg p-1.5">
+    <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 shadow-lg min-h-[3.25rem] flex items-center gap-2 px-2">
+      {/* Pastille de difficulté — clarté (masquée sur très petits écrans) */}
+      {currentDifficulty && (
+        <span
+          className={`hidden sm:inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold ${currentDifficulty.color}`}
+        >
+          {currentDifficulty.name}
+        </span>
+      )}
+
       <select
         value={currentGridSize}
         onChange={(e) => handleChange(Number(e.target.value))}
-        className="w-16 sm:w-20 h-8 sm:h-9 border border-gray-300 rounded px-1.5 sm:px-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        title={currentDifficulty?.name}
+        aria-label={`Difficulté — taille de grille (actuel : ${currentGridSize} sur ${currentGridSize}, ${currentDifficulty?.name})`}
+        title={`Difficulté : ${currentDifficulty?.name}`}
+        className="h-11 sm:h-9 w-[4.5rem] rounded-lg border border-gray-300 bg-white px-2 text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
       >
         <option value={5}>5×5</option>
         <option value={6}>6×6</option>

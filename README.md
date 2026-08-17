@@ -21,6 +21,7 @@ Puzzle logique addictif : placez exactement **une reine par ligne, colonne et r�
 #### 🎮 Gameplay
 - **Clic simple en cycle** : chaque clic fait défiler l'état d'une case `vide → marquée (❌) → reine (👑) → vide` (pas de double-clic)
 - **Glisser-marquer** : maintenir et glisser marque plusieurs cases vides d'un geste — à la **souris (desktop)** comme au **doigt (mobile)**
+- **Indice progressif (4 paliers)** : signale d'abord vos **erreurs de croix**, puis les **zones interdites** (avec explication de la loi), la **case forcée** par déduction, et enfin la **position d'une reine** en dernier recours. Pénalité de temps croissante, uniquement si utilisé, avec cooldown
 - **8 niveaux de difficulté** : De 5×5 (Tutoriel) à 12×12 (Mythique)
 - **Timer intelligent** : Démarre automatiquement, continue sur reset
 - **Règles complètes** : Popup détaillée avec objectifs, contrôles et astuces

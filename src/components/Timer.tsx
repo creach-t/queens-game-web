@@ -22,9 +22,13 @@ export const Timer: React.FC<TimerProps> = ({
         <Clock className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors duration-300 ${
           isCompleted ? 'text-green-600' : 'text-gray-600'
         }`} />
-        <div className={`text-base sm:text-lg font-medium transition-colors duration-300 ${
-          isCompleted ? 'text-green-700' : 'text-gray-800'
-        }`}>
+        <div
+          className={`text-base sm:text-lg font-medium tabular-nums transition-colors duration-300 ${
+            isCompleted ? 'text-green-700' : 'text-gray-800'
+          }`}
+          role="timer"
+          aria-label={`Temps écoulé : ${formatTime(gameTime)}`}
+        >
           {formatTime(gameTime)}
         </div>
         {isCompleted && (

@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { GameState, SaveScoreResult } from '../types/game';
-import { updateConflicts, validateCompleteGameState, getPlacedQueens } from '../lib/rules';
+import { GameState, SaveScoreResult, ProgressiveHint } from '../types/game';
+import { updateConflicts, validateCompleteGameState, getPlacedQueens, computeProgressiveHint } from '../lib/rules';
 import { resetGameBoard } from '../utils/gameUtils';
 import { levelStorage } from '../utils/levelStorage';
 
@@ -15,6 +15,14 @@ const EMPTY_GAME_STATE: GameState = {
 };
 
 const GRID_SIZE_STORAGE_KEY = 'queens-game-grid-size';
+
+// Paramètres du système d'indice
+const HINT_COOLDOWN_S = 10; // délai entre deux indices (secondes)
+
+// Pénalité affichée sur le bouton selon le palier courant (le palier réel peut différer,
+// ex. une erreur détectée coûte moins). Voir HINT_PENALTIES dans rules.ts.
+const displayedPenaltyForStage = (stage: number): number =>
+  stage <= 0 ? 5 : stage === 1 ? 10 : 15;
 
 const getInitialGridSize = (): number => {
   const saved = localStorage.getItem(GRID_SIZE_STORAGE_KEY);
@@ -37,6 +45,13 @@ export function useGameLogic(initialGridSize?: number) {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Système d'indice progressif
+  const [hint, setHint] = useState<ProgressiveHint | null>(null);
+  const [hintStage, setHintStage] = useState(0); // 0 → élimination, 1 → déduction, 2+ → révélation
+  const [hintCooldown, setHintCooldown] = useState(0); // secondes restantes (0 = prêt)
+  const [hintsUsed, setHintsUsed] = useState(0);
+  const hintCooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Timer via useRef — indépendant du state du jeu
   const [gameTime, setGameTime] = useState(0);
@@ -111,11 +126,52 @@ export function useGameLogic(initialGridSize?: number) {
     }
   }, [isLoading]);
 
+  // Démarre le cooldown d'indice via un unique interval (évite toute fuite/accumulation)
+  const startHintCooldown = useCallback(() => {
+    if (hintCooldownRef.current) clearInterval(hintCooldownRef.current);
+    setHintCooldown(HINT_COOLDOWN_S);
+    hintCooldownRef.current = setInterval(() => {
+      setHintCooldown(prev => {
+        if (prev <= 1) {
+          if (hintCooldownRef.current) {
+            clearInterval(hintCooldownRef.current);
+            hintCooldownRef.current = null;
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  // Nettoyage de l'interval de cooldown au démontage
+  useEffect(() => {
+    return () => {
+      if (hintCooldownRef.current) clearInterval(hintCooldownRef.current);
+    };
+  }, []);
+
+  // Effacer l'indice affiché et remettre les paliers à zéro quand une reine bouge
+  useEffect(() => {
+    setHint(null);
+    setHintStage(0);
+  }, [gameState.queensPlaced]);
+
   // Chargement d'un niveau depuis Firebase
   const loadLevel = useCallback(async (gridSize: number) => {
     setIsLoading(true);
     setError(null);
     resetTimer();
+
+    // Réinitialiser l'état d'indice pour le nouveau niveau
+    if (hintCooldownRef.current) {
+      clearInterval(hintCooldownRef.current);
+      hintCooldownRef.current = null;
+    }
+    setHint(null);
+    setHintStage(0);
+    setHintCooldown(0);
+    setHintsUsed(0);
 
     try {
       const storedLevel = await levelStorage.getRandomLevel(gridSize);
@@ -255,9 +311,50 @@ export function useGameLogic(initialGridSize?: number) {
     });
   }, [isLoading]);
 
+  // Indice progressif : erreur joueur → zones interdites → déduction → révélation.
+  // Ne pénalise que si utilisé ; cooldown pour éviter le spam ; pénalité selon le palier.
+  const showHint = useCallback(() => {
+    if (isLoading || hintCooldown > 0) return;
+    if (gameState.isCompleted || gameState.board.length === 0) return;
+
+    const result = computeProgressiveHint(
+      gameState.board,
+      gameState.regions,
+      gameState.gridSize,
+      gameState.solution,
+      hintStage
+    );
+    if (!result) return; // rien à suggérer (grille déjà résolue)
+
+    setHint(result);
+    setGameTime(prev => prev + result.penalty);
+    setHintsUsed(n => n + 1);
+
+    // Monter d'un palier vers l'aide suivante ; erreur et révélation ne consomment pas la progression
+    if (result.level === 'elimination') setHintStage(s => Math.max(s, 1));
+    else if (result.level === 'deduction') setHintStage(s => Math.max(s, 2));
+
+    startHintCooldown();
+  }, [
+    isLoading,
+    hintCooldown,
+    gameState.isCompleted,
+    gameState.board,
+    gameState.regions,
+    gameState.gridSize,
+    gameState.solution,
+    hintStage,
+    startHintCooldown,
+  ]);
+
+  // Masquer manuellement l'indice affiché (bouton fermer de la bannière)
+  const dismissHint = useCallback(() => setHint(null), []);
+
   // Reset du jeu (même niveau) - le timer continue
   const resetGame = useCallback(() => {
     setGameState(prevState => resetGameBoard(prevState));
+    setHint(null);
+    setHintStage(0);
     // Le timer continue de tourner, on ne le reset pas
   }, []);
 
@@ -296,5 +393,12 @@ export function useGameLogic(initialGridSize?: number) {
     isLoading,
     isGenerating: isLoading,
     error,
+    // Indice progressif
+    showHint,
+    dismissHint,
+    hint,
+    hintCooldown,
+    hintsUsed,
+    hintPenalty: displayedPenaltyForStage(hintStage),
   };
 }

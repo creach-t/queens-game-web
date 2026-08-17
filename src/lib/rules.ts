@@ -9,7 +9,11 @@ import {
   GameCell,
   Position,
   ValidationResult,
+  ProgressiveHint,
 } from "../types/game";
+
+// Pénalités de temps par palier d'indice (secondes)
+const HINT_PENALTIES = { error: 5, elimination: 5, deduction: 10, reveal: 15 } as const;
 
 /**
  * Checks if two positions are adjacent (including diagonally)
@@ -269,6 +273,285 @@ export function getHint(
         return solutionPos;
       }
     }
+  }
+
+  return null;
+}
+
+/**
+ * Construit une Map cellule → id de région.
+ */
+function buildCellToRegion(regions: ColoredRegion[]): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const region of regions) {
+    for (const cell of region.cells) {
+      map.set(`${cell.row}-${cell.col}`, region.id);
+    }
+  }
+  return map;
+}
+
+/**
+ * Ensemble des cases (non-reines) rendues IMPOSSIBLES par les reines déjà placées :
+ * même ligne, même colonne, même région, ou case adjacente (diagonale incluse).
+ */
+function computeEliminated(
+  board: GameCell[][],
+  gridSize: number,
+  cellToRegion: Map<string, number>
+): Set<string> {
+  const eliminated = new Set<string>();
+  const queens = getPlacedQueens(board);
+  if (queens.length === 0) return eliminated;
+
+  const queenRows = new Set(queens.map((q) => q.row));
+  const queenCols = new Set(queens.map((q) => q.col));
+  const queenRegions = new Set(
+    queens.map((q) => cellToRegion.get(`${q.row}-${q.col}`))
+  );
+
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      if (board[row][col].state === "queen") continue;
+      const regionId = cellToRegion.get(`${row}-${col}`);
+      let blocked =
+        queenRows.has(row) ||
+        queenCols.has(col) ||
+        (regionId !== undefined && queenRegions.has(regionId));
+
+      if (!blocked) {
+        for (const q of queens) {
+          if (areAdjacent({ row, col }, q)) {
+            blocked = true;
+            break;
+          }
+        }
+      }
+
+      if (blocked) eliminated.add(`${row}-${col}`);
+    }
+  }
+
+  return eliminated;
+}
+
+/**
+ * Indice progressif et pédagogique.
+ * Ordre de priorité :
+ *   1. error      → une croix (❌) du joueur sur une case où une reine doit aller,
+ *                   ou une reine mal placée (d'après la solution)
+ *   2. elimination→ zones interdites (une loi rend ces cases impossibles) + explication
+ *   3. deduction  → une seule case reste possible dans une région / ligne / colonne
+ *   4. reveal     → position d'une reine (dernier recours)
+ *
+ * `stage` fait monter le niveau d'aide quand le joueur reste bloqué (0 → 1 → 2+).
+ */
+export function computeProgressiveHint(
+  board: GameCell[][],
+  regions: ColoredRegion[],
+  gridSize: number,
+  solution: Position[] | undefined,
+  stage: number
+): ProgressiveHint | null {
+  const cellToRegion = buildCellToRegion(regions);
+
+  // --- PALIER 1 (prioritaire) : erreurs du joueur ---
+  if (solution && solution.length > 0) {
+    const solutionSet = new Set(solution.map((p) => `${p.row}-${p.col}`));
+
+    // a) Une croix posée sur une case où une reine est requise
+    for (let row = 0; row < gridSize; row++) {
+      for (let col = 0; col < gridSize; col++) {
+        const key = `${row}-${col}`;
+        if (board[row][col].state === "marked" && solutionSet.has(key)) {
+          return {
+            level: "error",
+            forbidden: [],
+            target: { row, col },
+            title: "Erreur : croix à retirer",
+            explanation:
+              "Tu as barré (❌) une case où une reine doit se trouver. Retire cette croix pour pouvoir résoudre la grille.",
+            penalty: HINT_PENALTIES.error,
+          };
+        }
+      }
+    }
+
+    // b) Une reine placée là où la solution n'en attend pas
+    for (let row = 0; row < gridSize; row++) {
+      for (let col = 0; col < gridSize; col++) {
+        const key = `${row}-${col}`;
+        if (board[row][col].state === "queen" && !solutionSet.has(key)) {
+          return {
+            level: "error",
+            forbidden: [],
+            target: { row, col },
+            title: "Erreur : reine mal placée",
+            explanation:
+              "Cette reine ne peut pas occuper cette case dans la solution. Déplace-la pour continuer.",
+            penalty: HINT_PENALTIES.error,
+          };
+        }
+      }
+    }
+  }
+
+  const eliminated = computeEliminated(board, gridSize, cellToRegion);
+  const isCandidate = (row: number, col: number): boolean =>
+    board[row][col].state !== "queen" && !eliminated.has(`${row}-${col}`);
+
+  // --- PALIER 2 : zones interdites (élimination) ---
+  if (stage <= 0) {
+    // a) Si des reines sont posées : montrer les cases qu'elles interdisent
+    const forbiddenByQueens: Position[] = [];
+    for (const key of eliminated) {
+      const [r, c] = key.split("-").map(Number);
+      if (board[r][c].state === "empty") forbiddenByQueens.push({ row: r, col: c });
+    }
+    if (forbiddenByQueens.length > 0) {
+      return {
+        level: "elimination",
+        forbidden: forbiddenByQueens,
+        target: null,
+        title: "Zones interdites",
+        explanation:
+          "Chaque reine interdit toute sa ligne, toute sa colonne, toute sa région et les 8 cases qui la touchent. Les cases surlignées ne peuvent donc pas contenir de reine : tu peux les barrer (❌).",
+        penalty: HINT_PENALTIES.elimination,
+      };
+    }
+
+    // b) Aucune reine posée : montrer une région confinée à une seule ligne/colonne
+    for (const region of regions) {
+      if (region.cells.length < 2) continue;
+      const rows = new Set(region.cells.map((c) => c.row));
+      const cols = new Set(region.cells.map((c) => c.col));
+
+      if (rows.size === 1) {
+        const line = region.cells[0].row;
+        const forbidden = region.cells.length
+          ? Array.from({ length: gridSize }, (_, col) => ({ row: line, col }))
+              .filter(
+                (p) =>
+                  cellToRegion.get(`${p.row}-${p.col}`) !== region.id &&
+                  board[p.row][p.col].state === "empty"
+              )
+          : [];
+        if (forbidden.length > 0) {
+          return {
+            level: "elimination",
+            forbidden,
+            target: null,
+            title: "Région confinée à une ligne",
+            explanation: `Une région tient entièrement sur la ligne ${line + 1} : sa reine y sera forcément. Aucune autre reine ne peut donc occuper cette ligne — barre (❌) les cases surlignées.`,
+            penalty: HINT_PENALTIES.elimination,
+          };
+        }
+      }
+
+      if (cols.size === 1) {
+        const line = region.cells[0].col;
+        const forbidden = Array.from({ length: gridSize }, (_, row) => ({ row, col: line }))
+          .filter(
+            (p) =>
+              cellToRegion.get(`${p.row}-${p.col}`) !== region.id &&
+              board[p.row][p.col].state === "empty"
+          );
+        if (forbidden.length > 0) {
+          return {
+            level: "elimination",
+            forbidden,
+            target: null,
+            title: "Région confinée à une colonne",
+            explanation: `Une région tient entièrement sur la colonne ${line + 1} : sa reine y sera forcément. Aucune autre reine ne peut donc occuper cette colonne — barre (❌) les cases surlignées.`,
+            penalty: HINT_PENALTIES.elimination,
+          };
+        }
+      }
+    }
+  }
+
+  // --- PALIER 3 : déduction (une seule case possible) ---
+  if (stage <= 1) {
+    const regionHasQueen = new Map<number, boolean>();
+    for (const region of regions) {
+      regionHasQueen.set(
+        region.id,
+        region.cells.some((c) => board[c.row][c.col].state === "queen")
+      );
+    }
+
+    // Par région
+    for (const region of regions) {
+      if (regionHasQueen.get(region.id)) continue;
+      const cands = region.cells.filter((c) => isCandidate(c.row, c.col));
+      if (cands.length === 1) {
+        return {
+          level: "deduction",
+          forbidden: region.cells
+            .filter((c) => eliminated.has(`${c.row}-${c.col}`) && board[c.row][c.col].state === "empty")
+            .map((c) => ({ row: c.row, col: c.col })),
+          target: { row: cands[0].row, col: cands[0].col },
+          title: "Déduction : case forcée",
+          explanation:
+            "Dans cette région, toutes les cases sauf une sont attaquées par une reine. La reine doit donc aller sur la case entourée en bleu.",
+          penalty: HINT_PENALTIES.deduction,
+        };
+      }
+    }
+
+    // Par ligne / colonne
+    const rowHasQueen = (r: number) =>
+      board[r].some((cell) => cell.state === "queen");
+    const colHasQueen = (c: number) => {
+      for (let r = 0; r < gridSize; r++) if (board[r][c].state === "queen") return true;
+      return false;
+    };
+
+    for (let r = 0; r < gridSize; r++) {
+      if (rowHasQueen(r)) continue;
+      const cands: Position[] = [];
+      for (let c = 0; c < gridSize; c++) if (isCandidate(r, c)) cands.push({ row: r, col: c });
+      if (cands.length === 1) {
+        return {
+          level: "deduction",
+          forbidden: [],
+          target: cands[0],
+          title: "Déduction : ligne forcée",
+          explanation: `Sur la ligne ${r + 1}, une seule case reste possible : la reine de cette ligne doit s'y placer.`,
+          penalty: HINT_PENALTIES.deduction,
+        };
+      }
+    }
+
+    for (let c = 0; c < gridSize; c++) {
+      if (colHasQueen(c)) continue;
+      const cands: Position[] = [];
+      for (let r = 0; r < gridSize; r++) if (isCandidate(r, c)) cands.push({ row: r, col: c });
+      if (cands.length === 1) {
+        return {
+          level: "deduction",
+          forbidden: [],
+          target: cands[0],
+          title: "Déduction : colonne forcée",
+          explanation: `Sur la colonne ${c + 1}, une seule case reste possible : la reine de cette colonne doit s'y placer.`,
+          penalty: HINT_PENALTIES.deduction,
+        };
+      }
+    }
+  }
+
+  // --- PALIER 4 : révélation (dernier recours) ---
+  const pos = getHint(board, solution);
+  if (pos) {
+    return {
+      level: "reveal",
+      forbidden: [],
+      target: pos,
+      title: "Dernier recours",
+      explanation:
+        "Aucune déduction simple n'est disponible : la prochaine reine se place sur la case entourée en bleu.",
+      penalty: HINT_PENALTIES.reveal,
+    };
   }
 
   return null;
