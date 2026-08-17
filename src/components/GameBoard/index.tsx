@@ -68,9 +68,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     onCellClick(row, col);
   }, [isLoading, isGameBlocked, isDestroying, onCellClick]);
 
-  const handleMarkCell = useCallback((row: number, col: number) => {
+  const handleMarkCell = useCallback((row: number, col: number, action?: 'mark' | 'unmark' | 'toggle') => {
     if (isLoading || isGameBlocked || isDestroying) return;
-    onMarkCell(row, col);
+    onMarkCell(row, col, action);
   }, [isLoading, isGameBlocked, isDestroying, onMarkCell]);
 
   return (

@@ -287,29 +287,50 @@ export function useGameLogic(initialGridSize?: number) {
     });
   }, [isLoading]);
 
-  // Marquage rapide d'une cellule vide (pour le swipe tactile)
-  // Ne fait rien si la cellule n'est pas vide — pas de cycle
-  const markCell = useCallback((row: number, col: number) => {
-    if (isLoading) return;
+  // Marquage rapide d'une croix (❌) — utilisé par le glisser (souris/tactile) et le clic droit.
+  //   'mark'   : pose une croix sur une case vide (no-op sinon) — pose en série
+  //   'unmark' : retire une croix sur une case barrée (no-op sinon) — effacement en série
+  //   'toggle' : bascule vide ↔ barrée (laisse les reines intactes) — clic droit
+  // Ne touche jamais aux reines : le cycle complet reste géré par handleCellClick.
+  const markCell = useCallback(
+    (row: number, col: number, action: 'mark' | 'unmark' | 'toggle' = 'mark') => {
+      if (isLoading) return;
 
-    setGameState(prevState => {
-      if (prevState.isCompleted) return prevState;
-      if (prevState.board[row][col].state !== 'empty') return prevState;
+      setGameState(prevState => {
+        if (prevState.isCompleted) return prevState;
 
-      const newBoard = prevState.board.map((boardRow, r) =>
-        boardRow.map((cell, c) => {
-          if (r === row && c === col) return { ...cell, state: 'marked' as const };
-          return cell;
-        })
-      );
+        const current = prevState.board[row][col].state;
+        let next: 'empty' | 'marked' | null = null;
+        switch (action) {
+          case 'mark':
+            if (current === 'empty') next = 'marked';
+            break;
+          case 'unmark':
+            if (current === 'marked') next = 'empty';
+            break;
+          case 'toggle':
+            if (current === 'empty') next = 'marked';
+            else if (current === 'marked') next = 'empty';
+            break;
+        }
+        if (next === null) return prevState; // aucun changement (reine ou état déjà bon)
 
-      return {
-        ...prevState,
-        board: newBoard,
-        moveCount: prevState.moveCount + 1,
-      };
-    });
-  }, [isLoading]);
+        const newBoard = prevState.board.map((boardRow, r) =>
+          boardRow.map((cell, c) => {
+            if (r === row && c === col) return { ...cell, state: next as 'empty' | 'marked' };
+            return cell;
+          })
+        );
+
+        return {
+          ...prevState,
+          board: newBoard,
+          moveCount: prevState.moveCount + 1,
+        };
+      });
+    },
+    [isLoading]
+  );
 
   // Indice progressif : erreur joueur → zones interdites → déduction → révélation.
   // Ne pénalise que si utilisé ; cooldown pour éviter le spam ; pénalité selon le palier.

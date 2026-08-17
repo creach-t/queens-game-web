@@ -97,7 +97,7 @@ export interface GameControlsProps {
   onSaveScore: (playerName: string) => Promise<SaveScoreResult>;
   isLoading?: boolean;
   onCellClick: (row: number, col: number) => void;
-  onMarkCell: (row: number, col: number) => void;
+  onMarkCell: (row: number, col: number, action?: "mark" | "unmark" | "toggle") => void;
   isGameBlocked?: boolean;
   // Indice
   onHint: () => void;
@@ -194,7 +194,7 @@ export interface BoardGridProps {
   isLoading: boolean;
   showVictoryAnimation: boolean;
   onCellClick: (row: number, col: number) => void;
-  onMarkCell: (row: number, col: number) => void;
+  onMarkCell: (row: number, col: number, action?: "mark" | "unmark" | "toggle") => void;
   /** Clés "row-col" des cases interdites (indice élimination) */
   forbiddenKeys?: Set<string>;
   /** Clé "row-col" de la case cible (déduction / révélation) */
@@ -209,7 +209,7 @@ export interface AnimationOverlayProps {
 export interface GameBoardProps {
   gameState: GameState;
   onCellClick: (row: number, col: number) => void;
-  onMarkCell: (row: number, col: number) => void;
+  onMarkCell: (row: number, col: number, action?: "mark" | "unmark" | "toggle") => void;
   showVictoryAnimation?: boolean;
   isGameBlocked?: boolean;
   animationMode?: "construction" | "destruction" | "none";
