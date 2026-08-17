@@ -4,6 +4,17 @@
 **Périmètre :** code source `src/`, configuration de build, documentation.
 **Méthode :** lecture intégrale du code, `tsc --noEmit`, analyse d'écart doc↔code.
 
+> **Mise à jour post-audit** (évolutions livrées depuis, voir [ROADMAP.md](ROADMAP.md)) :
+> - `getHint` **n'est plus du code mort** — désormais utilisé par `computeProgressiveHint`
+>   (moteur d'indice progressif) au palier « révélation ».
+> - `canEnterLeaderboard` a été **supprimée** (le formulaire de score n'est plus conditionné
+>   au Top 3 : chaque score est enregistré, une entrée par joueur).
+> - **T1** (commentaire « top 10 ») et **T3** (props mortes de `Leaderboard`) : **corrigés**.
+> - Restent ouverts : **T2** (autres symboles morts : `isPositionInBounds`, `initializeBoard`,
+>   `positionToKey`, `formatPosition`, `getTotalGamesPlayed`, `incrementGamesPlayed`,
+>   `getTotalGamesWon`), **T4** (deps inutilisées), **T5** (`tailwind.config.js`),
+>   **T6** (cache `statsCache` partagé), **T7** (typage Firebase).
+
 ---
 
 ## 1. État général

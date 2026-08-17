@@ -20,20 +20,23 @@ flowchart TD
 
     subgraph UI["Couche UI (composants React)"]
         GAME["Game.tsx<br/>orchestrateur"]
-        GC["GameControls/index.tsx<br/>overlays + board"]
+        GC["GameControls/index.tsx<br/>overlays + board + dock"]
         BOARD["GameBoard/index.tsx<br/>taille responsive"]
-        GRID["BoardGrid.tsx<br/>clic / drag souris / swipe tactile"]
+        GRID["BoardGrid.tsx<br/>clic / drag / swipe + surlignage indice"]
         CELL["GameCell.tsx<br/>(React.memo)"]
         STATS["GameStats.tsx"]
-        LB["Leaderboard.tsx"]
-        SUCCESS["SuccessMessage.tsx"]
+        LB["Leaderboard.tsx<br/>Top 3"]
+        FULL["FullLeaderboard.tsx<br/>modale paginée 20/page"]
+        SUCCESS["SuccessMessage.tsx<br/>résultat + rang"]
+        MAIN["MainControls.tsx<br/>Indice / Effacer / Nouveau"]
+        HINT["HintBanner.tsx<br/>explication par palier"]
         TIMER["Timer.tsx"]
     end
 
     subgraph State["État & logique"]
-        HOOK["useGameLogic.ts<br/>GameState, timer, victoire"]
+        HOOK["useGameLogic.ts<br/>GameState, timer, victoire, indice"]
         ANIM["useAnimations.ts<br/>spirale requestAnimationFrame"]
-        RULES["lib/rules.ts<br/>validation pure (Map O(Q+N))"]
+        RULES["lib/rules.ts<br/>validation + computeProgressiveHint (pur)"]
     end
 
     subgraph Data["Accès données"]
@@ -52,6 +55,9 @@ flowchart TD
     GAME --> GC
     GC --> BOARD --> GRID --> CELL
     GC --> LB
+    GC --> FULL
+    GC --> MAIN
+    GC --> HINT
     GC --> SUCCESS
     GC --> TIMER
     BOARD --> ANIM
@@ -60,6 +66,7 @@ flowchart TD
     GC --> STORE
     STATS --> STORE
     LB --> STORE
+    FULL --> STORE
     SUCCESS --> STORE
     STORE --> FB
     STORE --> CONST
@@ -114,6 +121,40 @@ sequenceDiagram
     S-->>H: GameState (board + regions + solution)
 ```
 
+## Système d'indice progressif
+
+`computeProgressiveHint` (pur, dans `lib/rules.ts`) renvoie un `ProgressiveHint` selon un
+ordre de priorité pédagogique. `useGameLogic` gère le palier courant (`hintStage`), le
+cooldown (interval unique par ref) et la pénalité de temps ; `HintBanner` affiche
+l'explication et `BoardGrid` surligne les cases (interdites en rouge, cible en bleu).
+
+```mermaid
+flowchart TD
+    START["showHint()"] --> ERR{"Erreur joueur ?<br/>croix sur case-reine<br/>ou reine hors-solution"}
+    ERR -- oui --> RERR["Palier ERREUR (+5s)<br/>désigne la case fautive"]
+    ERR -- non --> ELIM{"stage 0 ?<br/>zones interdites dispo ?"}
+    ELIM -- oui --> RELIM["Palier ÉLIMINATION (+5s)<br/>cases interdites + loi expliquée"]
+    ELIM -- non --> DED{"stage ≤ 1 ?<br/>une seule case possible ?"}
+    DED -- oui --> RDED["Palier DÉDUCTION (+10s)<br/>case forcée en bleu"]
+    DED -- non --> REV["Palier RÉVÉLATION (+15s)<br/>position de la reine (dernier recours)"]
+
+    RELIM -. escalade .-> DED
+    RDED -. escalade .-> REV
+```
+
+- **Escalade** : chaque appel monte d'un palier ; **réinitialisé quand `queensPlaced` change**.
+- **Pénalité** croissante et **seulement si utilisé** ; **cooldown 10 s** (décompte tabulaire).
+
+## Scores & classement
+
+- `saveScore()` garde **une entrée par joueur** et renvoie un `SaveScoreResult`
+  (`created | improved | unchanged | error` + `previousBestTime` + `rank` + `total`),
+  consommé par `SuccessMessage` pour un feedback explicite.
+- `getLeaderboardPage()` pagine le classement complet **par curseur**
+  (`orderByChild("time")` + `startAfter`, 20/page) — jamais de lecture full-collection ;
+  `FullLeaderboard` charge à la demande avec « Voir plus ».
+- `Leaderboard` (Top 3, `limitToFirst(3)`, cache 30 s) reste l'aperçu, cliquable vers la modale.
+
 ## Modèle de données Firebase
 
 | Chemin                                   | Contenu                                        |
@@ -125,12 +166,16 @@ sequenceDiagram
 | `users/{uid}/solved_levels/{levelKey}`   | `{ timestamp }`                                |
 | `presence/users/{uid}`                   | `{ timestamp }` (+ `onDisconnect().remove()`)  |
 
-## Contrôles réels (source : `BoardGrid.tsx`)
+## Contrôles réels (source : `BoardGrid.tsx` + `MainControls.tsx`)
 
 - **Clic simple** : cycle `vide → marqué (❌) → reine (👑) → vide`. **Il n'y a pas de double-clic.**
 - **Glisser-souris (desktop)** : marque en série les cellules vides traversées (`onMarkCell`).
 - **Swipe tactile (mobile)** : idem au drag souris ; `touchAction: none` bloque le scroll.
 - Un `tap` sans mouvement retombe sur le cycle de clic simple.
+- **Dock d'actions** (`MainControls`) : **Indice / Effacer / Nouveau**, cibles ≥44px,
+  `aria-label`, décompte de cooldown en chiffres tabulaires, `focus-visible` global.
+- **Accessibilité** : `prefers-reduced-motion` (reset universel dans `index.css`),
+  `touch-action: manipulation`, `aria-live` sur la bannière d'indice.
 
 ## Décisions d'architecture notables
 
