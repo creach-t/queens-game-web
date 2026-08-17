@@ -1,19 +1,19 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Trophy, Clock, Medal } from 'lucide-react';
+import { Trophy, Clock, Medal, ChevronRight } from 'lucide-react';
 import { LeaderboardData } from '../types/game';
 import { levelStorage } from '../utils/levelStorage';
 
 interface LeaderboardProps {
   gridSize: number;
-  currentTime?: number;
-  isCompleted: boolean;
-  onSaveScore?: (playerName: string) => Promise<boolean>;
   formatTime: (seconds: number) => string;
+  /** Ouvre la modale du classement complet */
+  onShowFull?: () => void;
 }
 
 export const Leaderboard: React.FC<LeaderboardProps> = ({
   gridSize,
-  formatTime
+  formatTime,
+  onShowFull
 }) => {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardData>({ entries: [] });
   const [isLoading, setIsLoading] = useState(true);
@@ -105,6 +105,17 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
             </div>
           ))}
         </div>
+      )}
+
+      {/* Accès au classement complet */}
+      {onShowFull && (
+        <button
+          onClick={onShowFull}
+          className="w-full flex items-center justify-center gap-1 pt-1 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
+        >
+          Voir le classement complet
+          <ChevronRight className="w-3 h-3" />
+        </button>
       )}
     </div>
   );

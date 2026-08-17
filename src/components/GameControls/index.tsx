@@ -7,6 +7,7 @@ import { Rules } from './Rules';
 import { SizeGridSelector } from './SizeGridSelector';
 import { SuccessMessage } from './SuccessMessage';
 import { Leaderboard } from '../Leaderboard';
+import { FullLeaderboard } from '../FullLeaderboard';
 import { Timer } from '../Timer';
 import { GameBoard } from '../GameBoard';
 import { LoadingState } from '../GameBoard/LoadingState';
@@ -26,6 +27,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
   const [levelCounts, setLevelCounts] = useState<Record<number, number>>({});
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(true);
+  const [showFullLeaderboard, setShowFullLeaderboard] = useState(false);
 
   // Charger les counts une seule fois au mount
   useEffect(() => {
@@ -74,10 +76,8 @@ export const GameControls: React.FC<GameControlsProps> = ({
           <div className="hidden md:block max-w-xs">
             <Leaderboard
               gridSize={gameState.gridSize}
-              currentTime={gameState.isCompleted ? gameTime : undefined}
-              isCompleted={gameState.isCompleted}
-              onSaveScore={onSaveScore}
               formatTime={formatTime}
+              onShowFull={() => setShowFullLeaderboard(true)}
             />
           </div>
 
@@ -105,10 +105,11 @@ export const GameControls: React.FC<GameControlsProps> = ({
           <div className="md:hidden fixed top-16 right-2 z-50 max-w-[min(320px,calc(100vw-1rem))]">
             <Leaderboard
               gridSize={gameState.gridSize}
-              currentTime={gameState.isCompleted ? gameTime : undefined}
-              isCompleted={gameState.isCompleted}
-              onSaveScore={onSaveScore}
               formatTime={formatTime}
+              onShowFull={() => {
+                setShowLeaderboard(false);
+                setShowFullLeaderboard(true);
+              }}
             />
           </div>
         </>
@@ -179,6 +180,15 @@ export const GameControls: React.FC<GameControlsProps> = ({
         {/* Spacer - colonne droite */}
         <div></div>
       </div>
+
+      {/* Modale du classement complet */}
+      {showFullLeaderboard && (
+        <FullLeaderboard
+          gridSize={gameState.gridSize}
+          formatTime={formatTime}
+          onClose={() => setShowFullLeaderboard(false)}
+        />
+      )}
     </>
   );
 };

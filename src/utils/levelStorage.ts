@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import { get, getDatabase, ref, push, query, orderByChild, limitToFirst, onValue, onDisconnect } from "firebase/database";
 import { REGION_COLORS } from "../constants";
-import { StoredLevel, GameState, LeaderboardEntry, LeaderboardData } from "../types/game";
+import { StoredLevel, GameState, LeaderboardEntry, LeaderboardData, SaveScoreResult, LeaderboardPage, RankedEntry } from "../types/game";
 
 class LevelStorage {
   private db: any = null;
@@ -184,32 +184,39 @@ class LevelStorage {
   }
 
   /**
-   * Sauvegarde un score dans le leaderboard (par taille de grille)
-   * Si le nom existe déjà, met à jour uniquement si le nouveau temps est meilleur
+   * Enregistre un score dans le leaderboard (une entrée par joueur et par taille de grille).
+   * Règle : on garde toujours le meilleur temps du joueur.
+   * Renvoie un résultat explicite (statut + rang + total) pour un feedback UI clair :
+   *  - created   : première fois que ce joueur est classé sur cette grille
+   *  - improved  : le joueur avait déjà un score, celui-ci est meilleur → mis à jour
+   *  - unchanged : le joueur avait déjà un meilleur (ou égal) temps → rien n'est écrit
+   *  - error     : Firebase indisponible / non authentifié
    */
   async saveScore(
     gridSize: number,
     time: number,
     playerName: string
-  ): Promise<boolean> {
+  ): Promise<SaveScoreResult> {
     if (!this.isAvailable || !this.db || !this.auth?.currentUser) {
-      return false;
+      return { status: "error", time };
     }
 
     try {
       const userId = this.auth.currentUser.uid;
       const leaderboardRef = ref(this.db, `leaderboards/grid_${gridSize}`);
-
-      // Récupérer tous les scores existants pour ce nom
       const snapshot = await get(leaderboardRef);
 
+      // Collecte de toutes les entrées + repérage du meilleur temps existant du joueur
+      const nameLower = playerName.toLowerCase();
+      const rows: { key: string; time: number; nameLower: string }[] = [];
       let existingEntryKey: string | null = null;
       let existingBestTime: number | null = null;
 
       if (snapshot.exists()) {
         snapshot.forEach((child) => {
           const entry = child.val() as LeaderboardEntry;
-          if (entry.playerName.toLowerCase() === playerName.toLowerCase()) {
+          rows.push({ key: child.key as string, time: entry.time, nameLower: entry.playerName.toLowerCase() });
+          if (entry.playerName.toLowerCase() === nameLower) {
             if (existingBestTime === null || entry.time < existingBestTime) {
               existingBestTime = entry.time;
               existingEntryKey = child.key;
@@ -218,43 +225,120 @@ class LevelStorage {
         });
       }
 
-      // Si le joueur existe et que le nouveau temps est moins bon, on ne sauvegarde pas
-      if (existingBestTime !== null && time >= existingBestTime) {
-        return false;
-      }
+      // Déterminer le statut et le temps effectif du joueur après l'opération
+      let status: SaveScoreResult["status"];
+      let effectiveTime: number;
+      const entry: LeaderboardEntry = { userId, playerName, time, timestamp: Date.now(), gridSize };
 
-      const entry: LeaderboardEntry = {
-        userId,
-        playerName,
-        time,
-        timestamp: Date.now(),
-        gridSize,
-      };
-
-      // Si le joueur existe avec un moins bon temps, on met à jour
-      if (existingEntryKey) {
-        const { set } = await import("firebase/database");
-        const entryRef = ref(this.db, `leaderboards/grid_${gridSize}/${existingEntryKey}`);
-        await set(entryRef, entry);
-        console.log(`[Leaderboard] Score mis à jour pour ${playerName}: ${existingBestTime}s → ${time}s`);
-      } else {
-        // Sinon on crée une nouvelle entrée
+      if (existingBestTime === null) {
+        status = "created";
+        effectiveTime = time;
         await push(leaderboardRef, entry);
+        rows.push({ key: "__new__", time, nameLower });
         console.log(`[Leaderboard] Nouveau score pour ${playerName}: ${time}s`);
+      } else if (time < existingBestTime) {
+        status = "improved";
+        effectiveTime = time;
+        const { set } = await import("firebase/database");
+        await set(ref(this.db, `leaderboards/grid_${gridSize}/${existingEntryKey!}`), entry);
+        const r = rows.find((x) => x.key === existingEntryKey);
+        if (r) r.time = time;
+        console.log(`[Leaderboard] Record amélioré pour ${playerName}: ${existingBestTime}s → ${time}s`);
+      } else {
+        status = "unchanged";
+        effectiveTime = existingBestTime;
+        console.log(`[Leaderboard] Score conservé pour ${playerName}: meilleur temps ${existingBestTime}s (run ${time}s)`);
       }
 
-      // Invalider le cache après sauvegarde
-      this.invalidateLeaderboardCache(gridSize);
+      // Rang : 1 + nombre de joueurs strictement plus rapides.
+      // On réduit au meilleur temps par nom pour être robuste aux éventuels doublons legacy.
+      const bestByName = new Map<string, number>();
+      for (const r of rows) {
+        const cur = bestByName.get(r.nameLower);
+        if (cur === undefined || r.time < cur) bestByName.set(r.nameLower, r.time);
+      }
+      const times = [...bestByName.values()];
+      const total = times.length;
+      const rank = 1 + times.filter((t) => t < effectiveTime).length;
 
-      return true;
+      // N'invalider le cache que si le classement a effectivement changé
+      if (status !== "unchanged") {
+        this.invalidateLeaderboardCache(gridSize);
+      }
+
+      return {
+        status,
+        time,
+        previousBestTime: existingBestTime ?? undefined,
+        rank,
+        total,
+      };
     } catch (error) {
       console.error("Erreur sauvegarde score:", error);
-      return false;
+      return { status: "error", time };
     }
   }
 
   /**
-   * Récupère le top 10 des scores pour une taille de grille (avec cache)
+   * Récupère une page du leaderboard complet, triée par temps croissant.
+   * Pagination par curseur (`startAfter`) — ne lit jamais toute la collection.
+   * @param startRank rang absolu de la première entrée de la page (1 pour la 1ʳᵉ page)
+   */
+  async getLeaderboardPage(
+    gridSize: number,
+    pageSize: number,
+    cursor?: { time: number; key: string } | null,
+    startRank: number = 1
+  ): Promise<LeaderboardPage> {
+    if (!this.isAvailable || !this.db) {
+      return { entries: [], nextCursor: null, hasMore: false };
+    }
+
+    try {
+      const { startAfter } = await import("firebase/database");
+      const base = ref(this.db, `leaderboards/grid_${gridSize}`);
+
+      // pageSize + 1 pour savoir s'il reste une page suivante
+      const q = cursor
+        ? query(base, orderByChild("time"), startAfter(cursor.time, cursor.key), limitToFirst(pageSize + 1))
+        : query(base, orderByChild("time"), limitToFirst(pageSize + 1));
+
+      const snapshot = await get(q);
+      if (!snapshot.exists()) {
+        return { entries: [], nextCursor: null, hasMore: false };
+      }
+
+      const raw: { key: string; entry: LeaderboardEntry }[] = [];
+      snapshot.forEach((child) => {
+        raw.push({ key: child.key as string, entry: child.val() as LeaderboardEntry });
+      });
+
+      const hasMore = raw.length > pageSize;
+      const pageRows = hasMore ? raw.slice(0, pageSize) : raw;
+
+      const entries: RankedEntry[] = pageRows.map((r, i) => ({
+        ...r.entry,
+        key: r.key,
+        rank: startRank + i,
+      }));
+
+      const last = pageRows[pageRows.length - 1];
+      const nextCursor = hasMore && last ? { time: last.entry.time, key: last.key } : null;
+
+      return { entries, nextCursor, hasMore };
+    } catch (error) {
+      console.error("Erreur récupération page leaderboard:", error);
+      return { entries: [], nextCursor: null, hasMore: false };
+    }
+  }
+
+  /** UID de l'utilisateur anonyme courant (pour surligner ses propres entrées) */
+  getCurrentUserId(): string | null {
+    return this.auth?.currentUser?.uid ?? null;
+  }
+
+  /**
+   * Récupère le top 3 des scores pour une taille de grille (avec cache)
    */
   async getLeaderboard(gridSize: number): Promise<LeaderboardData> {
     if (!this.isAvailable || !this.db) {
@@ -314,60 +398,6 @@ class LevelStorage {
   invalidateLeaderboardCache(gridSize: number): void {
     this.leaderboardCache.delete(gridSize);
     console.log(`[Cache] Invalidé pour ${gridSize}x${gridSize}`);
-  }
-
-  /**
-   * Vérifie si un temps peut entrer dans le top 3
-   */
-  async canEnterLeaderboard(gridSize: number, time: number, playerName: string): Promise<boolean> {
-    if (!this.isAvailable || !this.db) {
-      return false;
-    }
-
-    try {
-      const leaderboardRef = ref(this.db, `leaderboards/grid_${gridSize}`);
-      const snapshot = await get(leaderboardRef);
-
-      if (!snapshot.exists()) {
-        // Pas de scores, peut entrer
-        return true;
-      }
-
-      const entries: LeaderboardEntry[] = [];
-      let playerBestTime: number | null = null;
-
-      snapshot.forEach((child) => {
-        const entry = child.val() as LeaderboardEntry;
-        entries.push(entry);
-
-        // Trouver le meilleur temps du joueur
-        if (entry.playerName.toLowerCase() === playerName.toLowerCase()) {
-          if (playerBestTime === null || entry.time < playerBestTime) {
-            playerBestTime = entry.time;
-          }
-        }
-      });
-
-      // Si le joueur existe déjà, vérifier si le nouveau temps est meilleur
-      if (playerBestTime !== null) {
-        return time < playerBestTime;
-      }
-
-      // Sinon, vérifier si on peut entrer dans le top 3
-      entries.sort((a, b) => a.time - b.time);
-
-      if (entries.length < 3) {
-        // Moins de 3 entrées, peut entrer
-        return true;
-      }
-
-      // Vérifier si le temps est meilleur que le 3ème
-      const thirdPlace = entries[2];
-      return time < thirdPlace.time;
-    } catch (error) {
-      console.error("Erreur vérification leaderboard:", error);
-      return false;
-    }
   }
 
   /**

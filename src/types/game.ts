@@ -65,7 +65,7 @@ export interface SuccessMessageProps {
   gameState: GameState;
   gameTime: number;
   formatTime: (seconds: number) => string;
-  onSaveScore: (playerName: string) => Promise<boolean>;
+  onSaveScore: (playerName: string) => Promise<SaveScoreResult>;
   onClose: () => void;
 }
 
@@ -87,7 +87,7 @@ export interface GameControlsProps {
   onResetGame: () => void;
   onNewGame: () => void;
   onGridSizeChange: (size: number) => void;
-  onSaveScore: (playerName: string) => Promise<boolean>;
+  onSaveScore: (playerName: string) => Promise<SaveScoreResult>;
   isLoading?: boolean;
   onCellClick: (row: number, col: number) => void;
   onMarkCell: (row: number, col: number) => void;
@@ -126,6 +126,34 @@ export interface LeaderboardEntry {
 export interface LeaderboardData {
   entries: LeaderboardEntry[];
   userBest?: LeaderboardEntry;
+}
+
+/** Résultat d'une tentative d'enregistrement de score (1 entrée par joueur) */
+export type SaveScoreStatus = "created" | "improved" | "unchanged" | "error";
+
+export interface SaveScoreResult {
+  status: SaveScoreStatus;
+  /** Temps du run courant (secondes) */
+  time: number;
+  /** Meilleur temps précédent du joueur, si déjà enregistré */
+  previousBestTime?: number;
+  /** Rang du joueur (1-based) dans le classement de cette grille */
+  rank?: number;
+  /** Nombre total de joueurs classés sur cette grille */
+  total?: number;
+}
+
+/** Entrée de leaderboard enrichie de sa clé Firebase et de son rang absolu */
+export interface RankedEntry extends LeaderboardEntry {
+  key: string;
+  rank: number;
+}
+
+/** Une page du leaderboard complet (pagination par curseur) */
+export interface LeaderboardPage {
+  entries: RankedEntry[];
+  nextCursor: { time: number; key: string } | null;
+  hasMore: boolean;
 }
 
 export type CellState = "empty" | "queen" | "marked";

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { GameState } from '../types/game';
+import { GameState, SaveScoreResult } from '../types/game';
 import { updateConflicts, validateCompleteGameState, getPlacedQueens } from '../lib/rules';
 import { resetGameBoard } from '../utils/gameUtils';
 import { levelStorage } from '../utils/levelStorage';
@@ -274,8 +274,8 @@ export function useGameLogic(initialGridSize?: number) {
   }, [loadLevel]);
 
   // Sauvegarde du score avec nom du joueur
-  const saveScore = useCallback(async (playerName: string): Promise<boolean> => {
-    if (!gameState.isCompleted) return false;
+  const saveScore = useCallback(async (playerName: string): Promise<SaveScoreResult> => {
+    if (!gameState.isCompleted) return { status: 'error', time: gameTime };
 
     return await levelStorage.saveScore(
       gameState.gridSize,

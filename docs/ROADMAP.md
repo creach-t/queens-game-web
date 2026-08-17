@@ -49,7 +49,7 @@ placé des reines erronées (indice sur la prochaine case de `solution` restante
 
 ---
 
-## 3. 🔜 Enregistrement des scores plus clair + leaderboard complet
+## 3. ✅ Enregistrement des scores plus clair + leaderboard complet
 
 **Retour :** le système d'enregistrement n'est pas très clair. On voudrait :
 enregistrer **chaque score**, **afficher le rang** du joueur, et pouvoir **cliquer sur le
@@ -77,6 +77,17 @@ opaque : `saveScore` renvoie juste `true`/`false` sans expliquer pourquoi.
 `created | improved | unchanged` + ancien/nouveau temps + rang) au lieu d'un simple booléen,
 puis adapter `SuccessMessage`.
 
+**✅ Livré (voir commit dédié) :**
+- `saveScore` renvoie `SaveScoreResult` (`status` + `previousBestTime` + `rank` + `total`).
+- `SuccessMessage` affiche les 3 messages explicites (nouveau / record amélioré / inchangé)
+  avec le rang ; le formulaire n'est plus conditionné au Top 3 (chaque score est enregistré).
+- Nouveau composant `FullLeaderboard` : modale paginée 20/page, « Voir plus » par curseur
+  (`getLeaderboardPage` via `orderByChild("time")` + `startAfter`), surlignage du joueur courant.
+- Bouton « Voir le classement complet » dans `Leaderboard` (desktop + popup mobile).
+- Nettoyage au passage : suppression de `canEnterLeaderboard` (devenue inutile) et des props
+  mortes de `Leaderboard` (**T3**), correction du commentaire « top 10 » (**T1**).
+- Vérifié : `type-check` ✅, `build` ✅, test navigateur contre Firebase réel ✅ (rangs corrects).
+
 **⚠️ Garde-fous stockage / bande passante (à respecter absolument) :**
 - **Ne pas** stocker une entrée par partie sans borne : privilégier **une entrée par
   joueur** (comportement actuel `saveScore`) pour éviter la croissance illimitée.
@@ -91,7 +102,8 @@ puis adapter `SuccessMessage`.
 - Réévaluer les **règles Firebase** (`firebase-rules.json`) : valider forme et taille des
   écritures, borner le nombre d'entrées par grille.
 
-**À trancher (restant) :** taille de page du leaderboard complet (ex. 20/page).
+**Décidé :** leaderboard complet paginé à **20 entrées/page**, chargement « voir plus »
+(curseur `orderByChild("time")` + `startAfter`, une page à la fois — pas de lecture full-collection).
 
 ---
 
@@ -102,9 +114,9 @@ la surface de maintenance et alignent le dépôt sur son comportement réel.
 
 | # | Action | Fichier(s) | Effort | Risque |
 |---|---|---|---|---|
-| T1 | Corriger le commentaire « top 10 » (le code fait `limitToFirst(3)`) | `utils/levelStorage.ts:257` | Trivial | Nul |
+| T1 | ✅ **Fait** — commentaire « top 10 » corrigé en « top 3 » | `utils/levelStorage.ts` | Trivial | Nul |
 | T2 | Supprimer le **code mort** : `getHint`\*, `isPositionInBounds`, `initializeBoard`, `positionToKey`, `formatPosition`, `getTotalGamesPlayed`, `incrementGamesPlayed`, `getTotalGamesWon`, `handleGridClick` (no-op), refs `isSwiping`/`isDragging` | `lib/rules.ts`, `utils/gameUtils.ts`, `utils/levelStorage.ts`, `components/GameControls/index.tsx`, `components/GameBoard/BoardGrid.tsx` | Faible | Faible |
-| T3 | Supprimer les **props mortes** `currentTime`/`isCompleted`/`onSaveScore` de `Leaderboard` (appelant + interface) | `components/Leaderboard.tsx`, `components/GameControls/index.tsx` | Faible | Faible |
+| T3 | ✅ **Fait** — props mortes `currentTime`/`isCompleted`/`onSaveScore` retirées de `Leaderboard` | `components/Leaderboard.tsx`, `components/GameControls/index.tsx` | Faible | Faible |
 | T4 | Désinstaller les **deps inutilisées** : `clsx`, `tailwind-merge`, `class-variance-authority`, `@radix-ui/react-slot`, `tw-animate-css`, `dotenv`, `path` ; supprimer `components.json` orphelin + l'import `Toaster` commenté | `package.json`, `App.tsx` | Faible | Faible |
 | T5 | **Config Tailwind orpheline** : `tailwind.config.js` (format v3) n'est pas chargé par v4 → migrer les keyframes `fade-in` vers `@theme` (CSS v4), ajouter `@config`, ou supprimer | `tailwind.config.js`, `index.css` | Faible | Moyen (vérifier animations) |
 | T6 | **Bug latent** : `getTotalGamesPlayed` et `getTotalGamesWon` partagent le même `statsCache` → dédoublonner le cache (ou supprimer les getters via T2) | `utils/levelStorage.ts` | Faible | Faible |
