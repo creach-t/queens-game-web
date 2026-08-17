@@ -5,10 +5,10 @@
 [![Made with React](https://img.shields.io/badge/Made%20with-React-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-5.1-646CFF?style=for-the-badge&logo=vite)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![CI/CD](https://img.shields.io/github/actions/workflow/status/creach-t/queens-game-web/deploy.yml?style=for-the-badge&label=CI%2FCD)](https://github.com/creach-t/queens-game-web/actions)
 
-**[🎮 Jouer maintenant](https://queens-game.creachtheo.fr)** | **[📖 Documentation](CLAUDE.md)** | **[🔍 SEO Guide](SEO_IMPROVEMENTS.md)**
+**[🎮 Jouer maintenant](https://queens-game.creachtheo.fr)** | **[🏛 Architecture](docs/ARCHITECTURE.md)** | **[🔍 SEO Guide](SEO_IMPROVEMENTS.md)**
 
 ---
 
@@ -19,8 +19,8 @@ Puzzle logique addictif : placez exactement **une reine par ligne, colonne et r�
 ### ✨ Fonctionnalités
 
 #### 🎮 Gameplay
-- **Contrôles intuitifs** : Clic pour marquer (X), double-clic pour placer une reine (👑)
-- **Slide tactile** : Marquer plusieurs cases d'un geste sur mobile
+- **Clic simple en cycle** : chaque clic fait défiler l'état d'une case `vide → marquée (❌) → reine (👑) → vide` (pas de double-clic)
+- **Glisser-marquer** : maintenir et glisser marque plusieurs cases vides d'un geste — à la **souris (desktop)** comme au **doigt (mobile)**
 - **8 niveaux de difficulté** : De 5×5 (Tutoriel) à 12×12 (Mythique)
 - **Timer intelligent** : Démarre automatiquement, continue sur reset
 - **Règles complètes** : Popup détaillée avec objectifs, contrôles et astuces
@@ -70,7 +70,7 @@ npm run type-check   # Vérification TypeScript
 |---|---|
 | **React 18.2 + TypeScript 5.0** | Framework UI avec typage strict |
 | **Vite 5.1** | Build tool ultra-rapide |
-| **Tailwind CSS** | Utility-first CSS framework |
+| **Tailwind CSS v4** | Framework CSS (plugin `@tailwindcss/vite`, `@import "tailwindcss"`) |
 | **Lucide React** | Icônes modernes et cohérentes |
 | **Firebase 11.9.1** | Realtime Database (niveaux, stats, presence) |
 | **Docker + Nginx** | Conteneurisation et serveur web |
@@ -78,6 +78,9 @@ npm run type-check   # Vérification TypeScript
 | **GitHub Actions + GHCR** | CI/CD automatisé |
 
 ## 📁 Architecture
+
+> Diagrammes détaillés (flux de clic, chargement de niveau, modèle Firebase) :
+> **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 ```
 src/
@@ -230,6 +233,9 @@ docker compose -f docker-compose.prod.yml up -d
 
 ## 📚 Documentation
 
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** : Architecture, diagrammes Mermaid, modèle de données
+- **[docs/ROADMAP.md](docs/ROADMAP.md)** : Améliorations produit prévues (indice, marquage desktop, leaderboard complet)
+- **[docs/AUDIT.md](docs/AUDIT.md)** : Rapport d'audit technique (santé, dette, écarts doc)
 - **CLAUDE.md** : Guide complet du projet pour IA
 - **SEO_IMPROVEMENTS.md** : Stratégie SEO et analyse concurrentielle
 - **FIREBASE_SETUP.md** : Configuration Firebase et règles de sécurité
