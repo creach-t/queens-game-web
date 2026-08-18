@@ -3,6 +3,9 @@ import { GameStats } from './components/GameStats';
 // import { Toaster } from './components/ui/toaster';
 import { Crown, Github, ExternalLink } from 'lucide-react';
 
+// Version affichée : semver + numéro de build CI (s'incrémente à chaque push ; "dev" en local).
+const APP_VERSION = `v${__APP_VERSION__}${__APP_BUILD__ === 'dev' ? '' : ` · ${__APP_BUILD__}`}`;
+
 function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col">
@@ -14,6 +17,7 @@ function App() {
             <div className="flex items-center gap-2">
               <Crown className="h-5 w-5 text-slate-700" />
               <h1 className="text-base font-semibold text-slate-900">Queens Game</h1>
+              <span className="font-mono text-[10px] leading-none text-slate-400 self-center" title="Version">{APP_VERSION}</span>
             </div>
             <GameStats />
             <div className="flex items-center gap-2">
@@ -44,6 +48,7 @@ function App() {
               <div className="flex items-center gap-2">
                 <Crown className="h-5 w-5 text-slate-700" />
                 <h1 className="text-base font-semibold text-slate-900">Queens Game</h1>
+                <span className="font-mono text-[10px] leading-none text-slate-400 self-center" title="Version">{APP_VERSION}</span>
               </div>
               <div className="flex items-center gap-1">
                 <a
@@ -136,7 +141,7 @@ function App() {
               Original
             </a>
             <span className="text-slate-300">•</span>
-            <span className="font-mono">v1.1.0</span>
+            <span className="font-mono">{APP_VERSION}</span>
           </div>
         </div>
       </footer>

@@ -14,6 +14,9 @@ ARG VITE_FIREBASE_STORAGE_BUCKET
 ARG VITE_FIREBASE_MESSAGING_SENDER_ID
 ARG VITE_FIREBASE_APP_ID
 
+# Numéro de build (github.run_number) — affiché comme version, incrémenté à chaque push
+ARG VITE_APP_BUILD
+
 # Copier les fichiers de dépendances
 COPY package*.json ./
 
