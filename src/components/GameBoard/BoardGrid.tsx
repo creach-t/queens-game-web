@@ -4,6 +4,36 @@ import { getCellBorderStyle, getCornerClasses } from '../../utils/boardUtils';
 import { GameCell } from '../GameCell';
 import { AnimationOverlay } from './AnimationOverlay';
 
+/**
+ * Cases traversées en ligne droite de (r0,c0) à (r1,c1), **départ exclu, arrivée incluse**
+ * (algorithme de Bresenham). Comble les trous quand un glisser rapide saute des cases entre
+ * deux événements pointeur (fréquent sur appareils lents où les move sont regroupés).
+ */
+function cellsAlongLine(
+  r0: number,
+  c0: number,
+  r1: number,
+  c1: number
+): { row: number; col: number }[] {
+  const cells: { row: number; col: number }[] = [];
+  let x = c0;
+  let y = r0;
+  const dx = Math.abs(c1 - c0);
+  const dy = Math.abs(r1 - r0);
+  const sx = c0 < c1 ? 1 : -1;
+  const sy = r0 < r1 ? 1 : -1;
+  let err = dx - dy;
+  // Garde-fou : au plus 2*gridSize pas pour une grille ≤ 12.
+  for (let guard = 0; guard < 64; guard++) {
+    if (x === c1 && y === r1) break;
+    const e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x += sx; }
+    if (e2 < dx) { err += dx; y += sy; }
+    cells.push({ row: y, col: x });
+  }
+  return cells;
+}
+
 /** Retrouve la cellule [data-row][data-col] sous un point (x, y) de l'écran */
 function getCellAtPoint(x: number, y: number): { row: number; col: number } | null {
   const el = document.elementFromPoint(x, y);
@@ -122,12 +152,21 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
 
     if (!swipeAction.current) return; // glisser démarré sur une reine : rien à peindre
 
-    // Éviter de re-traiter la même cellule
-    if (cellKey === lastSwipedCell.current || swipedCells.current.has(cellKey)) return;
+    if (cellKey === lastSwipedCell.current) return;
 
+    // Interpoler entre la dernière case et l'actuelle : marque aussi les cases sautées
+    // par un glisser rapide (les setState sont groupés par React dans un seul rendu).
+    const last = lastSwipedCell.current;
+    const path = last
+      ? (() => { const [lr, lc] = last.split('-').map(Number); return cellsAlongLine(lr, lc, cell.row, cell.col); })()
+      : [{ row: cell.row, col: cell.col }];
+    for (const p of path) {
+      const k = `${p.row}-${p.col}`;
+      if (swipedCells.current.has(k)) continue;
+      swipedCells.current.add(k);
+      onMarkCell(p.row, p.col, swipeAction.current);
+    }
     lastSwipedCell.current = cellKey;
-    swipedCells.current.add(cellKey);
-    onMarkCell(cell.row, cell.col, swipeAction.current);
   }, [onMarkCell, dragActionFor]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
@@ -187,12 +226,20 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
 
     if (!mouseAction.current) return; // glisser démarré sur une reine : rien à peindre
 
-    // Éviter de re-traiter la même cellule
-    if (cellKey === lastDraggedCell.current || draggedCells.current.has(cellKey)) return;
+    if (cellKey === lastDraggedCell.current) return;
 
+    // Interpoler entre la dernière case et l'actuelle (comble les sauts d'un glisser rapide)
+    const last = lastDraggedCell.current;
+    const path = last
+      ? (() => { const [lr, lc] = last.split('-').map(Number); return cellsAlongLine(lr, lc, cell.row, cell.col); })()
+      : [{ row: cell.row, col: cell.col }];
+    for (const p of path) {
+      const k = `${p.row}-${p.col}`;
+      if (draggedCells.current.has(k)) continue;
+      draggedCells.current.add(k);
+      onMarkCell(p.row, p.col, mouseAction.current);
+    }
     lastDraggedCell.current = cellKey;
-    draggedCells.current.add(cellKey);
-    onMarkCell(cell.row, cell.col, mouseAction.current);
   }, [onMarkCell, dragActionFor]);
 
   const resetMouseDrag = useCallback(() => {
