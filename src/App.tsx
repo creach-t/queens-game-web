@@ -17,7 +17,6 @@ function App() {
             <div className="flex items-center gap-2">
               <Crown className="h-5 w-5 text-slate-700" />
               <h1 className="text-base font-semibold text-slate-900">Queens Game</h1>
-              <span className="font-mono text-[10px] leading-none text-slate-400 self-center" title="Version">{APP_VERSION}</span>
             </div>
             <GameStats />
             <div className="flex items-center gap-2">
@@ -48,7 +47,6 @@ function App() {
               <div className="flex items-center gap-2">
                 <Crown className="h-5 w-5 text-slate-700" />
                 <h1 className="text-base font-semibold text-slate-900">Queens Game</h1>
-                <span className="font-mono text-[10px] leading-none text-slate-400 self-center" title="Version">{APP_VERSION}</span>
               </div>
               <div className="flex items-center gap-1">
                 <a
