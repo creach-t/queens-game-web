@@ -22,6 +22,9 @@ build/
 .parcel-cache/
 .vite/
 
+# Codebase-memory MCP index artifact (local knowledge graph)
+.codebase-memory/
+
 # IDE and editor files
 .vscode/
 .idea/

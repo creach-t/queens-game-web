@@ -37,7 +37,11 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
   // Pré-calculer isMobile une seule fois
   const isMobile = useMemo(() => window.innerWidth <= 768, []);
 
-  // Pré-calculer tous les styles de bordure (ne dépend que des régions)
+  // Pré-calculer tous les styles de bordure. Ils ne dépendent QUE du découpage en
+  // régions (regionId des voisins), fixe pour tout le niveau — jamais de l'état des cases.
+  // On mémoïse donc sur `gameState.solution` (seule réf stable pendant une partie, recréée
+  // à chaque nouveau niveau) et NON sur `gameState.board` : recalculer les 144 bordures à
+  // chaque clic/marquage faisait ramer les appareils limités pour rien.
   const borderStyles = useMemo(() => {
     const styles = new Map<string, React.CSSProperties>();
     for (let row = 0; row < gameState.gridSize; row++) {
@@ -49,7 +53,8 @@ export const BoardGrid: React.FC<BoardGridProps> = ({
       }
     }
     return styles;
-  }, [gameState.gridSize, gameState.board, isMobile]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState.gridSize, gameState.solution, isMobile]);
 
   // Détermine l'action « intelligente » verrouillée d'un glisser selon l'état de la
   // 1re case : vide → on POSE des croix, barrée → on RETIRE des croix, reine → rien.
